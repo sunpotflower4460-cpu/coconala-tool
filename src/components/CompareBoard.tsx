@@ -33,7 +33,7 @@ function CompareCardItem({ card }: { card: MarketCard }) {
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="truncate text-xs font-medium">{card.title}</p>
+        <p className="line-clamp-2 break-words text-xs font-medium">{card.title}</p>
         <p className="text-lg font-bold text-accent">{card.priceText || '価格不明'}</p>
         <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
           <span>{card.siteName}</span>

@@ -1,9 +1,9 @@
 import { ShieldCheck } from 'lucide-react';
 
 const apiPlans = [
-  'APIキーはフロントエンドに固定値で書かず、サーバー/Workerの環境変数で管理します。',
-  '現在の画面は sample / stub アダプターを利用する準備UIです。',
-  'メルカリ・ヤフオクはMVPでは検索リンク + 手動追加を中心に扱います。',
+  'v0.1 Demo では APIキーは不要です。将来もフロントエンドに固定値では書かず、サーバー/Workerの環境変数で管理します。',
+  '楽天APIモックは将来の公式API接続フロー確認用の疑似データです。リアルタイム取得ではありません。',
+  'メルカリ・ヤフオクは検索リンクを開いて手動確認する前提で扱います。',
 ];
 
 export function ApiStatusPanel() {

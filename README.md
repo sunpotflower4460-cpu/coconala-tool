@@ -1,5 +1,7 @@
 # Coconala Tool / Market Card Research App
 
+> v0.1 Demo: サンプルデータと楽天APIモックで、検索・比較・CSV出力・履歴保存の主要フローを確認できるデモ版です。
+
 物販・せどり・越境販売向けに、商品候補を画像つき価格カードで見やすく比較するリサーチ補助ツールです。
 
 ## Core Experience
@@ -60,6 +62,14 @@ See [`docs/phase-roadmap.md`](docs/phase-roadmap.md).
 
 - [`AGENTS.md`](AGENTS.md)
 - [`COPILOT_INSTRUCTIONS.md`](COPILOT_INSTRUCTIONS.md)
+- [`docs/setup-guide.md`](docs/setup-guide.md)
+- [`docs/user-guide.md`](docs/user-guide.md)
+- [`docs/manual-test-script.md`](docs/manual-test-script.md)
+- [`docs/deployment-guide.md`](docs/deployment-guide.md)
+- [`docs/known-limitations.md`](docs/known-limitations.md)
+- [`docs/buyer-handoff.md`](docs/buyer-handoff.md)
+- [`docs/release-v0.1-checklist.md`](docs/release-v0.1-checklist.md)
+- [`docs/release-notes-v0.1.md`](docs/release-notes-v0.1.md)
 - [`docs/product-brief.md`](docs/product-brief.md)
 - [`docs/data-source-policy.md`](docs/data-source-policy.md)
 - [`docs/ux-principles.md`](docs/ux-principles.md)
