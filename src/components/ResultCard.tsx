@@ -22,6 +22,16 @@ const confidenceColors: Record<string, string> = {
   low: 'bg-slate-500/20 text-slate-300',
 };
 
+function formatCardUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    const display = `${parsed.hostname}${parsed.pathname}${parsed.search}${parsed.hash}`.replace(/\/$/, '');
+    return display.length > 60 ? `${display.slice(0, 57)}...` : display;
+  } catch {
+    return url.length > 60 ? `${url.slice(0, 57)}...` : url;
+  }
+}
+
 export function ResultCard({ card }: Props) {
   const [imageError, setImageError] = useState(false);
   const { addComparedCard, removeComparedCard, isCompared } = useResearchStore();
@@ -60,7 +70,10 @@ export function ResultCard({ card }: Props) {
 
       {/* Body */}
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="line-clamp-2 text-sm font-semibold leading-snug">{card.title}</h3>
+        <h3 className="line-clamp-2 break-words text-sm font-semibold leading-snug">{card.title}</h3>
+        <p className="line-clamp-2 break-all text-[11px] leading-snug text-slate-500" title={card.pageUrl}>
+          {formatCardUrl(card.pageUrl)}
+        </p>
 
         <div className="flex flex-wrap gap-1.5">
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${confidenceColors[card.confidence]}`}>

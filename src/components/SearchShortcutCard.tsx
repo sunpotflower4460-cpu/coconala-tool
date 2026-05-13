@@ -26,7 +26,8 @@ export function SearchShortcutCard({ shortcuts }: Props) {
             className="flex flex-col gap-1 rounded-xl border border-sky-300/20 bg-sky-950/20 p-3 hover:bg-sky-900/30 transition group"
           >
             <span className="text-sm font-semibold group-hover:text-accent transition">{sc.siteName}</span>
-            <span className="text-xs text-slate-400 leading-snug">{sc.description}</span>
+            <span className="text-xs leading-snug text-slate-400">{sc.description}</span>
+            <span className="line-clamp-2 break-all text-[11px] text-sky-100/50">{sc.url}</span>
             <span className="mt-1 flex items-center gap-1 text-xs text-accent">
               <ExternalLink size={11} />
               検索リンクを開く

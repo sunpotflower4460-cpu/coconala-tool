@@ -13,6 +13,7 @@ import { ExportPanel } from './ExportPanel';
 import { ResearchHistoryPanel } from './ResearchHistoryPanel';
 import { AiMemoPanel } from './AiMemoPanel';
 import { ApiStatusPanel } from './ApiStatusPanel';
+import { DemoModeNotice } from './DemoModeNotice';
 
 const sourceLegendItems = [
   { label: '公式API取得', value: 'official_api' },
@@ -23,7 +24,7 @@ const sourceLegendItems = [
 const emptyResultMessageByMode = {
   sample: '該当するサンプルカードが見つかりませんでした。検索語を変えるか、手動追加をご利用ください。',
   rakuten_mock:
-    '楽天APIモックでは該当カードが見つかりませんでした。検索語を変えるか、手動追加をご利用ください。',
+    '楽天APIモックでは該当カードが見つかりませんでした。「PS5」「SONY」「Nintendo」を試すか、サンプルモードに切り替えて画面フローを確認してください。',
 } as const;
 
 export function AppShell() {
@@ -44,9 +45,12 @@ export function AppShell() {
             <p className="text-xs font-semibold uppercase tracking-widest text-accent/70">
               Market Card Research App
             </p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight md:text-3xl">
-              Coconala Tool
-            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Coconala Tool</h1>
+              <span className="rounded-full border border-sky-300/30 bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold text-sky-100">
+                v0.1 Demo
+              </span>
+            </div>
             <p className="mt-1 text-sm text-slate-400">
               商品名を入れて、まとめて探す。画像つきカードで相場を見る。
             </p>
@@ -54,9 +58,10 @@ export function AppShell() {
           <ThemeSelector />
         </div>
         <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          デモ版 / サンプルデータ: 現在は実API接続前のMVPです。検索表示由来の価格は推定です。
+          v0.1 Demo: 現在はサンプルデータと楽天APIモックで主要フローを確認できます。リアルタイムの実マーケットプレイス接続はまだ行っていません。検索表示由来の価格は推定です。
         </div>
         <ProductSearchBar onSearch={() => setSearched(true)} />
+        <DemoModeNotice />
         <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <h2 className="text-sm font-semibold text-slate-200">はじめての3ステップ</h2>
           <ol className="mt-2 flex list-decimal flex-col gap-1 pl-5 text-xs text-slate-300">
@@ -118,7 +123,7 @@ export function AppShell() {
                   </h2>
                   <button
                     onClick={() => setShowManualAdd(true)}
-                    className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs hover:bg-white/10 transition"
+                    className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs transition hover:bg-white/10"
                   >
                     <PlusCircle size={13} />
                     手動で追加
