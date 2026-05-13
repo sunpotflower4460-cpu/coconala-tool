@@ -9,6 +9,10 @@ import { SearchShortcutCard } from './SearchShortcutCard';
 import { ManualAddPanel } from '../features/manualAdd/ManualAddPanel';
 import { buildSearchLinks } from '../services/searchLinkBuilder';
 import { PlusCircle, BarChart2 } from 'lucide-react';
+import { ExportPanel } from './ExportPanel';
+import { ResearchHistoryPanel } from './ResearchHistoryPanel';
+import { AiMemoPanel } from './AiMemoPanel';
+import { ApiStatusPanel } from './ApiStatusPanel';
 
 const sourceLegendItems = [
   { label: '公式API取得', value: 'official_api' },
@@ -44,7 +48,18 @@ export function AppShell() {
           </div>
           <ThemeSelector />
         </div>
+        <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+          デモ版 / サンプルデータ: 現在は実API接続前のMVPです。検索表示由来の価格は推定です。
+        </div>
         <ProductSearchBar onSearch={() => setSearched(true)} />
+        <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <h2 className="text-sm font-semibold text-slate-200">はじめての3ステップ</h2>
+          <ol className="mt-2 flex list-decimal flex-col gap-1 pl-5 text-xs text-slate-300">
+            <li>商品名を入れる</li>
+            <li>気になる価格カードを比較に追加</li>
+            <li>利益と元ページを確認</li>
+          </ol>
+        </section>
       </header>
 
       {/* Empty state */}
@@ -63,6 +78,12 @@ export function AppShell() {
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
           {/* Left: results */}
           <div className="flex flex-1 flex-col gap-6 min-w-0">
+            <section className="rounded-2xl border border-white/10 bg-black/20 p-3">
+              <p className="text-[11px] font-semibold text-slate-300">スクリーンショット向け表示エリア</p>
+              <p className="mt-1 text-xs text-slate-400">
+                価格カード・比較ボード・利益見込みを一画面で見せるデモレイアウトです。
+              </p>
+            </section>
             {/* Search shortcuts */}
             {shortcuts.length > 0 && <SearchShortcutCard shortcuts={shortcuts} />}
 
@@ -116,6 +137,10 @@ export function AppShell() {
               <CompareBoard />
             </div>
             <ProfitPanel />
+            <ExportPanel />
+            <ResearchHistoryPanel onLoadSession={() => setSearched(true)} />
+            <AiMemoPanel />
+            <ApiStatusPanel />
           </aside>
         </div>
       )}

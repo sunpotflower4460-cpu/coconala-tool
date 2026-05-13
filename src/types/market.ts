@@ -26,6 +26,17 @@ export type ResearchSession = {
   updatedAt: string;
 };
 
+export type SavedResearchSession = {
+  id: string;
+  name: string;
+  query: string;
+  resultCards: MarketCard[];
+  comparedCards: MarketCard[];
+  profitSettings: ProfitSettings;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ProfitSettings = {
   buyPrice: number;
   sellPrice: number;
