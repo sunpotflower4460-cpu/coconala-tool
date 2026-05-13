@@ -4,6 +4,21 @@
 
 物販・せどり・越境販売向けに、商品候補を画像つき価格カードで見やすく比較するリサーチ補助ツールです。
 
+## Quick Start (v0.1 Demo)
+
+Node.js 20 系を推奨します（`.nvmrc` 参照）。
+
+```bash
+npm install
+npm run dev
+npm run lint
+npm run build
+```
+
+- デプロイ用ビルドコマンド: `npm run build`
+- 出力ディレクトリ: `dist`
+- デプロイ後の確認: [`docs/post-deploy-qa.md`](docs/post-deploy-qa.md)
+
 ## Core Experience
 
 ユーザーは難しいことを考えず、商品名・型番・JAN・URLのいずれかを入れて **まとめて探す** を押します。
@@ -66,6 +81,7 @@ See [`docs/phase-roadmap.md`](docs/phase-roadmap.md).
 - [`docs/user-guide.md`](docs/user-guide.md)
 - [`docs/manual-test-script.md`](docs/manual-test-script.md)
 - [`docs/deployment-guide.md`](docs/deployment-guide.md)
+- [`docs/post-deploy-qa.md`](docs/post-deploy-qa.md)
 - [`docs/known-limitations.md`](docs/known-limitations.md)
 - [`docs/buyer-handoff.md`](docs/buyer-handoff.md)
 - [`docs/release-v0.1-checklist.md`](docs/release-v0.1-checklist.md)
