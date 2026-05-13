@@ -1,0 +1,44 @@
+export type SourceType = 'official_api' | 'search_api' | 'search_link' | 'manual';
+
+export type MarketCard = {
+  id: string;
+  title: string;
+  siteName: string;
+  sourceType: SourceType;
+  priceText?: string;
+  priceValue?: number;
+  currency?: 'JPY' | 'USD' | 'EUR' | 'OTHER';
+  imageUrl?: string;
+  pageUrl: string;
+  shippingText?: string;
+  conditionText?: string;
+  confidence: 'high' | 'medium' | 'low';
+  note?: string;
+  createdAt: string;
+};
+
+export type ResearchSession = {
+  id: string;
+  query: string;
+  cards: MarketCard[];
+  comparedCardIds: string[];
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProfitSettings = {
+  buyPrice: number;
+  sellPrice: number;
+  shippingCost: number;
+  feeRate: number;
+  exchangeRate: number;
+};
+
+export type ThemeId = 'simple-pro' | 'soft-market' | 'dark-trader' | 'natural-board';
+
+export type SearchShortcut = {
+  id: string;
+  siteName: string;
+  description: string;
+  url: string;
+};
