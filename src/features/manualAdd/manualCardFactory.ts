@@ -3,6 +3,14 @@ import { detectSiteNameFromUrl } from './siteDetector';
 
 let counter = 0;
 
+function parsePriceValue(priceText: string): number | undefined {
+  const normalized = priceText.replace(/[，,]/g, '').trim();
+  const match = normalized.match(/-?\d+(\.\d+)?/);
+  if (!match) return undefined;
+  const value = Number(match[0]);
+  return Number.isFinite(value) ? value : undefined;
+}
+
 export function createManualCard(params: {
   siteName: string;
   pageUrl: string;
@@ -14,7 +22,7 @@ export function createManualCard(params: {
 }): MarketCard {
   const id = `manual-${Date.now()}-${++counter}`;
   const detectedSite = params.siteName.trim() || detectSiteNameFromUrl(params.pageUrl);
-  const numericPrice = parseFloat(params.priceText.replace(/[^0-9.]/g, ''));
+  const numericPrice = parsePriceValue(params.priceText);
 
   return {
     id,
@@ -22,7 +30,7 @@ export function createManualCard(params: {
     siteName: detectedSite || '不明',
     sourceType: 'manual',
     priceText: params.priceText,
-    priceValue: isNaN(numericPrice) ? undefined : numericPrice,
+    priceValue: numericPrice,
     currency: 'JPY',
     imageUrl: params.imageUrl || undefined,
     pageUrl: params.pageUrl,

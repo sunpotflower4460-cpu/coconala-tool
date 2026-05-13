@@ -30,17 +30,19 @@ body.theme-simple-pro {
   --color-accent: #6366f1;
   --color-accent-hover: #4f46e5;
   background-color: var(--color-bg);
+  background-image: radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.2), transparent 35%);
   color: var(--color-text);
 }
 
 /* Soft Market (warm violet) */
 body.theme-soft-market {
-  --color-bg: #1e1b2e;
-  --color-bg-card: rgba(167,139,250,0.07);
+  --color-bg: #221b35;
+  --color-bg-card: rgba(254,205,211,0.08);
   --color-text: #ede9fe;
-  --color-accent: #a78bfa;
-  --color-accent-hover: #8b5cf6;
+  --color-accent: #f472b6;
+  --color-accent-hover: #ec4899;
   background-color: var(--color-bg);
+  background-image: radial-gradient(circle at 85% 20%, rgba(244, 114, 182, 0.22), transparent 40%);
   color: var(--color-text);
 }
 
@@ -52,17 +54,19 @@ body.theme-dark-trader {
   --color-accent: #22d3ee;
   --color-accent-hover: #06b6d4;
   background-color: var(--color-bg);
+  background-image: linear-gradient(135deg, rgba(15,23,42,0.75), rgba(0,0,0,0.95));
   color: var(--color-text);
 }
 
 /* Natural Board (deep forest green) */
 body.theme-natural-board {
-  --color-bg: #0d1f17;
-  --color-bg-card: rgba(134,239,172,0.05);
-  --color-text: #dcfce7;
-  --color-accent: #4ade80;
-  --color-accent-hover: #22c55e;
+  --color-bg: #172015;
+  --color-bg-card: rgba(187,247,208,0.08);
+  --color-text: #e7f7ea;
+  --color-accent: #65a30d;
+  --color-accent-hover: #4d7c0f;
   background-color: var(--color-bg);
+  background-image: radial-gradient(circle at 20% 10%, rgba(187,247,208,0.18), transparent 35%);
   color: var(--color-text);
 }
 
@@ -114,4 +118,3 @@ body:not([class*="theme-"]) {
 .text-accent\/70 {
   color: color-mix(in srgb, var(--color-accent) 70%, transparent) !important;
 }
-

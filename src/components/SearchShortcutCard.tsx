@@ -9,16 +9,21 @@ export function SearchShortcutCard({ shortcuts }: Props) {
   if (shortcuts.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-3">
-      <h2 className="text-sm font-semibold text-slate-300">検索ショートカット</h2>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+    <section className="rounded-2xl border border-sky-400/20 bg-sky-500/5 p-4">
+      <div className="mb-3 flex flex-col gap-1">
+        <h2 className="text-sm font-semibold text-sky-200">検索ショートカット（外部ページ）</h2>
+        <p className="text-xs text-sky-100/70">
+          ここは価格カードではありません。クリックすると別タブで検索ページを開きます。
+        </p>
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {shortcuts.map((sc) => (
           <a
             key={sc.id}
             href={sc.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex flex-col gap-1 rounded-xl border border-white/10 bg-white/5 p-3 hover:bg-white/10 transition group"
+            className="flex flex-col gap-1 rounded-xl border border-sky-300/20 bg-sky-950/20 p-3 hover:bg-sky-900/30 transition group"
           >
             <span className="text-sm font-semibold group-hover:text-accent transition">{sc.siteName}</span>
             <span className="text-xs text-slate-400 leading-snug">{sc.description}</span>
@@ -29,6 +34,6 @@ export function SearchShortcutCard({ shortcuts }: Props) {
           </a>
         ))}
       </div>
-    </div>
+    </section>
   );
 }
