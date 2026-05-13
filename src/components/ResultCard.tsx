@@ -25,9 +25,10 @@ const confidenceColors: Record<string, string> = {
 function formatCardUrl(url: string) {
   try {
     const parsed = new URL(url);
-    return `${parsed.hostname}${parsed.pathname}${parsed.search}`.replace(/\/$/, '');
+    const display = `${parsed.hostname}${parsed.pathname}${parsed.search}${parsed.hash}`.replace(/\/$/, '');
+    return display.length > 60 ? `${display.slice(0, 57)}...` : display;
   } catch {
-    return url;
+    return url.length > 60 ? `${url.slice(0, 57)}...` : url;
   }
 }
 
