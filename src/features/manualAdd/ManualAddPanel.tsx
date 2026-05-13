@@ -37,12 +37,14 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
   const [duplicateWarning, setDuplicateWarning] = useState('');
 
   function checkDuplicate(url: string) {
-    const normalized = url.trim();
+    const normalized = url.trim().replace(/\/+$/, '');
     if (!normalized) {
       setDuplicateWarning('');
       return;
     }
-    const exists = resultCards.some((c) => c.pageUrl.trim() === normalized);
+    const exists = resultCards.some(
+      (c) => c.pageUrl.trim().replace(/\/+$/, '') === normalized,
+    );
     setDuplicateWarning(exists ? '同じURLのカードがすでに存在します。別のURLを入力するか、そのまま追加できます。' : '');
   }
 

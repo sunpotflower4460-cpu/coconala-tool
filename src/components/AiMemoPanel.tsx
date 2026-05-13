@@ -6,6 +6,7 @@ export function AiMemoPanel() {
   const { comparedCards, profitSettings } = useResearchStore();
   const memos = buildRuleBasedInsights(comparedCards, profitSettings);
 
+  // Show empty guidance only when the user has not yet entered any data at all
   const isEmpty = comparedCards.length === 0 && profitSettings.buyPrice === 0 && profitSettings.sellPrice === 0;
 
   return (
@@ -19,7 +20,7 @@ export function AiMemoPanel() {
       </p>
       {isEmpty ? (
         <p className="mt-3 rounded-xl border border-dashed border-violet-200/20 p-3 text-xs text-violet-200/60">
-          比較カードを追加するか、利益設定を入力するとコメントが表示されます。
+          比較カードを追加するか、利益設定の仕入れ・販売価格を入力するとコメントが表示されます。
         </p>
       ) : (
         <ul className="mt-3 flex flex-col gap-2">
