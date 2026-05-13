@@ -16,6 +16,12 @@ type ResearchStore = {
   addManualCard: (card: MarketCard) => void;
   setTheme: (theme: ThemeId) => void;
   setProfitSettings: (settings: Partial<ProfitSettings>) => void;
+  loadResearchSession: (payload: {
+    query: string;
+    resultCards: MarketCard[];
+    comparedCards: MarketCard[];
+    profitSettings: ProfitSettings;
+  }) => void;
   resetSession: () => void;
 };
 
@@ -68,6 +74,14 @@ export const useResearchStore = create<ResearchStore>()(
           profitSettings: { ...state.profitSettings, ...settings },
         }));
       },
+
+      loadResearchSession: (payload) =>
+        set({
+          query: payload.query,
+          resultCards: payload.resultCards,
+          comparedCards: payload.comparedCards,
+          profitSettings: payload.profitSettings,
+        }),
 
       resetSession: () =>
         set({
