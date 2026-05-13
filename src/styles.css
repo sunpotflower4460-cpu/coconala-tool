@@ -4,8 +4,7 @@
 
 :root {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color-scheme: light dark;
-  background: #020617;
+  color-scheme: dark;
 }
 
 body {
@@ -20,3 +19,99 @@ textarea,
 select {
   font: inherit;
 }
+
+/* ── Themes ────────────────────────────────────────────── */
+
+/* Simple Pro (dark navy default) */
+body.theme-simple-pro {
+  --color-bg: #0f172a;
+  --color-bg-card: rgba(255,255,255,0.04);
+  --color-text: #f1f5f9;
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Soft Market (warm violet) */
+body.theme-soft-market {
+  --color-bg: #1e1b2e;
+  --color-bg-card: rgba(167,139,250,0.07);
+  --color-text: #ede9fe;
+  --color-accent: #a78bfa;
+  --color-accent-hover: #8b5cf6;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Dark Trader (pitch dark) */
+body.theme-dark-trader {
+  --color-bg: #09090b;
+  --color-bg-card: rgba(255,255,255,0.03);
+  --color-text: #e4e4e7;
+  --color-accent: #22d3ee;
+  --color-accent-hover: #06b6d4;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Natural Board (deep forest green) */
+body.theme-natural-board {
+  --color-bg: #0d1f17;
+  --color-bg-card: rgba(134,239,172,0.05);
+  --color-text: #dcfce7;
+  --color-accent: #4ade80;
+  --color-accent-hover: #22c55e;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Fallback if no class applied */
+body:not([class*="theme-"]) {
+  --color-bg: #0f172a;
+  --color-bg-card: rgba(255,255,255,0.04);
+  --color-text: #f1f5f9;
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+.app-main {
+  background: var(--color-bg);
+  min-height: 100vh;
+}
+
+.text-theme {
+  color: var(--color-text);
+}
+
+.text-accent {
+  color: var(--color-accent) !important;
+}
+
+.bg-accent {
+  background-color: var(--color-accent) !important;
+}
+
+.bg-accent-hover:hover,
+.hover\:bg-accent-hover:hover {
+  background-color: var(--color-accent-hover) !important;
+}
+
+.focus\:border-accent\/60:focus {
+  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent) !important;
+}
+
+.border-accent {
+  border-color: var(--color-accent) !important;
+}
+
+.bg-accent\/20 {
+  background-color: color-mix(in srgb, var(--color-accent) 20%, transparent) !important;
+}
+
+.text-accent\/70 {
+  color: color-mix(in srgb, var(--color-accent) 70%, transparent) !important;
+}
+
