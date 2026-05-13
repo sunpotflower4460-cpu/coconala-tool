@@ -20,9 +20,14 @@ const sourceLegendItems = [
   { label: '検索リンク', value: 'search_link' },
   { label: '手動追加', value: 'manual' },
 ] as const;
+const emptyResultMessageByMode = {
+  sample: '該当するサンプルカードが見つかりませんでした。検索語を変えるか、手動追加をご利用ください。',
+  rakuten_mock:
+    '楽天APIモックでは該当カードが見つかりませんでした。検索語を変えるか、手動追加をご利用ください。',
+} as const;
 
 export function AppShell() {
-  const { resultCards, query, comparedCards } = useResearchStore();
+  const { resultCards, query, comparedCards, dataSourceMode } = useResearchStore();
   const [showManualAdd, setShowManualAdd] = useState(false);
   const [searched, setSearched] = useState(false);
   const [manualSuccess, setManualSuccess] = useState(false);
@@ -124,6 +129,12 @@ export function AppShell() {
                     <ResultCard key={card.id} card={card} />
                   ))}
                 </div>
+              </div>
+            )}
+
+            {!hasResults && (
+              <div className="rounded-xl border border-dashed border-white/15 bg-white/5 p-4 text-sm text-slate-300">
+                {emptyResultMessageByMode[dataSourceMode]}
               </div>
             )}
           </div>
