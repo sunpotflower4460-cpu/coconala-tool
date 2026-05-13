@@ -10,18 +10,26 @@ import { ManualAddPanel } from '../features/manualAdd/ManualAddPanel';
 import { buildSearchLinks } from '../services/searchLinkBuilder';
 import { PlusCircle, BarChart2 } from 'lucide-react';
 
+const sourceLegendItems = [
+  { label: '公式API取得', value: 'official_api' },
+  { label: '検索表示から推定', value: 'search_api' },
+  { label: '検索リンク', value: 'search_link' },
+  { label: '手動追加', value: 'manual' },
+] as const;
+
 export function AppShell() {
   const { resultCards, query, comparedCards } = useResearchStore();
   const [showManualAdd, setShowManualAdd] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [manualSuccess, setManualSuccess] = useState(false);
 
   const shortcuts = buildSearchLinks(query);
   const hasResults = resultCards.length > 0;
 
   return (
-    <div className="min-h-screen px-4 py-8 md:px-8">
+    <div className="min-h-screen px-3 py-5 sm:px-4 sm:py-8 md:px-8">
       {/* Header */}
-      <header className="mb-8 flex flex-col gap-4">
+      <header className="mb-6 flex flex-col gap-4 md:mb-8">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <p className="text-xs font-semibold uppercase tracking-widest text-accent/70">
@@ -41,10 +49,12 @@ export function AppShell() {
 
       {/* Empty state */}
       {!searched && (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/10 py-20 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-white/10 px-4 py-16 text-center sm:py-20">
           <BarChart2 size={40} className="text-slate-600" />
-          <p className="text-base font-medium text-slate-400">商品名・型番・JANを入力して「まとめて探す」</p>
-          <p className="text-xs text-slate-500">サンプルデータが表示されます</p>
+          <p className="text-base font-medium text-slate-300">商品名・型番・JAN・URLを入力して「まとめて探す」</p>
+          <p className="text-xs text-slate-500">
+            例: SONY Walkman NW-A55 / Nintendo 3DS LL / JANコード / 商品URL
+          </p>
         </div>
       )}
 
@@ -55,6 +65,23 @@ export function AppShell() {
           <div className="flex flex-1 flex-col gap-6 min-w-0">
             {/* Search shortcuts */}
             {shortcuts.length > 0 && <SearchShortcutCard shortcuts={shortcuts} />}
+
+            {manualSuccess && (
+              <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                手動カードを追加しました。比較ボードと利益計算に反映されています。
+              </div>
+            )}
+
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-slate-300">
+              <p className="mb-2 text-[11px] text-slate-400">ソース凡例</p>
+              <div className="flex flex-wrap gap-1.5">
+                {sourceLegendItems.map((item) => (
+                  <span key={item.value} className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5">
+                    {item.label}
+                  </span>
+                ))}
+              </div>
+            </div>
 
             {/* Card grid */}
             {hasResults && (
@@ -94,7 +121,15 @@ export function AppShell() {
       )}
 
       {/* Manual add modal */}
-      {showManualAdd && <ManualAddPanel onClose={() => setShowManualAdd(false)} />}
+      {showManualAdd && (
+        <ManualAddPanel
+          onClose={() => setShowManualAdd(false)}
+          onSuccess={() => {
+            setManualSuccess(true);
+            window.setTimeout(() => setManualSuccess(false), 2500);
+          }}
+        />
+      )}
     </div>
   );
 }

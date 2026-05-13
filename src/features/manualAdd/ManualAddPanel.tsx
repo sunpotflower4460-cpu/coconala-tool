@@ -6,9 +6,23 @@ import { detectSiteNameFromUrl } from './siteDetector';
 
 type Props = {
   onClose: () => void;
+  onSuccess?: () => void;
 };
 
-export function ManualAddPanel({ onClose }: Props) {
+function validateUrlText(value: string): string {
+  if (!value.trim()) return 'URLを入力してください。';
+  try {
+    const parsed = new URL(value);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return 'http または https のURLを入力してください。';
+    }
+    return '';
+  } catch {
+    return 'URL形式が正しくありません。例: https://example.com/item';
+  }
+}
+
+export function ManualAddPanel({ onClose, onSuccess }: Props) {
   const { addManualCard } = useResearchStore();
   const [form, setForm] = useState({
     siteName: '',
@@ -19,8 +33,10 @@ export function ManualAddPanel({ onClose }: Props) {
     imageUrl: '',
     note: '',
   });
+  const [urlError, setUrlError] = useState('');
 
   function handleUrlBlur() {
+    setUrlError(validateUrlText(form.pageUrl));
     if (form.pageUrl && !form.siteName) {
       const detected = detectSiteNameFromUrl(form.pageUrl);
       if (detected) setForm((f) => ({ ...f, siteName: detected }));
@@ -29,7 +45,10 @@ export function ManualAddPanel({ onClose }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.pageUrl) return;
+    const currentUrlError = validateUrlText(form.pageUrl);
+    setUrlError(currentUrlError);
+    if (currentUrlError) return;
+
     const card = createManualCard({
       siteName: form.siteName,
       pageUrl: form.pageUrl,
@@ -40,6 +59,7 @@ export function ManualAddPanel({ onClose }: Props) {
       note: form.note || undefined,
     });
     addManualCard(card);
+    onSuccess?.();
     onClose();
   }
 
@@ -63,11 +83,16 @@ export function ManualAddPanel({ onClose }: Props) {
               required
               type="url"
               value={form.pageUrl}
-              onChange={(e) => setForm((f) => ({ ...f, pageUrl: e.target.value }))}
+              onChange={(e) => {
+                const nextValue = e.target.value;
+                setForm((f) => ({ ...f, pageUrl: nextValue }));
+                if (urlError) setUrlError(validateUrlText(nextValue));
+              }}
               onBlur={handleUrlBlur}
               placeholder="https://..."
               className={inputClass}
             />
+            {urlError && <span className="text-xs text-red-300">{urlError}</span>}
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-slate-400">

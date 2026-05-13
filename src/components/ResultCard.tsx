@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { MarketCard } from '../types/market';
 import { useResearchStore } from '../store/researchStore';
 import { ExternalLink, PlusCircle, CheckCircle } from 'lucide-react';
@@ -9,7 +10,7 @@ type Props = {
 const sourceLabels: Record<string, string> = {
   official_api: '公式API取得',
   search_api: '検索表示から推定',
-  search_link: '検索表示から推定',
+  search_link: '検索リンク',
   manual: '手動追加',
 };
 
@@ -20,6 +21,7 @@ const confidenceColors: Record<string, string> = {
 };
 
 export function ResultCard({ card }: Props) {
+  const [imageError, setImageError] = useState(false);
   const { addComparedCard, removeComparedCard, isCompared } = useResearchStore();
   const compared = isCompared(card.id);
 
@@ -27,15 +29,17 @@ export function ResultCard({ card }: Props) {
     <div className="card-base group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur transition hover:border-white/20 hover:bg-white/10">
       {/* Image */}
       <div className="relative h-44 overflow-hidden bg-slate-800">
-        {card.imageUrl ? (
+        {card.imageUrl && !imageError ? (
           <img
             src={card.imageUrl}
             alt={card.title}
             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            onError={() => setImageError(true)}
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-slate-500 text-sm">
-            画像なし
+          <div className="flex h-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 text-slate-300">
+            <span className="text-xs font-semibold tracking-widest">NO IMAGE</span>
+            <span className="text-[11px] text-slate-400">画像未設定</span>
           </div>
         )}
         <span className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-medium bg-black/60 text-white">
@@ -51,6 +55,9 @@ export function ResultCard({ card }: Props) {
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${confidenceColors[card.confidence]}`}>
             {sourceLabels[card.sourceType]}
           </span>
+          {card.sourceType === 'search_link' && (
+            <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-xs text-sky-300">外部検索ページ</span>
+          )}
           {card.conditionText && (
             <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300">
               {card.conditionText}
