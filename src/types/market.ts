@@ -1,4 +1,5 @@
 export type SourceType = 'official_api' | 'search_api' | 'search_link' | 'manual';
+export type DataSourceMode = 'sample' | 'rakuten_mock';
 
 export type MarketCard = {
   id: string;

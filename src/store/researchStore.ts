@@ -1,11 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { MarketCard, ProfitSettings, ThemeId } from '../types/market';
+import type { DataSourceMode, MarketCard, ProfitSettings, ThemeId } from '../types/market';
 
 type ResearchStore = {
   query: string;
   resultCards: MarketCard[];
   comparedCards: MarketCard[];
+  dataSourceMode: DataSourceMode;
   theme: ThemeId;
   profitSettings: ProfitSettings;
   setQuery: (q: string) => void;
@@ -14,6 +15,7 @@ type ResearchStore = {
   removeComparedCard: (id: string) => void;
   isCompared: (id: string) => boolean;
   addManualCard: (card: MarketCard) => void;
+  setDataSourceMode: (mode: DataSourceMode) => void;
   setTheme: (theme: ThemeId) => void;
   setProfitSettings: (settings: Partial<ProfitSettings>) => void;
   loadResearchSession: (payload: {
@@ -39,6 +41,7 @@ export const useResearchStore = create<ResearchStore>()(
       query: '',
       resultCards: [],
       comparedCards: [],
+      dataSourceMode: 'sample',
       theme: 'simple-pro',
       profitSettings: defaultProfitSettings,
 
@@ -67,6 +70,8 @@ export const useResearchStore = create<ResearchStore>()(
         }));
       },
 
+      setDataSourceMode: (mode) => set({ dataSourceMode: mode }),
+
       setTheme: (theme) => set({ theme }),
 
       setProfitSettings: (settings) => {
@@ -84,16 +89,18 @@ export const useResearchStore = create<ResearchStore>()(
         }),
 
       resetSession: () =>
-        set({
+        set((state) => ({
           query: '',
           resultCards: [],
           comparedCards: [],
+          dataSourceMode: state.dataSourceMode,
           profitSettings: defaultProfitSettings,
-        }),
+        })),
     }),
     {
       name: 'coconala-tool-research',
       partialize: (state) => ({
+        dataSourceMode: state.dataSourceMode,
         theme: state.theme,
         profitSettings: state.profitSettings,
       }),
