@@ -51,7 +51,7 @@ const rakutenItems: RakutenMockItem[] = [
 export function searchRakutenMockItems(keyword: string, limit = 8): RakutenSearchMockResponse {
   const normalized = keyword.trim().toLowerCase();
   const matched = rakutenItems.filter((item) => item.itemName.toLowerCase().includes(normalized));
-  const items = (matched.length > 0 ? matched : []).slice(0, limit);
+  const items = matched.slice(0, limit);
 
   return {
     Items: items.map((item) => ({ Item: item })),

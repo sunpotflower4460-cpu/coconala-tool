@@ -72,7 +72,7 @@ export async function onRequest(context) {
     return Response.json({ error: 'API_UNAVAILABLE', fallback: 'search_link' }, { status: 400 });
   }
 
-  // ここで楽天APIを呼び出し、MarketCardへ変換して返却する
+  // ここで楽天APIを呼び出し、MarketCard[] に正規化してから { cards, totalCount } を返却する
   // 現フェーズでは実装しない
   return Response.json({ cards: [], totalCount: 0 });
 }

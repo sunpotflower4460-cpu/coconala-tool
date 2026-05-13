@@ -1,10 +1,12 @@
 import type { MarketCard } from '../../types/market';
 import type { RakutenMockItem } from '../../mocks/rakutenSearchMock';
 
+const MAX_RAKUTEN_TITLE_LENGTH = 100;
+
 export function mapRakutenItemToMarketCard(item: RakutenMockItem): MarketCard {
   return {
     id: `rakuten-${item.itemCode}`,
-    title: item.itemName.slice(0, 100),
+    title: item.itemName.slice(0, MAX_RAKUTEN_TITLE_LENGTH),
     siteName: `${item.shopName}（楽天市場）`,
     sourceType: 'official_api',
     priceText: `¥${item.itemPrice.toLocaleString('ja-JP')}`,

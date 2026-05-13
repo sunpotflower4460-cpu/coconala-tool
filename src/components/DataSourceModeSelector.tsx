@@ -6,6 +6,11 @@ const modeOptions = [
   { value: 'rakuten_mock', label: '楽天APIモック' },
 ] as const;
 
+const modeNotices: Record<DataSourceMode, string> = {
+  sample: 'サンプルデータは画面確認や比較フロー確認向けの固定カードです。',
+  rakuten_mock: '楽天APIモックは将来の公式API接続を想定した疑似データです。',
+};
+
 export function DataSourceModeSelector() {
   const { dataSourceMode, setDataSourceMode } = useResearchStore();
 
@@ -25,11 +30,7 @@ export function DataSourceModeSelector() {
           ))}
         </select>
       </div>
-      {dataSourceMode === 'rakuten_mock' && (
-        <p className="mt-1 text-[11px] text-amber-200">
-          楽天APIモックは将来の公式API接続を想定した疑似データです。
-        </p>
-      )}
+      <p className="mt-1 text-[11px] text-slate-300">{modeNotices[dataSourceMode]}</p>
     </div>
   );
 }
