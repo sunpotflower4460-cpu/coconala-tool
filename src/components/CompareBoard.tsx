@@ -9,6 +9,14 @@ function CompareCardItem({ card }: { card: MarketCard }) {
   const { removeComparedCard, setProfitSettings, profitSettings } = useResearchStore();
   const normalizedPrice = toJpyPrice(card, profitSettings.exchangeRate);
   const hasPrice = typeof normalizedPrice === 'number';
+  const handleUseAsBuy = () => {
+    if (normalizedPrice === undefined) return;
+    setProfitSettings({ buyPrice: normalizedPrice });
+  };
+  const handleUseAsSell = () => {
+    if (normalizedPrice === undefined) return;
+    setProfitSettings({ sellPrice: normalizedPrice });
+  };
 
   return (
     <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
@@ -37,14 +45,14 @@ function CompareCardItem({ card }: { card: MarketCard }) {
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           <button
-            onClick={() => hasPrice && setProfitSettings({ buyPrice: normalizedPrice })}
+            onClick={handleUseAsBuy}
             disabled={!hasPrice}
             className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-medium text-slate-200 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
           >
             この価格を仕入れに使う
           </button>
           <button
-            onClick={() => hasPrice && setProfitSettings({ sellPrice: normalizedPrice })}
+            onClick={handleUseAsSell}
             disabled={!hasPrice}
             className="rounded-full bg-accent/80 px-2.5 py-1 text-[10px] font-semibold text-white hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
           >

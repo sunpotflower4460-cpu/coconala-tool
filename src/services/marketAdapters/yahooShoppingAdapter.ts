@@ -3,13 +3,13 @@ import { SERVER_ROUTE_NOTICE } from './types';
 
 export const yahooShoppingAdapter: MarketAdapter = {
   id: 'yahooShopping',
-  label: 'YahooショッピングAPI Adapter (stub)',
+  label: 'Yahoo!ショッピングAPI Adapter (stub)',
   sourceType: 'official_api',
   async search(): Promise<MarketSearchResponse> {
     return {
       cards: [],
       warnings: [
-        'Yahooショッピング公式APIアダプターはスキャフォールドのみです。',
+        'Yahoo!ショッピング公式APIアダプターはスキャフォールドのみです。',
         SERVER_ROUTE_NOTICE,
       ],
     };

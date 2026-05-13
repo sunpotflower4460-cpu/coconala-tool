@@ -81,7 +81,7 @@ export function ProfitPanel() {
         <div className="flex items-center justify-between">
           <span className="text-sm text-slate-300">利益見込み</span>
           <span className={`text-xl font-bold ${profit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-            {profit >= 0 ? '+' : ''}{profit.toLocaleString()}円
+            {profit >= 0 ? '+' : ''}{profit.toLocaleString('ja-JP')}円
           </span>
         </div>
         <div className="flex items-center justify-between">
@@ -89,8 +89,8 @@ export function ProfitPanel() {
           <span className="text-sm text-slate-300">{margin.toFixed(1)}%</span>
         </div>
         <p className="mt-2 text-xs text-slate-400">
-          {sellPrice.toLocaleString()} - {fee.toLocaleString()} - {buyPrice.toLocaleString()} - {shippingCost.toLocaleString()} ={' '}
-          {profit.toLocaleString()}円
+          {sellPrice.toLocaleString('ja-JP')} - {fee.toLocaleString('ja-JP')} - {buyPrice.toLocaleString('ja-JP')} -{' '}
+          {shippingCost.toLocaleString('ja-JP')} = {profit.toLocaleString('ja-JP')}円
         </p>
         <p className="text-[11px] text-slate-500">販売価格 - 手数料 - 仕入れ価格 - 送料 = 利益</p>
         <div className="flex justify-end mt-1">
