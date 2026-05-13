@@ -12,6 +12,11 @@ export function ExportPanel() {
       <p className="mt-1 text-xs text-slate-400">
         比較カードと利益設定をCSVで保存します（Excel向けに文字化けしにくい形式）。
       </p>
+      {!canExport && (
+        <p className="mt-2 rounded-xl border border-dashed border-white/10 p-2 text-xs text-slate-400">
+          比較ボードにカードを追加するとCSV出力できます。
+        </p>
+      )}
       <button
         onClick={() => downloadResearchCsv(comparedCards, profitSettings)}
         disabled={!canExport}

@@ -23,7 +23,7 @@ function validateUrlText(value: string): string {
 }
 
 export function ManualAddPanel({ onClose, onSuccess }: Props) {
-  const { addManualCard } = useResearchStore();
+  const { addManualCard, resultCards } = useResearchStore();
   const [form, setForm] = useState({
     siteName: '',
     pageUrl: '',
@@ -34,9 +34,21 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
     note: '',
   });
   const [urlError, setUrlError] = useState('');
+  const [duplicateWarning, setDuplicateWarning] = useState('');
+
+  function checkDuplicate(url: string) {
+    const normalized = url.trim();
+    if (!normalized) {
+      setDuplicateWarning('');
+      return;
+    }
+    const exists = resultCards.some((c) => c.pageUrl.trim() === normalized);
+    setDuplicateWarning(exists ? '同じURLのカードがすでに存在します。別のURLを入力するか、そのまま追加できます。' : '');
+  }
 
   function handleUrlBlur() {
     setUrlError(validateUrlText(form.pageUrl));
+    checkDuplicate(form.pageUrl);
     if (form.pageUrl && !form.siteName) {
       const detected = detectSiteNameFromUrl(form.pageUrl);
       if (detected) setForm((f) => ({ ...f, siteName: detected }));
@@ -87,12 +99,16 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
                 const nextValue = e.target.value;
                 setForm((f) => ({ ...f, pageUrl: nextValue }));
                 if (urlError) setUrlError(validateUrlText(nextValue));
+                if (duplicateWarning) checkDuplicate(nextValue);
               }}
               onBlur={handleUrlBlur}
               placeholder="https://..."
               className={inputClass}
             />
             {urlError && <span className="text-xs text-red-300">{urlError}</span>}
+            {!urlError && duplicateWarning && (
+              <span className="text-xs text-amber-300">{duplicateWarning}</span>
+            )}
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-slate-400">
@@ -115,6 +131,9 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
               placeholder="例: ¥5,000"
               className={inputClass}
             />
+            {!form.priceText.trim() && (
+              <span className="text-xs text-slate-500">価格を入力しないと「価格不明」と表示されます。</span>
+            )}
           </label>
 
           <div className="grid grid-cols-2 gap-3">
