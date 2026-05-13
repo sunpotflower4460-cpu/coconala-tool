@@ -6,6 +6,9 @@ export function AiMemoPanel() {
   const { comparedCards, profitSettings } = useResearchStore();
   const memos = buildRuleBasedInsights(comparedCards, profitSettings);
 
+  // Show empty guidance only when the user has not yet entered any data at all
+  const isEmpty = comparedCards.length === 0 && profitSettings.buyPrice === 0 && profitSettings.sellPrice === 0;
+
   return (
     <section className="rounded-2xl border border-violet-300/20 bg-violet-500/5 p-4">
       <div className="flex items-center gap-2">
@@ -15,13 +18,19 @@ export function AiMemoPanel() {
       <p className="mt-1 text-xs text-violet-100/80">
         参考用の短文コメントです。断定ではなく推定なので、元ページを確認してください。
       </p>
-      <ul className="mt-3 flex flex-col gap-2">
-        {memos.map((memo) => (
-          <li key={memo.id} className="rounded-xl border border-violet-200/20 bg-black/20 px-3 py-2 text-xs text-slate-200">
-            {memo.text}
-          </li>
-        ))}
-      </ul>
+      {isEmpty ? (
+        <p className="mt-3 rounded-xl border border-dashed border-violet-200/20 p-3 text-xs text-violet-200/60">
+          比較カードを追加するか、利益設定の仕入れ・販売価格を入力するとコメントが表示されます。
+        </p>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-2">
+          {memos.map((memo) => (
+            <li key={memo.id} className="rounded-xl border border-violet-200/20 bg-black/20 px-3 py-2 text-xs text-slate-200">
+              {memo.text}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }
