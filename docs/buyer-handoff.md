@@ -59,6 +59,7 @@ npm run build
 ## デプロイ方法
 
 デプロイ先の詳細は `docs/deployment-guide.md` を参照してください。
+デプロイ後の確認は `docs/post-deploy-qa.md` を上から実施してください。
 
 **Cloudflare Pages（推奨）:**
 1. GitHub リポジトリに push
@@ -95,6 +96,16 @@ theme: 'simple-pro',  ← 'soft-market' | 'dark-trader' | 'natural-board' に変
 ### サンプルデータを変える
 
 `src/data/sampleMarketCards.ts` を編集してください。
+
+---
+
+## v0.1 スコープ（引き渡し時点）
+
+- v0.1 Demo は API キー不要で動作します。
+- データは sample/mock のみで、実マーケットプレイスAPIは未接続です。
+- すぐに使える機能: 手動追加 / CSV出力 / 履歴保存・再開（localStorage）。
+- 公式API接続（楽天など）は次フェーズの有償カスタマイズです。
+- メルカリ・ヤフオクは検索リンク生成と手動確認を優先する運用です。
 
 ---
 
