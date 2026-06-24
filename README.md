@@ -69,6 +69,12 @@ npm run build
 デザインも選べる
 ```
 
+## License / Terms
+
+ライセンスと利用範囲（商用利用可・再販/再配布の制限・保証なし）は [`TERMS.md`](TERMS.md) を参照してください。
+
+`package.json` の `"private": true` は npm へ公開しない設定です（社内/納品用であり、npm レジストリに publish されません）。ソースコードの納品・利用そのものを制限するものではありません。
+
 ## Development Phases
 
 See [`docs/phase-roadmap.md`](docs/phase-roadmap.md).
