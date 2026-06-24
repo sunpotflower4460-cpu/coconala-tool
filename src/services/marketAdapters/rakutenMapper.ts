@@ -17,7 +17,7 @@ export function mapRakutenItemToMarketCard(item: RakutenMockItem): MarketCard {
     shippingText: item.postageFlag === 0 ? '送料無料' : '送料別途',
     conditionText: '新品',
     confidence: 'high',
-    note: '楽天市場 公式API取得（モック）',
+    note: '楽天市場 公式API取得',
     createdAt: new Date().toISOString(),
   };
 }
