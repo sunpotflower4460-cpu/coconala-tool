@@ -11,8 +11,11 @@
 | `src/` | アプリのソースコード（React + TypeScript） |
 | `docs/` | 各種説明文書 |
 | `public/` | 静的アセット（追加している場合のみ） |
-| `package.json` | 依存パッケージ一覧 |
-| `.nvmrc` | 推奨 Node.js バージョン（20） |
+| `package.json` | 依存パッケージ一覧（バージョン固定済み） |
+| `package-lock.json` | 依存バージョンの固定（同梱必須・`npm ci` で再現） |
+| `functions/` | Cloudflare Pages Functions（楽天APIプロキシ） |
+| `.nvmrc` | 推奨 Node.js バージョン（20 LTS） |
+| `TERMS.md` | ライセンス・利用規約（再販可否・免責） |
 | `README.md` | 起動・概要説明 |
 | `.env.example` | 環境変数サンプル |
 
@@ -33,10 +36,12 @@ node -v
 ### 2. パッケージのインストール
 
 ```bash
-npm install
+npm ci
 ```
 
-v0.1 Demo は API キー不要で、この時点では追加設定なしで起動できます。
+`npm ci` は同梱の `package-lock.json` に固定されたバージョンをそのまま再現インストールします
+（依存は固定済みで、テスト済みは Node 20 LTS 基準です）。lockfile を更新したい場合のみ
+`npm install` を使ってください。API キーは不要で、この時点では追加設定なしで起動できます。
 
 ### 3. 開発サーバーの起動
 

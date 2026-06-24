@@ -6,13 +6,14 @@
 
 ## Quick Start (v0.1 Demo)
 
-Node.js 20 系を推奨します（`.nvmrc` 参照）。
+Node.js 20 LTS を推奨します（`.nvmrc` 参照。22 でも動作しますが基準は 20 LTS）。
 
 ```bash
-npm install
+npm ci          # lockfile に固定されたバージョンを再現インストール
 npm run dev
-npm run lint
+npm run lint    # 型チェック（tsc -b）
 npm run build
+npm run test    # 利益計算 / CSV出力の回帰テスト（Vitest）
 ```
 
 - デプロイ用ビルドコマンド: `npm run build`
