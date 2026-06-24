@@ -1,8 +1,7 @@
 import { Search, X } from 'lucide-react';
 import { useResearchStore } from '../store/researchStore';
-import { sampleMarketCards } from '../data/sampleMarketCards';
 import { DataSourceModeSelector } from './DataSourceModeSelector';
-import { searchRakutenMockAdapter } from '../services/marketAdapters/rakutenMockAdapter';
+import { runMarketSearch } from '../services/marketAdapters/marketSearchService';
 
 type Props = {
   onSearch: () => void;
@@ -13,12 +12,8 @@ export function ProductSearchBar({ onSearch }: Props) {
 
   async function handleSearch() {
     if (!query.trim()) return;
-    if (dataSourceMode === 'sample') {
-      setResultCards(sampleMarketCards);
-    } else {
-      const response = await searchRakutenMockAdapter(query, 8);
-      setResultCards(response.cards);
-    }
+    const response = await runMarketSearch(query, dataSourceMode, 8);
+    setResultCards(response.cards);
     onSearch();
   }
 
@@ -28,11 +23,11 @@ export function ProductSearchBar({ onSearch }: Props) {
 
   return (
     <div className="flex w-full flex-col gap-2">
-      <div className="flex w-full gap-2">
+      <div className="flex w-full flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search
             size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+            className="absolute left-4 top-1/2 -translate-y-1/2 text-ink/50 pointer-events-none"
           />
           <input
             type="text"
@@ -40,7 +35,8 @@ export function ProductSearchBar({ onSearch }: Props) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="商品名・型番・JAN・URLを入力"
-            className="w-full rounded-2xl border border-white/15 bg-white/5 py-3 pl-11 pr-10 text-sm placeholder:text-slate-500 focus:outline-none focus:border-accent/60 focus:bg-white/10 transition"
+            aria-label="商品名・型番・JAN・URL"
+            className="glass-input w-full py-3 pl-11 pr-10 text-sm text-ink placeholder:text-ink/40"
           />
           {query && (
             <button
@@ -48,7 +44,8 @@ export function ProductSearchBar({ onSearch }: Props) {
                 setQuery('');
                 resetSession();
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition"
+              aria-label="検索内容をクリア"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/50 hover:text-ink transition"
             >
               <X size={16} />
             </button>
@@ -57,7 +54,7 @@ export function ProductSearchBar({ onSearch }: Props) {
         <button
           onClick={() => void handleSearch()}
           disabled={!query.trim()}
-          className="shrink-0 rounded-2xl bg-accent px-6 py-3 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+          className="shrink-0 rounded-card bg-accent bg-gradient-to-b from-white/15 to-transparent px-6 py-3 text-sm font-semibold text-white shadow-glass-2 transition hover:bg-accent-hover hover:shadow-[0_0_28px_-4px_rgb(var(--color-accent)/0.7)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-glass-2"
         >
           まとめて探す
         </button>

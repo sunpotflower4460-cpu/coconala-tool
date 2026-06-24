@@ -9,7 +9,7 @@ export function SearchShortcutCard({ shortcuts }: Props) {
   if (shortcuts.length === 0) return null;
 
   return (
-    <section className="rounded-2xl border border-sky-400/20 bg-sky-500/5 p-4">
+    <section className="glass border-sky-400/25 bg-sky-500/10 p-4">
       <div className="mb-3 flex flex-col gap-1">
         <h2 className="text-sm font-semibold text-sky-200">検索ショートカット（外部ページ）</h2>
         <p className="text-xs text-sky-100/70">

@@ -77,15 +77,18 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
     onClose();
   }
 
-  const inputClass =
-    'w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-accent/60';
+  const inputClass = 'glass-input w-full px-3 py-2 text-sm text-ink placeholder:text-ink/40';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-slate-900 p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div className="glass-modal w-full max-w-lg p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold">手動で追加</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition">
+          <h2 className="font-display text-base font-semibold text-ink">手動で追加</h2>
+          <button
+            onClick={onClose}
+            aria-label="閉じる"
+            className="flex h-11 w-11 items-center justify-center rounded-control text-ink/55 hover:bg-white/10 hover:text-ink transition"
+          >
             <X size={20} />
           </button>
         </div>

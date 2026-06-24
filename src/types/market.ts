@@ -16,6 +16,11 @@ export type MarketCard = {
   confidence: 'high' | 'medium' | 'low';
   note?: string;
   createdAt: string;
+  /**
+   * デモ由来カードの明示用。実データ（公式API）には付与しない。
+   * 'sample' = UI確認用の固定サンプル、'mock' = 楽天API想定の擬似データ。
+   */
+  demoOrigin?: 'sample' | 'mock';
 };
 
 export type ResearchSession = {

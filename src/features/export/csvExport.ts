@@ -67,9 +67,20 @@ export function buildResearchCsv(
   return [cardHeader.join(','), ...cardRows, '', ...summaryRows].join('\n');
 }
 
+/**
+ * \u30C0\u30A6\u30F3\u30ED\u30FC\u30C9\u7528\u306E\u30D5\u30A1\u30A4\u30EB\u5185\u5BB9\uFF08Excel \u306E\u6587\u5B57\u5316\u3051\u5BFE\u7B56\u306B UTF-8 BOM \u3092\u5148\u982D\u4ED8\u4E0E\uFF09\u3002
+ */
+export function buildCsvFileContent(
+  cards: MarketCard[],
+  profitSettings: ProfitSettings,
+  generatedAt: string,
+): string {
+  return `\uFEFF${buildResearchCsv(cards, profitSettings, generatedAt)}`;
+}
+
 export function downloadResearchCsv(cards: MarketCard[], profitSettings: ProfitSettings): void {
   const generatedAt = new Date().toISOString();
-  const csv = `\uFEFF${buildResearchCsv(cards, profitSettings, generatedAt)}`;
+  const csv = buildCsvFileContent(cards, profitSettings, generatedAt);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: Inter, "Noto Sans JP", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color-scheme: dark;
 }
 
@@ -11,6 +11,10 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  font-family: Inter, "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 button,
@@ -20,69 +24,69 @@ select {
   font: inherit;
 }
 
-/* ── Themes ────────────────────────────────────────────── */
+/* ── Theme tokens ──────────────────────────────────────────
+   Accent colors are stored as RGB channels so Tailwind opacity
+   modifiers (bg-accent/80, text-accent/70, …) work natively.
+   --color-bg-card-solid is the opaque fallback for
+   prefers-reduced-transparency. */
 
 /* Simple Pro (dark navy default) */
 body.theme-simple-pro {
   --color-bg: #0f172a;
-  --color-bg-card: rgba(255,255,255,0.04);
+  --color-bg-card: rgba(255, 255, 255, 0.04);
+  --color-bg-card-solid: #11151f;
   --color-text: #f1f5f9;
-  --color-accent: #6366f1;
-  --color-accent-hover: #4f46e5;
-  background-color: var(--color-bg);
-  background-image: radial-gradient(circle at 15% 20%, rgba(99, 102, 241, 0.2), transparent 35%);
-  color: var(--color-text);
+  --color-accent: 99 102 241;
+  --color-accent-hover: 79 70 229;
 }
 
 /* Soft Market (warm violet) */
 body.theme-soft-market {
   --color-bg: #221b35;
-  --color-bg-card: rgba(254,205,211,0.08);
+  --color-bg-card: rgba(254, 205, 211, 0.08);
+  --color-bg-card-solid: #2a2142;
   --color-text: #ede9fe;
-  --color-accent: #f472b6;
-  --color-accent-hover: #ec4899;
-  background-color: var(--color-bg);
-  background-image: radial-gradient(circle at 85% 20%, rgba(244, 114, 182, 0.22), transparent 40%);
-  color: var(--color-text);
+  --color-accent: 244 114 182;
+  --color-accent-hover: 236 72 153;
 }
 
 /* Dark Trader (pitch dark) */
 body.theme-dark-trader {
   --color-bg: #09090b;
-  --color-bg-card: rgba(255,255,255,0.03);
+  --color-bg-card: rgba(255, 255, 255, 0.03);
+  --color-bg-card-solid: #141417;
   --color-text: #e4e4e7;
-  --color-accent: #22d3ee;
-  --color-accent-hover: #06b6d4;
-  background-color: var(--color-bg);
-  background-image: linear-gradient(135deg, rgba(15,23,42,0.75), rgba(0,0,0,0.95));
-  color: var(--color-text);
+  --color-accent: 34 211 238;
+  --color-accent-hover: 6 182 212;
 }
 
 /* Natural Board (deep forest green) */
 body.theme-natural-board {
   --color-bg: #172015;
-  --color-bg-card: rgba(187,247,208,0.08);
+  --color-bg-card: rgba(187, 247, 208, 0.08);
+  --color-bg-card-solid: #1d281a;
   --color-text: #e7f7ea;
-  --color-accent: #65a30d;
-  --color-accent-hover: #4d7c0f;
-  background-color: var(--color-bg);
-  background-image: radial-gradient(circle at 20% 10%, rgba(187,247,208,0.18), transparent 35%);
-  color: var(--color-text);
+  --color-accent: 101 163 13;
+  --color-accent-hover: 77 124 15;
 }
 
 /* Fallback if no class applied */
 body:not([class*="theme-"]) {
   --color-bg: #0f172a;
-  --color-bg-card: rgba(255,255,255,0.04);
+  --color-bg-card: rgba(255, 255, 255, 0.04);
+  --color-bg-card-solid: #11151f;
   --color-text: #f1f5f9;
-  --color-accent: #6366f1;
-  --color-accent-hover: #4f46e5;
+  --color-accent: 99 102 241;
+  --color-accent-hover: 79 70 229;
+}
+
+body {
   background-color: var(--color-bg);
   color: var(--color-text);
 }
 
 .app-main {
-  background: var(--color-bg);
+  position: relative;
   min-height: 100vh;
 }
 
@@ -90,31 +94,154 @@ body:not([class*="theme-"]) {
   color: var(--color-text);
 }
 
-.text-accent {
-  color: var(--color-accent) !important;
+/* ── Aurora background (depth layer) ───────────────────────
+   Fixed, non-interactive glow behind the glass surfaces.
+   Positions/hues vary per theme. */
+.aurora-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  background-color: var(--color-bg);
 }
 
-.bg-accent {
-  background-color: var(--color-accent) !important;
+.aurora-bg::before,
+.aurora-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(100px);
+  opacity: 0.55;
 }
 
-.bg-accent-hover:hover,
-.hover\:bg-accent-hover:hover {
-  background-color: var(--color-accent-hover) !important;
+.aurora-bg::before {
+  width: 46vw;
+  height: 46vw;
+  top: -8vw;
+  left: -6vw;
+  background: radial-gradient(circle, rgb(var(--color-accent) / 0.45), transparent 70%);
 }
 
-.focus\:border-accent\/60:focus {
-  border-color: color-mix(in srgb, var(--color-accent) 60%, transparent) !important;
+.aurora-bg::after {
+  width: 40vw;
+  height: 40vw;
+  bottom: -10vw;
+  right: -4vw;
+  background: radial-gradient(circle, rgb(var(--color-accent-hover) / 0.38), transparent 70%);
 }
 
-.border-accent {
-  border-color: var(--color-accent) !important;
+/* A third, softer glow + faint grain to avoid banding. */
+.aurora-bg > .aurora-grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-.bg-accent\/20 {
-  background-color: color-mix(in srgb, var(--color-accent) 20%, transparent) !important;
+.aurora-bg > .aurora-orb {
+  position: absolute;
+  top: 38%;
+  left: 52%;
+  width: 34vw;
+  height: 34vw;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  filter: blur(120px);
+  opacity: 0.3;
+  background: radial-gradient(circle, rgb(var(--color-accent) / 0.3), transparent 72%);
 }
 
-.text-accent\/70 {
-  color: color-mix(in srgb, var(--color-accent) 70%, transparent) !important;
+/* ── Glass surfaces (3 elevation tiers) ────────────────────── */
+@layer components {
+  .glass {
+    /* tier1: 周辺パネル / サイドバー / ヘッダー */
+    @apply rounded-panel border border-white/10 bg-white/[0.05] shadow-glass-1;
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+  }
+
+  .glass-card {
+    /* tier2: カード / 操作面 */
+    @apply relative rounded-card border border-white/[0.12] bg-white/[0.06] shadow-glass-2;
+    backdrop-filter: blur(22px) saturate(150%);
+    -webkit-backdrop-filter: blur(22px) saturate(150%);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  }
+
+  .glass-card::before {
+    /* 上端のスペキュラ（シャープさの要） */
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0) 42%);
+  }
+
+  .glass-card:hover {
+    transform: translateY(-2px);
+    @apply border-white/20 shadow-glass-3;
+  }
+
+  .glass-modal {
+    /* tier3: モーダル / ポップオーバー */
+    @apply rounded-panel border border-white/20 bg-white/[0.10] shadow-glass-3;
+    backdrop-filter: blur(32px) saturate(160%);
+    -webkit-backdrop-filter: blur(32px) saturate(160%);
+  }
+
+  .glass-input {
+    @apply rounded-control border border-white/15 bg-white/5;
+    transition: border-color 0.18s ease, background-color 0.18s ease;
+  }
+
+  .glass-input:focus {
+    @apply border-accent/60 bg-white/10;
+  }
+
+  /* 価格・利益などの数値は等幅で高コントラストに。 */
+  .num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+/* ── Accessibility floors ─────────────────────────────────── */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--color-accent));
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .glass-card:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .glass-card,
+  .glass-modal,
+  .glass-input {
+    background: var(--color-bg-card-solid, #11151f) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .aurora-bg::before,
+  .aurora-bg::after,
+  .aurora-bg > .aurora-orb,
+  .aurora-bg > .aurora-grain {
+    display: none;
+  }
 }

@@ -6,13 +6,14 @@
 
 ## Quick Start (v0.1 Demo)
 
-Node.js 20 系を推奨します（`.nvmrc` 参照）。
+Node.js 20 LTS を推奨します（`.nvmrc` 参照。22 でも動作しますが基準は 20 LTS）。
 
 ```bash
-npm install
+npm ci          # lockfile に固定されたバージョンを再現インストール
 npm run dev
-npm run lint
+npm run lint    # 型チェック（tsc -b）
 npm run build
+npm run test    # 利益計算 / CSV出力の回帰テスト（Vitest）
 ```
 
 - デプロイ用ビルドコマンド: `npm run build`
@@ -68,6 +69,12 @@ npm run build
 ↓
 デザインも選べる
 ```
+
+## License / Terms
+
+ライセンスと利用範囲（商用利用可・再販/再配布の制限・保証なし）は [`TERMS.md`](TERMS.md) を参照してください。
+
+`package.json` の `"private": true` は npm へ公開しない設定です（社内/納品用であり、npm レジストリに publish されません）。ソースコードの納品・利用そのものを制限するものではありません。
 
 ## Development Phases
 

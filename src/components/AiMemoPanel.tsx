@@ -10,7 +10,7 @@ export function AiMemoPanel() {
   const isEmpty = comparedCards.length === 0 && profitSettings.buyPrice === 0 && profitSettings.sellPrice === 0;
 
   return (
-    <section className="rounded-2xl border border-violet-300/20 bg-violet-500/5 p-4">
+    <section className="glass border-violet-300/25 bg-violet-500/10 p-4">
       <div className="flex items-center gap-2">
         <BotMessageSquare size={15} className="text-violet-200" />
         <h2 className="text-sm font-semibold text-violet-100">ルールベースAIメモ（APIコストなし）</h2>

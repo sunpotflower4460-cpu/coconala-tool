@@ -31,12 +31,12 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
   }
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
+    <section className="glass p-4">
       <div className="flex items-center gap-2">
-        <FolderClock size={15} className="text-slate-300" />
-        <h2 className="text-sm font-semibold text-slate-200">リサーチ履歴</h2>
+        <FolderClock size={15} className="text-ink/70" />
+        <h2 className="font-display text-sm font-semibold text-ink/80">リサーチ履歴</h2>
       </div>
-      <p className="mt-1 text-xs text-slate-400">現在の結果を名前付きで保存し、あとで再開できます。</p>
+      <p className="mt-1 text-xs text-ink/60">現在の結果を名前付きで保存し、あとで再開できます。</p>
 
       <div className="mt-3 flex gap-2">
         <input
@@ -44,12 +44,13 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="保存名（例: PS5 5月相場）"
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-accent/60"
+          aria-label="保存名"
+          className="glass-input w-full px-3 py-2 text-xs text-ink placeholder:text-ink/40"
         />
         <button
           onClick={handleSave}
           disabled={!hasData}
-          className="shrink-0 rounded-xl border border-white/10 bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+          className="shrink-0 rounded-control border border-white/12 bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <span className="inline-flex items-center gap-1">
             <Save size={12} />

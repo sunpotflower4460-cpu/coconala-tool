@@ -24,7 +24,7 @@ export function DemoModeNotice() {
   const panelId = useId();
 
   return (
-    <section className="rounded-2xl border border-sky-300/20 bg-sky-500/5 p-4 text-xs text-sky-50">
+    <section className="glass border-sky-300/25 bg-sky-500/10 p-4 text-xs text-sky-50">
       <button
         type="button"
         aria-expanded={isOpen}
