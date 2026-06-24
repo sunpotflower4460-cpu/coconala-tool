@@ -58,7 +58,7 @@ export function AppShell() {
           <ThemeSelector />
         </div>
         <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-          v0.1 Demo: 現在はサンプルデータと楽天APIモックで主要フローを確認できます。リアルタイムの実マーケットプレイス接続はまだ行っていません。検索表示由来の価格は推定です。
+          デモ表示中 — サンプル/モックデータ。主要フロー（検索・比較・利益計算・CSV出力）を確認できます。楽天APIキーを設定した場合のみ実データに切り替わります。検索表示由来の価格は推定です。
         </div>
         <ProductSearchBar onSearch={() => setSearched(true)} />
         <DemoModeNotice />

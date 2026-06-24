@@ -14,7 +14,10 @@ const sourceLabels: Record<string, string> = {
   manual: '手動追加',
 };
 
-const SAMPLE_ID_PREFIX = 'sample-';
+const demoOriginBadges = {
+  sample: 'サンプルデータ',
+  mock: 'モック（楽天API想定）',
+} as const;
 
 const confidenceColors: Record<string, string> = {
   high: 'bg-emerald-500/20 text-emerald-300',
@@ -39,11 +42,11 @@ export function ResultCard({ card }: Props) {
 
   return (
     <div className="card-base group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur transition hover:border-white/20 hover:bg-white/10">
-      {/* Sample data badge */}
-      {card.id.startsWith(SAMPLE_ID_PREFIX) && (
+      {/* Demo-origin badge (sample / mock) */}
+      {card.demoOrigin && (
         <div className="px-4 pt-3 pb-0">
           <span className="inline-block rounded-full border border-amber-300/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
-            現在はサンプルデータです
+            {demoOriginBadges[card.demoOrigin]}
           </span>
         </div>
       )}

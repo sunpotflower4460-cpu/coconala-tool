@@ -14,7 +14,7 @@ export function ProductSearchBar({ onSearch }: Props) {
   async function handleSearch() {
     if (!query.trim()) return;
     if (dataSourceMode === 'sample') {
-      setResultCards(sampleMarketCards);
+      setResultCards(sampleMarketCards.map((card) => ({ ...card, demoOrigin: 'sample' as const })));
     } else {
       const response = await searchRakutenMockAdapter(query, 8);
       setResultCards(response.cards);

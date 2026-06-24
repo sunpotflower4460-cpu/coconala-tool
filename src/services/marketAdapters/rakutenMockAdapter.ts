@@ -6,7 +6,10 @@ export async function searchRakutenMockAdapter(query: string, limit = 8): Promis
   const response = searchRakutenMockItems(query, limit);
 
   return {
-    cards: response.Items.map(({ Item }) => mapRakutenItemToMarketCard(Item)),
-    warnings: ['楽天市場 公式API取得（モック）を表示しています。'],
+    cards: response.Items.map(({ Item }) => ({
+      ...mapRakutenItemToMarketCard(Item),
+      demoOrigin: 'mock' as const,
+    })),
+    warnings: ['楽天市場の公式API想定モックデータを表示しています（実API未接続）。'],
   };
 }
