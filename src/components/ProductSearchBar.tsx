@@ -1,8 +1,7 @@
 import { Search, X } from 'lucide-react';
 import { useResearchStore } from '../store/researchStore';
-import { sampleMarketCards } from '../data/sampleMarketCards';
 import { DataSourceModeSelector } from './DataSourceModeSelector';
-import { rakutenAdapter } from '../services/marketAdapters/rakutenAdapter';
+import { runMarketSearch } from '../services/marketAdapters/marketSearchService';
 
 type Props = {
   onSearch: () => void;
@@ -13,12 +12,8 @@ export function ProductSearchBar({ onSearch }: Props) {
 
   async function handleSearch() {
     if (!query.trim()) return;
-    if (dataSourceMode === 'sample') {
-      setResultCards(sampleMarketCards.map((card) => ({ ...card, demoOrigin: 'sample' as const })));
-    } else {
-      const response = await rakutenAdapter.search({ query, limit: 8 });
-      setResultCards(response.cards);
-    }
+    const response = await runMarketSearch(query, dataSourceMode, 8);
+    setResultCards(response.cards);
     onSearch();
   }
 
