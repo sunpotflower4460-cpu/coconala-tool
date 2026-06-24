@@ -17,7 +17,7 @@ export function ApiStatusPanel() {
   const { dataSourceMode } = useResearchStore();
 
   return (
-    <section className="rounded-2xl border border-emerald-300/20 bg-emerald-500/5 p-4">
+    <section className="glass border-emerald-300/25 bg-emerald-500/10 p-4">
       <div className="flex items-center gap-2">
         <ShieldCheck size={15} className="text-emerald-200" />
         <h2 className="text-sm font-semibold text-emerald-100">API接続準備ステータス</h2>

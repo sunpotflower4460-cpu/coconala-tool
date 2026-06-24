@@ -41,10 +41,10 @@ export function ResultCard({ card }: Props) {
   const compared = isCompared(card.id);
 
   return (
-    <div className="card-base group flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 backdrop-blur transition hover:border-white/20 hover:bg-white/10">
+    <div className="glass-card group flex flex-col overflow-hidden">
       {/* Demo-origin badge (sample / mock) */}
       {card.demoOrigin && (
-        <div className="px-4 pt-3 pb-0">
+        <div className="relative z-10 px-4 pt-3 pb-0">
           <span className="inline-block rounded-full border border-amber-300/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-200">
             {demoOriginBadges[card.demoOrigin]}
           </span>
@@ -52,7 +52,7 @@ export function ResultCard({ card }: Props) {
       )}
 
       {/* Image */}
-      <div className="relative h-44 overflow-hidden bg-slate-800">
+      <div className="relative z-10 h-44 overflow-hidden bg-slate-800">
         {card.imageUrl && !imageError ? (
           <img
             src={card.imageUrl}
@@ -72,9 +72,9 @@ export function ResultCard({ card }: Props) {
       </div>
 
       {/* Body */}
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="line-clamp-2 break-words text-sm font-semibold leading-snug">{card.title}</h3>
-        <p className="line-clamp-2 break-all text-[11px] leading-snug text-slate-500" title={card.pageUrl}>
+      <div className="relative z-10 flex flex-1 flex-col gap-2 p-4">
+        <h3 className="line-clamp-2 break-words text-sm font-semibold leading-snug text-ink">{card.title}</h3>
+        <p className="line-clamp-2 break-all text-[11px] leading-snug text-ink/45" title={card.pageUrl}>
           {formatCardUrl(card.pageUrl)}
         </p>
 
@@ -86,16 +86,16 @@ export function ResultCard({ card }: Props) {
             <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-xs text-sky-300">外部検索ページ</span>
           )}
           {card.conditionText && (
-            <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300">
+            <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-ink/70">
               {card.conditionText}
             </span>
           )}
         </div>
 
         <div className="mt-auto pt-2">
-          <p className="text-xl font-bold text-accent">{card.priceText || '価格不明'}</p>
+          <p className="num text-2xl font-bold tracking-tight text-accent">{card.priceText || '価格不明'}</p>
           {card.shippingText && (
-            <p className="text-xs text-slate-400">{card.shippingText}</p>
+            <p className="text-xs text-ink/55">{card.shippingText}</p>
           )}
         </div>
 
@@ -104,7 +104,7 @@ export function ResultCard({ card }: Props) {
             href={card.pageUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex flex-1 items-center justify-center gap-1 rounded-xl border border-white/10 py-2 text-xs hover:bg-white/10 transition"
+            className="flex flex-1 items-center justify-center gap-1 rounded-control border border-white/12 py-2 text-xs text-ink/80 hover:bg-white/10 transition"
           >
             <ExternalLink size={13} />
             元ページを見る
@@ -113,10 +113,10 @@ export function ResultCard({ card }: Props) {
             onClick={() =>
               compared ? removeComparedCard(card.id) : addComparedCard(card)
             }
-            className={`flex flex-1 items-center justify-center gap-1 rounded-xl py-2 text-xs font-medium transition ${
+            className={`flex flex-1 items-center justify-center gap-1 rounded-control py-2 text-xs font-semibold transition ${
               compared
                 ? 'bg-emerald-600/80 text-white hover:bg-emerald-600'
-                : 'bg-accent/80 text-white hover:bg-accent'
+                : 'bg-accent/85 text-white hover:bg-accent'
             }`}
           >
             {compared ? <CheckCircle size={13} /> : <PlusCircle size={13} />}
