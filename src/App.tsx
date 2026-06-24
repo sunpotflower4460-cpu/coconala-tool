@@ -19,9 +19,16 @@ function App() {
   }, [theme]);
 
   return (
-    <main className="app-main mx-auto max-w-7xl text-theme">
-      <AppShell />
-    </main>
+    <>
+      {/* Depth layer: soft aurora glow behind the glass surfaces (B2). */}
+      <div className="aurora-bg" aria-hidden="true">
+        <div className="aurora-orb" />
+        <div className="aurora-grain" />
+      </div>
+      <main className="app-main mx-auto max-w-7xl text-theme">
+        <AppShell />
+      </main>
+    </>
   );
 }
 
