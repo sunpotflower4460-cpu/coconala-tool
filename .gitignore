@@ -16,3 +16,6 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+
+.dev.vars*
+!.dev.vars.example
