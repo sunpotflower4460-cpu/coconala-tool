@@ -21,20 +21,27 @@ const sourceLegendItems = [
   { label: '検索リンク', value: 'search_link' },
   { label: '手動追加', value: 'manual' },
 ] as const;
-const emptyResultMessageByMode = {
-  sample: '該当するサンプルカードが見つかりませんでした。検索語を変えるか、手動追加をご利用ください。',
-  rakuten_mock:
-    '楽天APIモックでは該当カードが見つかりませんでした。「PS5」「SONY」「Nintendo」を試すか、サンプルモードに切り替えて画面フローを確認してください。',
-} as const;
+
+const statusBannerClassByStatus: Record<string, string> = {
+  official_api: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100',
+  empty: 'border-sky-300/30 bg-sky-500/10 text-sky-50',
+  sample: 'border-white/15 bg-white/5 text-ink/70',
+  mock_no_key: 'border-amber-300/30 bg-amber-500/10 text-amber-50',
+  mock_timeout: 'border-amber-300/30 bg-amber-500/10 text-amber-50',
+  mock_network: 'border-amber-300/30 bg-amber-500/10 text-amber-50',
+  mock_rate_limited: 'border-amber-300/30 bg-amber-500/10 text-amber-50',
+  mock_upstream_error: 'border-amber-300/30 bg-amber-500/10 text-amber-50',
+};
 
 export function AppShell() {
-  const { resultCards, query, comparedCards, dataSourceMode } = useResearchStore();
+  const { resultCards, query, comparedCards, searchStatus, searchWarnings } = useResearchStore();
   const [showManualAdd, setShowManualAdd] = useState(false);
   const [searched, setSearched] = useState(false);
   const [manualSuccess, setManualSuccess] = useState(false);
 
   const shortcuts = buildSearchLinks(query);
   const hasResults = resultCards.length > 0;
+  const isLiveApi = searchStatus === 'official_api';
 
   return (
     <div className="min-h-screen px-3 py-4 sm:px-4 sm:py-6 md:px-8">
@@ -47,9 +54,15 @@ export function AppShell() {
             </p>
             <div className="mt-0.5 flex flex-wrap items-center gap-2">
               <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">相場カード比較ボード</h1>
-              <span className="rounded-full border border-amber-300/40 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-amber-100">
-                デモ表示中 — サンプル/モックデータ
-              </span>
+              {isLiveApi ? (
+                <span className="rounded-full border border-emerald-300/40 bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-100">
+                  公式データ取得中 — 楽天市場
+                </span>
+              ) : (
+                <span className="rounded-full border border-amber-300/40 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-amber-100">
+                  デモ表示中 — サンプル/モックデータ
+                </span>
+              )}
             </div>
           </div>
           <ThemeSelector />
@@ -61,9 +74,15 @@ export function AppShell() {
         <p className="text-sm text-ink/70">
           商品名を入れて、まとめて探す。画像つきカードで相場を見る。
         </p>
-        <div className="glass border-amber-300/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-50">
-          デモ表示中 — サンプル/モックデータ。主要フロー（検索・比較・利益計算・CSV出力）を確認できます。楽天APIキーを設定した場合のみ実データに切り替わります。検索表示由来の価格は推定です。
-        </div>
+        {isLiveApi ? (
+          <div className="glass border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-100">
+            楽天市場 公式APIに接続しています。表示価格は検索時点の参考値です。最終確認は元ページで行ってください。
+          </div>
+        ) : (
+          <div className="glass border-amber-300/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-50">
+            デモ表示中 — サンプル/モックデータ。主要フロー（検索・比較・利益計算・CSV出力）を確認できます。楽天APIキーを設定した場合のみ実データに切り替わります。検索表示由来の価格は推定です。
+          </div>
+        )}
         <ProductSearchBar onSearch={() => setSearched(true)} />
         <DemoModeNotice />
         <section className="glass px-4 py-3.5">
@@ -112,6 +131,17 @@ export function AppShell() {
               </div>
             </div>
 
+            {/* Search status / fallback reason */}
+            {searchWarnings.length > 0 && (
+              <div
+                className={`glass px-3.5 py-2.5 text-xs ${statusBannerClassByStatus[searchStatus ?? ''] ?? 'border-white/15 bg-white/5 text-ink/70'}`}
+              >
+                {searchWarnings.map((warning) => (
+                  <p key={warning}>{warning}</p>
+                ))}
+              </div>
+            )}
+
             {/* Card grid */}
             {hasResults && (
               <div className="flex flex-col gap-3">
@@ -137,7 +167,7 @@ export function AppShell() {
 
             {!hasResults && (
               <div className="glass border-dashed px-4 py-4 text-sm text-ink/70">
-                {emptyResultMessageByMode[dataSourceMode]}
+                該当する候補が見つかりませんでした。上のメッセージを参考に検索語を変えるか、手動追加をご利用ください。
               </div>
             )}
           </div>

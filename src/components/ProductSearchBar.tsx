@@ -8,13 +8,19 @@ type Props = {
 };
 
 export function ProductSearchBar({ onSearch }: Props) {
-  const { query, setQuery, setResultCards, dataSourceMode, resetSession } = useResearchStore();
+  const { query, setQuery, setSearchResult, setIsSearching, isSearching, dataSourceMode, resetSession } =
+    useResearchStore();
 
   async function handleSearch() {
-    if (!query.trim()) return;
-    const response = await runMarketSearch(query, dataSourceMode, 8);
-    setResultCards(response.cards);
-    onSearch();
+    if (!query.trim() || isSearching) return;
+    setIsSearching(true);
+    try {
+      const response = await runMarketSearch(query, dataSourceMode, 8);
+      setSearchResult(response);
+      onSearch();
+    } finally {
+      setIsSearching(false);
+    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -53,10 +59,11 @@ export function ProductSearchBar({ onSearch }: Props) {
         </div>
         <button
           onClick={() => void handleSearch()}
-          disabled={!query.trim()}
+          disabled={!query.trim() || isSearching}
+          aria-busy={isSearching}
           className="shrink-0 rounded-card bg-accent bg-gradient-to-b from-white/15 to-transparent px-6 py-3 text-sm font-semibold text-white shadow-glass-2 transition hover:bg-accent-hover hover:shadow-[0_0_28px_-4px_rgb(var(--color-accent)/0.7)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-glass-2"
         >
-          まとめて探す
+          {isSearching ? '検索中…' : 'まとめて探す'}
         </button>
       </div>
       <DataSourceModeSelector />

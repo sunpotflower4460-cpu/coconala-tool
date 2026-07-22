@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { DataSourceMode, MarketCard, ProfitSettings, ThemeId } from '../types/market';
+import type { DataSourceMode, MarketCard, MarketSearchResponse, MarketSearchStatus, ProfitSettings, ThemeId } from '../types/market';
 
 type ResearchStore = {
   query: string;
@@ -9,8 +9,13 @@ type ResearchStore = {
   dataSourceMode: DataSourceMode;
   theme: ThemeId;
   profitSettings: ProfitSettings;
+  searchStatus: MarketSearchStatus | null;
+  searchWarnings: string[];
+  isSearching: boolean;
+  lastSearchedAt: string | null;
   setQuery: (q: string) => void;
-  setResultCards: (cards: MarketCard[]) => void;
+  setSearchResult: (response: MarketSearchResponse) => void;
+  setIsSearching: (isSearching: boolean) => void;
   addComparedCard: (card: MarketCard) => void;
   removeComparedCard: (id: string) => void;
   isCompared: (id: string) => boolean;
@@ -44,10 +49,22 @@ export const useResearchStore = create<ResearchStore>()(
       dataSourceMode: 'sample',
       theme: 'simple-pro',
       profitSettings: defaultProfitSettings,
+      searchStatus: null,
+      searchWarnings: [],
+      isSearching: false,
+      lastSearchedAt: null,
 
       setQuery: (q) => set({ query: q }),
 
-      setResultCards: (cards) => set({ resultCards: cards }),
+      setSearchResult: (response) =>
+        set({
+          resultCards: response.cards,
+          searchStatus: response.status,
+          searchWarnings: response.warnings,
+          lastSearchedAt: response.searchedAt,
+        }),
+
+      setIsSearching: (isSearching) => set({ isSearching }),
 
       addComparedCard: (card) => {
         const { comparedCards } = get();
@@ -95,6 +112,10 @@ export const useResearchStore = create<ResearchStore>()(
           comparedCards: [],
           dataSourceMode: state.dataSourceMode,
           profitSettings: defaultProfitSettings,
+          searchStatus: null,
+          searchWarnings: [],
+          isSearching: false,
+          lastSearchedAt: null,
         })),
     }),
     {

@@ -3,19 +3,21 @@ import { useId, useState } from 'react';
 const demoModeItems = [
   {
     title: 'サンプルデータ',
-    description: 'UI確認・比較・CSV出力・履歴保存などの基本フローを体験するための固定データです。',
+    description:
+      'UI確認・比較・CSV出力・履歴保存などの基本フローを体験するための固定データです。検索語で絞り込めます。',
   },
   {
-    title: '楽天APIモック',
-    description: '将来の公式API接続を想定した疑似レスポンスです。リアルタイムの楽天データ取得ではありません。',
+    title: '楽天市場',
+    description:
+      'キー未設定時は擬似データ（モック）、サーバーに SERVER_RAKUTEN_APP_ID を設定すると楽天市場 公式APIの実データに自動で切り替わります。',
   },
   {
-    title: 'メルカリ / ヤフオク',
+    title: 'メルカリ / ヤフオク / eBay / Yahoo!ショッピング',
     description: 'まずは検索リンクを開いて手動確認する前提です。高頻度スクレイピングは行いません。',
   },
   {
-    title: '実API接続',
-    description: '次フェーズで Cloudflare Workers などのサーバー/Worker 経由に切り替えて安全に追加します。',
+    title: '楽天以外の公式API',
+    description: '現時点では未対応です。導入をご希望の場合は要件確認のうえ追加見積りとなります。',
   },
 ] as const;
 

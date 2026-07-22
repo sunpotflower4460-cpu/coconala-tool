@@ -3,18 +3,18 @@ import type { DataSourceMode } from '../types/market';
 
 const modeOptions = [
   { value: 'sample', label: 'サンプルデータ' },
-  { value: 'rakuten_mock', label: '楽天APIモック' },
+  { value: 'rakuten_mock', label: '楽天市場' },
 ] as const;
 
 const currentModeLabels: Record<DataSourceMode, string> = {
   sample: 'サンプル',
-  rakuten_mock: '楽天APIモック',
+  rakuten_mock: '楽天市場',
 };
 
 const modeNotices: Record<DataSourceMode, string> = {
-  sample: 'サンプルデータは画面確認や比較フロー確認向けの固定カードです。リアルタイム取得ではありません。',
+  sample: 'サンプルデータは画面確認や比較フロー確認向けの固定カードです。検索語で絞り込めます。リアルタイム取得ではありません。',
   rakuten_mock:
-    '楽天APIモックは将来の公式API接続を想定した疑似データです。まだ実APIには接続していません。',
+    '楽天市場は商品検索APIに接続します。サーバーにキー未設定・通信失敗時は自動でモック（擬似データ）に切り替わり、その旨を検索結果に表示します。',
 };
 
 export function DataSourceModeSelector() {
