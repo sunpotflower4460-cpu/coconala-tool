@@ -20,3 +20,4 @@
 
 - `release-v0.1-checklist.md` — v0.1 Demo 向けのリリースチェックリスト（現行は [`../release-v1-checklist.md`](../release-v1-checklist.md)）
 - `release-notes-v0.1.md` — v0.1 Demo のリリースノート（履歴として保持）
+- `delivery-checklist.md` — 旧・納品チェックリスト（現行は [`../release-v1-checklist.md`](../release-v1-checklist.md) と [`../DELIVERY_CONTENTS.md`](../DELIVERY_CONTENTS.md)）
