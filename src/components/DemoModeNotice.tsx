@@ -9,7 +9,7 @@ const demoModeItems = [
   {
     title: '楽天市場',
     description:
-      'キー未設定時は擬似データ（モック）、サーバーに SERVER_RAKUTEN_APP_ID を設定すると楽天市場 公式APIの実データに自動で切り替わります。',
+      'キー未設定時は擬似データ（モック）、サーバーに楽天APIキーを設定すると楽天市場 公式APIの実データに自動で切り替わります。',
   },
   {
     title: 'メルカリ / ヤフオク / eBay / Yahoo!ショッピング',
