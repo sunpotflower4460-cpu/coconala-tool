@@ -105,9 +105,9 @@ theme: 'simple-pro',  ← 'soft-market' | 'dark-trader' | 'natural-board' に変
 
 ---
 
-## スコープ（引き渡し時点 / v0.9.0-rc.1）
+## スコープ（引き渡し時点。最新バージョンは README 参照）
 
-- API キーなしで動作します（サンプルデータ / 楽天APIモック）。
+- API キーなしで動作します（サンプルデータ / 楽天市場モード。キー未設定時はモックが表示されます）。
 - 楽天市場 商品検索APIのみ、サーバー側にキーを設定すると実データに切り替わります（未設定時はモックにフォールバック）。
 - すぐに使える機能: 手動追加 / CSV出力 / 履歴保存・再開（localStorage）。
 - eBay / Yahoo!ショッピング等の追加公式API連携は次フェーズの有償カスタマイズです。
@@ -118,7 +118,7 @@ theme: 'simple-pro',  ← 'soft-market' | 'dark-trader' | 'natural-board' に変
 ## よくある質問
 
 **Q: 価格は自動で取得されますか？**  
-A: 既定ではサンプルデータと楽天APIモックで動作します。楽天市場 商品検索APIのみ、サーバー側に `SERVER_RAKUTEN_APP_ID` を設定すると `公式API取得` ラベルの実データに切り替わります（未設定・失敗時は自動でモックに戻ります）。手順は `docs/setup-guide.md` の「楽天 商品検索API（実データ）を試す」を参照してください。その他のマーケットプレイスのリアルタイム取得は対象外です。
+A: 既定ではサンプルデータと楽天市場モード（モック）で動作します。楽天市場 商品検索APIのみ、サーバー側に `SERVER_RAKUTEN_APP_ID` を設定すると `公式API取得` ラベルの実データに切り替わります（未設定・タイムアウト・通信失敗・レート超過・上流エラー時は自動でモックに戻り、理由が検索結果の上に表示されます）。手順は `docs/setup-guide.md` の「楽天 商品検索API（実データ）を試す」を参照してください。その他のマーケットプレイスのリアルタイム取得は対象外です。
 
 **Q: APIキーはどこに入れますか？**  
 A: フロントエンド（`VITE_` バンドル）には入れません。Cloudflare Pages Functions（`functions/api/rakuten.ts`）が読む環境変数 `SERVER_RAKUTEN_APP_ID` に、サーバー側（Cloudflare Pages の Settings > Environment variables、ローカルは `.dev.vars`）で設定します。ビルド成果物にキー文字列は含まれません。

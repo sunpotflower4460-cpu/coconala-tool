@@ -1,6 +1,23 @@
 export type SourceType = 'official_api' | 'search_api' | 'search_link' | 'manual';
 export type DataSourceMode = 'sample' | 'rakuten_mock';
 
+export type MarketSearchStatus =
+  | 'sample'
+  | 'official_api'
+  | 'mock_no_key'
+  | 'mock_timeout'
+  | 'mock_network'
+  | 'mock_rate_limited'
+  | 'mock_upstream_error'
+  | 'empty';
+
+export type MarketSearchResponse = {
+  cards: MarketCard[];
+  status: MarketSearchStatus;
+  warnings: string[];
+  searchedAt: string;
+};
+
 export type MarketCard = {
   id: string;
   title: string;

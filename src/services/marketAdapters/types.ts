@@ -1,15 +1,12 @@
-import type { MarketCard } from '../../types/market';
+import type { MarketSearchResponse } from '../../types/market';
+
+export type { MarketSearchResponse };
 
 export type AdapterId = 'rakuten';
 
 export type MarketSearchRequest = {
   query: string;
   limit?: number;
-};
-
-export type MarketSearchResponse = {
-  cards: MarketCard[];
-  warnings?: string[];
 };
 
 export interface MarketAdapter {
