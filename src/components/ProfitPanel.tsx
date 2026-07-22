@@ -2,7 +2,7 @@ import { useResearchStore } from '../store/researchStore';
 import { calcFee, calcMargin, calcProfit, profitBadge } from '../features/profit/profitCalculator';
 
 export function ProfitPanel() {
-  const { profitSettings, setProfitSettings, comparedCards } = useResearchStore();
+  const { profitSettings, setProfitSettings, comparedCards, buyPriceSource, sellPriceSource } = useResearchStore();
   const { buyPrice, sellPrice, shippingCost, feeRate, exchangeRate } = profitSettings;
 
   const profit = calcProfit(sellPrice, buyPrice, shippingCost, feeRate);
@@ -27,26 +27,39 @@ export function ProfitPanel() {
           仕入れ価格 (円)
           <input
             type="number"
+            min={0}
             value={buyPrice || ''}
             onChange={(e) => setProfitSettings({ buyPrice: Number(e.target.value) })}
             placeholder="0"
             className="glass-input num px-3 py-2 text-sm text-ink"
           />
+          {buyPriceSource && (
+            <span className="truncate text-[10px] text-ink/45" title={buyPriceSource}>
+              由来: {buyPriceSource}
+            </span>
+          )}
         </label>
         <label className="flex flex-col gap-1 text-xs text-ink/60">
           販売価格 (円)
           <input
             type="number"
+            min={0}
             value={sellPrice || ''}
             onChange={(e) => setProfitSettings({ sellPrice: Number(e.target.value) })}
             placeholder="0"
             className="glass-input num px-3 py-2 text-sm text-ink"
           />
+          {sellPriceSource && (
+            <span className="truncate text-[10px] text-ink/45" title={sellPriceSource}>
+              由来: {sellPriceSource}
+            </span>
+          )}
         </label>
         <label className="flex flex-col gap-1 text-xs text-ink/60">
           送料 (円)
           <input
             type="number"
+            min={0}
             value={shippingCost || ''}
             onChange={(e) => setProfitSettings({ shippingCost: Number(e.target.value) })}
             placeholder="0"
@@ -57,6 +70,8 @@ export function ProfitPanel() {
           手数料率 (%)
           <input
             type="number"
+            min={0}
+            max={100}
             value={feeRate || ''}
             onChange={(e) => setProfitSettings({ feeRate: Number(e.target.value) })}
             placeholder="10"
@@ -68,6 +83,7 @@ export function ProfitPanel() {
             ドル円レート
             <input
               type="number"
+              min={0}
               value={exchangeRate || ''}
               onChange={(e) => setProfitSettings({ exchangeRate: Number(e.target.value) })}
               placeholder="155"
@@ -101,6 +117,8 @@ export function ProfitPanel() {
       </div>
       <p className="text-[11px] text-ink/45">
         ※ 利益見込みは推定です。最終判断は元ページの価格・送料・状態をご確認ください。
+        消費税・関税等は含まれません。手数料は率（%）のみで、固定手数料（取引ごとの定額費用）は含まれません。
+        該当する場合は送料や仕入れ価格に加算してください。
       </p>
     </div>
   );

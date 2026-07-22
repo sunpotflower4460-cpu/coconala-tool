@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ProfitSettings, SavedResearchSession } from '../../types/market';
+import type { DataSourceMode, MarketSearchStatus, ProfitSettings, SavedResearchSession } from '../../types/market';
 import type { MarketCard } from '../../types/market';
 
 type SessionSnapshot = {
@@ -9,6 +9,10 @@ type SessionSnapshot = {
   resultCards: MarketCard[];
   comparedCards: MarketCard[];
   profitSettings: ProfitSettings;
+  dataSourceMode: DataSourceMode;
+  searchStatus: MarketSearchStatus | null;
+  searchWarnings: string[];
+  lastSearchedAt: string | null;
 };
 
 type HistoryStore = {
@@ -18,7 +22,25 @@ type HistoryStore = {
   clearAllSessions: () => void;
 };
 
-const MAX_SESSIONS = 20;
+/** localStorage 1件あたりの保存上限。超過分は古い履歴から自動的に破棄する。 */
+export const MAX_SESSIONS = 20;
+
+export const HISTORY_STORAGE_KEY = 'coconala-tool-history';
+
+/**
+ * 実際に localStorage への書き込みが成功したかを確認する。
+ * zustand の persist ミドルウェアは書き込み失敗（容量超過等）を内部で
+ * console.warn するだけで例外を再送出しないため、呼び出し側では検知できない。
+ * そのため、保存直後に該当セッションIDが永続化データへ実際に含まれているかを確認する。
+ */
+export function wasSessionPersisted(sessionId: string): boolean {
+  try {
+    const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+    return typeof raw === 'string' && raw.includes(sessionId);
+  } catch {
+    return false;
+  }
+}
 
 function createSessionId() {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -40,6 +62,10 @@ export const useHistoryStore = create<HistoryStore>()(
           resultCards: snapshot.resultCards,
           comparedCards: snapshot.comparedCards,
           profitSettings: snapshot.profitSettings,
+          dataSourceMode: snapshot.dataSourceMode,
+          searchStatus: snapshot.searchStatus,
+          searchWarnings: snapshot.searchWarnings,
+          lastSearchedAt: snapshot.lastSearchedAt,
           createdAt: now,
           updatedAt: now,
         };
@@ -56,7 +82,7 @@ export const useHistoryStore = create<HistoryStore>()(
       clearAllSessions: () => set({ sessions: [] }),
     }),
     {
-      name: 'coconala-tool-history',
+      name: HISTORY_STORAGE_KEY,
     },
   ),
 );

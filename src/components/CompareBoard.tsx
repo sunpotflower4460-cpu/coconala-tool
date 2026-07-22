@@ -6,16 +6,17 @@ import { toJpyPrice } from '../features/profit/profitCalculator';
 
 function CompareCardItem({ card }: { card: MarketCard }) {
   const [imageError, setImageError] = useState(false);
-  const { removeComparedCard, setProfitSettings, profitSettings } = useResearchStore();
+  const { removeComparedCard, applyPriceFromCard, profitSettings } = useResearchStore();
   const normalizedPrice = toJpyPrice(card, profitSettings.exchangeRate);
   const hasPrice = typeof normalizedPrice === 'number';
+  const priceSourceLabel = `${card.siteName}${card.priceText ? ` ${card.priceText}` : ''}`;
   const handleUseAsBuy = () => {
     if (normalizedPrice === undefined) return;
-    setProfitSettings({ buyPrice: normalizedPrice });
+    applyPriceFromCard('buyPrice', normalizedPrice, priceSourceLabel);
   };
   const handleUseAsSell = () => {
     if (normalizedPrice === undefined) return;
-    setProfitSettings({ sellPrice: normalizedPrice });
+    applyPriceFromCard('sellPrice', normalizedPrice, priceSourceLabel);
   };
 
   return (

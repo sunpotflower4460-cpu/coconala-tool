@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcFee, calcProfit, calcMargin, profitBadge, toJpyPrice } from './profitCalculator';
+import { calcFee, calcProfit, calcMargin, profitBadge, toJpyPrice, clampAmount, clampFeeRate, MAX_AMOUNT } from './profitCalculator';
 import type { MarketCard } from '../../types/market';
 
 function makeCard(overrides: Partial<MarketCard>): MarketCard {
@@ -49,6 +49,58 @@ describe('profitCalculator', () => {
     const margin = calcMargin(profit, 10000);
     expect(margin).toBeGreaterThanOrEqual(15);
     expect(profitBadge(profit, margin).label).toBe('狙い目');
+  });
+
+  it('handles a 0円 case without error', () => {
+    expect(calcProfit(0, 0, 0, 10)).toBe(0);
+    expect(calcMargin(0, 0)).toBe(0);
+  });
+
+  it('handles 100% fee rate (all sell price consumed by fee)', () => {
+    expect(calcFee(10000, 100)).toBe(10000);
+    expect(calcProfit(10000, 0, 0, 100)).toBe(0);
+  });
+
+  it('handles decimal prices', () => {
+    expect(calcFee(1000.5, 10)).toBeCloseTo(100.05, 5);
+  });
+
+  describe('clampAmount', () => {
+    it('rejects negative values (clamps to 0)', () => {
+      expect(clampAmount(-500)).toBe(0);
+    });
+
+    it('rejects NaN and Infinity', () => {
+      expect(clampAmount(NaN)).toBe(0);
+      expect(clampAmount(Infinity)).toBe(0);
+      expect(clampAmount(-Infinity)).toBe(0);
+    });
+
+    it('caps extremely large values at MAX_AMOUNT', () => {
+      expect(clampAmount(MAX_AMOUNT * 10)).toBe(MAX_AMOUNT);
+    });
+
+    it('passes through valid values unchanged', () => {
+      expect(clampAmount(12345.5)).toBe(12345.5);
+    });
+  });
+
+  describe('clampFeeRate', () => {
+    it('rejects negative values (clamps to 0)', () => {
+      expect(clampFeeRate(-10)).toBe(0);
+    });
+
+    it('caps values above 100', () => {
+      expect(clampFeeRate(250)).toBe(100);
+    });
+
+    it('rejects NaN', () => {
+      expect(clampFeeRate(NaN)).toBe(0);
+    });
+
+    it('passes through valid values unchanged', () => {
+      expect(clampFeeRate(12.5)).toBe(12.5);
+    });
   });
 
   describe('toJpyPrice', () => {

@@ -1,37 +1,77 @@
 import { calcProfit } from '../profit/profitCalculator';
-import type { MarketCard, ProfitSettings } from '../../types/market';
+import {
+  DATA_SOURCE_MODE_LABELS,
+  SEARCH_STATUS_LABELS,
+  SOURCE_TYPE_LABELS,
+  type DataSourceMode,
+  type MarketCard,
+  type MarketSearchStatus,
+  type ProfitSettings,
+} from '../../types/market';
+
+export type CsvSearchMeta = {
+  dataSourceMode: DataSourceMode;
+  searchStatus: MarketSearchStatus | null;
+  searchWarnings: string[];
+  lastSearchedAt: string | null;
+};
+
+const DEMO_ORIGIN_LABELS: Record<'sample' | 'mock', string> = {
+  sample: 'サンプルデータ',
+  mock: 'モック（楽天API想定）',
+};
 
 const cardHeader = [
-  'title',
-  'siteName',
-  'sourceType',
-  'priceText',
-  'priceValue',
-  'currency',
-  'shippingText',
-  'conditionText',
-  'confidence',
-  'pageUrl',
-  'note',
-  'createdAt',
+  '商品名',
+  'サイト名',
+  'データ種別',
+  'ソース区分',
+  '価格表示',
+  '価格',
+  '通貨',
+  '送料',
+  '状態',
+  '信頼度',
+  '元URL',
+  'メモ',
+  '取得日時',
 ];
+
+/**
+ * CSV Formula Injection 対策。セルの先頭が `=` `+` `-` `@` の場合、
+ * 表計算ソフトが数式として評価しないよう先頭にテキストマーカー（`'`）を付与する。
+ */
+function neutralizeFormula(value: string): string {
+  return /^[=+\-@]/.test(value) ? `'${value}` : value;
+}
 
 function escapeCsvCell(value: string | number | undefined): string {
   if (value === undefined) return '';
-  const normalized = String(value).replace(/"/g, '""');
+  const neutralized = neutralizeFormula(String(value));
+  const normalized = neutralized.replace(/"/g, '""');
   return /[",\n]/.test(normalized) ? `"${normalized}"` : normalized;
+}
+
+function dataKindLabel(card: MarketCard): string {
+  return card.demoOrigin ? DEMO_ORIGIN_LABELS[card.demoOrigin] : '実データ';
+}
+
+function toRow(values: Array<string | number | undefined>): string {
+  return values.map((value) => escapeCsvCell(value)).join(',');
 }
 
 export function buildResearchCsv(
   cards: MarketCard[],
   profitSettings: ProfitSettings,
   generatedAt: string,
+  searchMeta?: CsvSearchMeta,
 ): string {
   const cardRows = cards.map((card) =>
-    [
+    toRow([
       card.title,
       card.siteName,
-      card.sourceType,
+      dataKindLabel(card),
+      SOURCE_TYPE_LABELS[card.sourceType],
       card.priceText,
       card.priceValue,
       card.currency,
@@ -41,9 +81,7 @@ export function buildResearchCsv(
       card.pageUrl,
       card.note,
       card.createdAt,
-    ]
-      .map((value) => escapeCsvCell(value))
-      .join(','),
+    ]),
   );
 
   const estimatedProfit = calcProfit(
@@ -54,33 +92,42 @@ export function buildResearchCsv(
   );
 
   const summaryRows = [
-    ['summaryKey', 'summaryValue'],
-    ['generatedAt', generatedAt],
-    ['buyPrice', profitSettings.buyPrice],
-    ['sellPrice', profitSettings.sellPrice],
-    ['shippingCost', profitSettings.shippingCost],
-    ['feeRate', profitSettings.feeRate],
-    ['exchangeRate', profitSettings.exchangeRate],
-    ['estimatedProfit', estimatedProfit],
-  ].map((row) => row.map((value) => escapeCsvCell(value)).join(','));
+    ['項目', '値'],
+    ['生成日時', generatedAt],
+    ['データソース', searchMeta ? DATA_SOURCE_MODE_LABELS[searchMeta.dataSourceMode] : ''],
+    ['検索状態', searchMeta?.searchStatus ? SEARCH_STATUS_LABELS[searchMeta.searchStatus] : ''],
+    ['検索日時', searchMeta?.lastSearchedAt ?? ''],
+    ['警告', (searchMeta?.searchWarnings ?? []).join(' / ')],
+    ['仕入れ価格', profitSettings.buyPrice],
+    ['販売価格', profitSettings.sellPrice],
+    ['送料', profitSettings.shippingCost],
+    ['手数料率(%)', profitSettings.feeRate],
+    ['為替レート', profitSettings.exchangeRate],
+    ['利益見込み', estimatedProfit],
+  ].map(toRow);
 
-  return [cardHeader.join(','), ...cardRows, '', ...summaryRows].join('\n');
+  return [toRow(cardHeader), ...cardRows, '', ...summaryRows].join('\n');
 }
 
 /**
- * \u30C0\u30A6\u30F3\u30ED\u30FC\u30C9\u7528\u306E\u30D5\u30A1\u30A4\u30EB\u5185\u5BB9\uFF08Excel \u306E\u6587\u5B57\u5316\u3051\u5BFE\u7B56\u306B UTF-8 BOM \u3092\u5148\u982D\u4ED8\u4E0E\uFF09\u3002
+ * ダウンロード用のファイル内容（Excel の文字化け対策に UTF-8 BOM を先頭付与）。
  */
 export function buildCsvFileContent(
   cards: MarketCard[],
   profitSettings: ProfitSettings,
   generatedAt: string,
+  searchMeta?: CsvSearchMeta,
 ): string {
-  return `\uFEFF${buildResearchCsv(cards, profitSettings, generatedAt)}`;
+  return `\uFEFF${buildResearchCsv(cards, profitSettings, generatedAt, searchMeta)}`;
 }
 
-export function downloadResearchCsv(cards: MarketCard[], profitSettings: ProfitSettings): void {
+export function downloadResearchCsv(
+  cards: MarketCard[],
+  profitSettings: ProfitSettings,
+  searchMeta?: CsvSearchMeta,
+): void {
   const generatedAt = new Date().toISOString();
-  const csv = buildCsvFileContent(cards, profitSettings, generatedAt);
+  const csv = buildCsvFileContent(cards, profitSettings, generatedAt, searchMeta);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

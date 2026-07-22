@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { FolderClock, Play, Save, Trash2 } from 'lucide-react';
-import { useHistoryStore } from '../features/history/historyStore';
+import { AlertTriangle, FolderClock, Play, Save, Trash2 } from 'lucide-react';
+import { useHistoryStore, MAX_SESSIONS, wasSessionPersisted } from '../features/history/historyStore';
 import { useResearchStore } from '../store/researchStore';
+import { DATA_SOURCE_MODE_LABELS, SEARCH_STATUS_LABELS } from '../types/market';
 
 type Props = {
   onLoadSession?: () => void;
@@ -9,8 +10,10 @@ type Props = {
 
 export function ResearchHistoryPanel({ onLoadSession }: Props) {
   const [name, setName] = useState('');
+  const [saveError, setSaveError] = useState('');
   const { sessions, saveSession, deleteSession } = useHistoryStore();
-  const { query, resultCards, comparedCards, profitSettings, loadResearchSession } = useResearchStore();
+  const { query, resultCards, comparedCards, profitSettings, dataSourceMode, searchStatus, searchWarnings, lastSearchedAt, loadResearchSession } =
+    useResearchStore();
   const hasData = resultCards.length > 0 || comparedCards.length > 0 || query.trim().length > 0;
 
   const sortedSessions = useMemo(
@@ -20,14 +23,26 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
 
   function handleSave() {
     if (!hasData) return;
-    saveSession({
+    const saved = saveSession({
       name: name.trim() || `${query || 'リサーチ'} ${new Date().toLocaleString()}`,
       query,
       resultCards,
       comparedCards,
       profitSettings,
+      dataSourceMode,
+      searchStatus,
+      searchWarnings,
+      lastSearchedAt,
     });
-    setName('');
+
+    if (wasSessionPersisted(saved.id)) {
+      setName('');
+      setSaveError('');
+    } else {
+      setSaveError(
+        '履歴の保存に失敗しました。ブラウザの保存容量が上限に達している可能性があります。不要な履歴を削除してからお試しください。',
+      );
+    }
   }
 
   return (
@@ -36,7 +51,16 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
         <FolderClock size={15} className="text-ink/70" />
         <h2 className="font-display text-sm font-semibold text-ink/80">リサーチ履歴</h2>
       </div>
-      <p className="mt-1 text-xs text-ink/60">現在の結果を名前付きで保存し、あとで再開できます。</p>
+      <p className="mt-1 text-xs text-ink/60">
+        現在の結果を名前付きで保存し、あとで再開できます。最大{MAX_SESSIONS}件まで保存され、超過分は古い履歴から自動的に削除されます。
+      </p>
+
+      {saveError && (
+        <p className="mt-2 flex items-start gap-1.5 rounded-control border border-rose-400/30 bg-rose-500/10 p-2 text-[11px] text-rose-100">
+          <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+          {saveError}
+        </p>
+      )}
 
       <div className="mt-3 flex gap-2">
         <input
@@ -71,6 +95,10 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
             <p className="mt-1 text-[11px] text-slate-400">
               {session.query || 'クエリなし'} / 比較 {session.comparedCards.length} 件
             </p>
+            <p className="text-[10px] text-slate-500">
+              保存時のデータ: {DATA_SOURCE_MODE_LABELS[session.dataSourceMode]}
+              {session.searchStatus ? `（${SEARCH_STATUS_LABELS[session.searchStatus]}）` : ''}
+            </p>
             <p className="text-[10px] text-slate-500">{new Date(session.updatedAt).toLocaleString()}</p>
             <div className="mt-2 flex gap-1.5">
               <button
@@ -80,6 +108,7 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
                     resultCards: session.resultCards,
                     comparedCards: session.comparedCards,
                     profitSettings: session.profitSettings,
+                    dataSourceMode: session.dataSourceMode,
                   });
                   onLoadSession?.();
                 }}
