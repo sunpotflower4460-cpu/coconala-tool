@@ -27,7 +27,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run preview -- --port 4173',
+    // `--host` を明示しないと一部環境（GitHub Actionsのrunner等）で `vite preview` が
+    // 127.0.0.1 からの接続を受け付けないことがあるため、全インターフェースにbindする。
+    command: 'npm run preview -- --port 4173 --host 0.0.0.0',
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
