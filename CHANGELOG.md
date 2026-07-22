@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## v0.9.0-rc.5 — 自動QAとデプロイQA（PR-5）
+
+- コンポーネントテスト基盤を追加（@testing-library/react + jsdom）。`vitest.setup.ts` でRTLの自動クリーンアップを明示登録
+- `ProductSearchBar`（検索中表示・二重送信防止）/ `ProfitPanel`（入力クランプ・由来表示・税/手数料注記）/ `ResultCard`（データ種別・ソース区分バッジ）/ `AppShell`（公式API取得時のバッジ切替・0件案内）のコンポーネントテストを追加
+- Playwright E2Eスイートを追加（サンプル検索・0件案内・比較追加・利益反映・手動追加・CSV出力・履歴保存/再開・375px横スクロールなし）
+- CI（`.github/workflows/ci.yml`）を install → typecheck → unit → build → `npm audit --audit-level=high` → E2E の順に整理し、Lighthouse（accessibility/best-practices、非ブロッキング）を追加
+- `functions/` ディレクトリを含む abort検出処理を `err.name` ベースのダックタイピングに修正（jsdom環境の `DOMException` が `instanceof Error` にならないケースへの対応。実行時の挙動もより堅牢に）
+- `npm audit fix` で Vite の既知脆弱性（開発サーバーのWindows向け問題、ビルド成果物には影響なし）を解消し `npm audit` を0件に
+- `.github/pull_request_template.md` を追加し、実機・実API確認欄を明示
+- qa-checklist.md / release-v1-checklist.md をCI自動化項目と人間の手動確認項目に区分けして整理
+
 ## v0.9.0-rc.4 — 利益計算・入力・保存の販売品質化（PR-4）
 
 - 仕入れ価格・販売価格・送料は0以上、手数料率は0〜100%にクランプ。NaN/Infinity/異常に大きい値は0またはMAX_AMOUNTに丸める
