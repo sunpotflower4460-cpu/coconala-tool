@@ -66,15 +66,16 @@ npm run build
 デプロイ先の詳細は `docs/deployment-guide.md` を参照してください。
 デプロイ後の確認は `docs/post-deploy-qa.md` を上から実施してください。
 
-**Cloudflare Pages（推奨）:**
+**Cloudflare Pages（推奨・楽天API正式対応）:**
 1. GitHub リポジトリに push
 2. Cloudflare Pages でリポジトリを連携
 3. ビルドコマンド: `npm run build`、出力ディレクトリ: `dist`
 
-**Vercel:**
+**Vercel（静的UIのみ）:**
 1. GitHub リポジトリに push
 2. Vercel でインポート
 3. 自動検出で設定完了
+4. 注意: 楽天APIプロキシは Cloudflare Pages Functions 専用実装のため、Vercel では実データに切り替えられません（サンプル/モックのみ動作）。実API連携が必要な場合は Cloudflare Pages をご利用ください。
 
 ---
 
@@ -86,7 +87,7 @@ npm run build
 
 ```tsx
 <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">
-  Coconala Tool  ← ここを変更
+  相場カード比較ボード  ← ここを変更
 </h1>
 ```
 
@@ -104,7 +105,7 @@ theme: 'simple-pro',  ← 'soft-market' | 'dark-trader' | 'natural-board' に変
 
 ---
 
-## スコープ（引き渡し時点 / v0.2）
+## スコープ（引き渡し時点 / v0.9.0-rc.1）
 
 - API キーなしで動作します（サンプルデータ / 楽天APIモック）。
 - 楽天市場 商品検索APIのみ、サーバー側にキーを設定すると実データに切り替わります（未設定時はモックにフォールバック）。

@@ -46,7 +46,7 @@ export function AppShell() {
               Market Card Research
             </p>
             <div className="mt-0.5 flex flex-wrap items-center gap-2">
-              <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">Coconala Tool</h1>
+              <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">相場カード比較ボード</h1>
               <span className="rounded-full border border-amber-300/40 bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-amber-100">
                 デモ表示中 — サンプル/モックデータ
               </span>

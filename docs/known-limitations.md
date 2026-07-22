@@ -10,3 +10,4 @@
 - CSVエクスポートはクライアントサイド処理であり、サーバー保存は行いません。
 - 認証、課金、バックエンド永続化は対象外です。
 - eBay / Yahoo!ショッピング等の追加公式API連携は次フェーズ（プレミアム）の別作業です。
+- デプロイ先による対応範囲: Cloudflare Pages（推奨・楽天API正式対応）/ Vercel（静的UIのみ、実API連携には別途Function実装が必要）/ GitHub Pages（静的デモのみ）。詳細は `docs/deployment-guide.md` を参照してください。

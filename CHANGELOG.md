@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## v0.9.0-rc.1 — 商品表現・バージョン・文書の整合（PR-1）
+
+正式販売化に向けた最初のPR。実装は変更せず、表現・バージョン・ドキュメントの矛盾を解消した。
+
+- 商品名を仮称から確定: 「相場カード比較ボード / Market Card Board」（`AppShell.tsx` h1 / `index.html` title / README / TERMS.md 等）
+- 古い `v0.1 Demo` 表記をREADME・デプロイガイド・デプロイ後QA・ユーザーガイドから撤去し、実際のUI表示（ヘッダー常時「デモ表示中」バッジ）に合わせて記述を統一
+- READMEに「対応データソース」表（楽天=公式API対応／他サイト=検索リンク＋手動追加／サンプル・モック=デモ用）と「デプロイ先ごとの対応範囲」表（Cloudflare Pages=正式対応、Vercel=静的UIのみ、GitHub Pages=静的デモのみ）を新設
+- README冒頭を「購入者向け」「開発者向け」に分離
+- `docs/coconala-listing-copy.md` のプラン表を整理: 楽天API接続をスタンダードプランへ、未実装の Yahoo!ショッピングAPI 連携をプレミアムプランの内容から削除（追加見積り扱いのみに統一）
+- `docs/product-brief.md` の一行説明を実装に合わせて修正（eBay/Yahoo/メルカリ横断自動取得を示唆する表現を削除）
+- 実装済みの楽天APIプロキシ（`functions/api/rakuten.ts`）と矛盾する接続前提のドキュメント（`live-rakuten-api-gate.md` / `first-official-api-plan.md` / `rakuten-worker-scaffold.md` / `next-cloud-agent-instructions.md` / `api-connection-plan.md`）と、価格が競合する旧プラン表（`coconala-package-plan.md`）、および旧バージョンの `release-v0.1-checklist.md` / `release-notes-v0.1.md` を `docs/archive/` へ移動
+- `docs/release-v1-checklist.md` を新設
+- `package.json` の version を `0.9.0-rc.1` に更新
+- UI内のハードコードされた `v0.2` 表記（`ApiStatusPanel.tsx`）を撤去
+
 ## v0.2 — グラスUI刷新 + 販売準備整備
 
 ### 販売・納品ギャップ修正（Part A）
