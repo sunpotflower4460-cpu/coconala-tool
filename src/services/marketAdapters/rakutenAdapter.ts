@@ -11,7 +11,7 @@ type MockStatus = Exclude<MarketSearchStatus, 'sample' | 'official_api' | 'empty
 
 const WARNING_BY_STATUS: Record<MockStatus, string> = {
   mock_no_key:
-    '楽天APIキーが未設定のため、公式API想定モックを表示しています。実データを見るにはサーバー側に SERVER_RAKUTEN_APP_ID を設定してください。',
+    '楽天APIキーが未設定のため、公式API想定モックを表示しています。実データを見るにはサーバー側に楽天APIキーを設定してください（セットアップガイド参照）。',
   mock_timeout: '楽天APIへの接続がタイムアウトしたため、公式API想定モックを表示しています。',
   mock_network:
     '楽天APIへの通信に失敗したため、公式API想定モックを表示しています。ネットワーク環境をご確認ください。',
@@ -28,7 +28,16 @@ const EMPTY_WARNING =
 type RakutenApiResponse = {
   items?: RakutenMockItem[];
   error?: string;
-  status?: number;
+};
+
+/**
+ * サーバー側プロキシ（`functions/api/rakuten.ts`）のエラーコードから、
+ * フロントで表示するモック状態への対応表。未知のコードは汎用の上流エラー扱いにする。
+ */
+const ERROR_CODE_TO_MOCK_STATUS: Partial<Record<string, MockStatus>> = {
+  no_key: 'mock_no_key',
+  rate_limited: 'mock_rate_limited',
+  timeout: 'mock_timeout',
 };
 
 /** 実APIに到達できないときのフォールバック。UXを壊さないよう必ずカードを返す。 */
@@ -76,14 +85,8 @@ export const rakutenAdapter: MarketAdapter = {
 
       const data = (await res.json()) as RakutenApiResponse;
 
-      if (data.error === 'no_key') {
-        return toMockResponse(trimmed, limit, 'mock_no_key');
-      }
-      if (data.error === 'upstream_error') {
-        return toMockResponse(trimmed, limit, data.status === 429 ? 'mock_rate_limited' : 'mock_upstream_error');
-      }
       if (data.error || !res.ok) {
-        return toMockResponse(trimmed, limit, 'mock_upstream_error');
+        return toMockResponse(trimmed, limit, ERROR_CODE_TO_MOCK_STATUS[data.error ?? ''] ?? 'mock_upstream_error');
       }
 
       const items = Array.isArray(data.items) ? data.items : [];

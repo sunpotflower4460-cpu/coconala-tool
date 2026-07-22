@@ -97,3 +97,12 @@
 - [ ] `SERVER_RAKUTEN_APP_ID` を設定すると `公式API取得` ラベルの実データが表示される
 - [ ] キー未設定・ネットワーク失敗時もアプリが落ちず、モック＋警告にフォールバックする
 - [ ] ビルド成果物にキー文字列が含まれない（`grep -r "SERVER_RAKUTEN" dist/` で何も出ない）
+
+## `/api/rakuten` プロキシ（PR-3）
+
+- [ ] `curl -X POST /api/rakuten?q=PS5` が 405 を返す
+- [ ] `q` なし・101文字以上のクエリが 400 `invalid_query` を返す
+- [ ] `limit=999` のような範囲外の値が 30 にクランプされる
+- [ ] レスポンスに `items` / `source` / `status` / `requestId` が含まれる
+- [ ] レスポンス本文・ヘッダーに Application ID の値が含まれない
+- [ ] `functions/api/rakuten.test.ts` が `npm run test` に含まれてグリーンである

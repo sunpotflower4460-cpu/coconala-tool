@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## v0.9.0-rc.3 — 楽天APIプロキシの堅牢化（PR-3）
+
+`functions/api/rakuten.ts` の入力検証・エラー分類・上限を強化した。
+
+- GET以外のメソッドは明示的に405 `method_not_allowed` を返す（単一の `onRequest` ディスパッチャに統一）
+- Origin ヘッダーが自ホストと異なる場合は403 `forbidden_origin`（同一オリジン運用が基本）
+- `q` は trim後1〜100文字・制御文字除去、`limit` は1〜30にクランプ
+- 上流通信に約8秒のタイムアウトを設定（504 `timeout`）
+- 上流エラーを `rate_limited`（429）/ `upstream_client_error`（4xx）/ `upstream_error`（5xx）/ `invalid_json` に分類
+- 商品名・ショップ名に最大長、商品URL・画像URLに `https:` のみ許可するフィルタを追加（型ガードで検証、新規依存追加なし）
+- 応答に `source` / `status` / `requestId` を追加。内部例外・Application IDは引き続き一切返さない
+- `functions/` を `npm run lint`（`tsc -b`）の対象に追加（従来は型チェック対象外だった）
+- 応答はキャッシュしない方針を決定し、理由を `docs/adr/0001-no-rakuten-response-cache.md` に記録
+- `docs/deployment-guide.md` に Cloudflare側レート制限の設定手順を追加（インメモリ実装では対応しない）
+- `functions/api/rakuten.ts` のユニットテストを追加、`rakutenAdapter.ts` を新しいエラーコード体系に追従
+
 ## v0.9.0-rc.2 — 検索状態とフォールバックの正直化（PR-2）
 
 検索結果に「なぜこのデータが表示されているか」を必ず示すようにした。

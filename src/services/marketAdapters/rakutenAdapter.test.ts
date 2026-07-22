@@ -71,20 +71,32 @@ describe('rakutenAdapter.search', () => {
     expect(result.warnings.join(' ')).toContain('キー');
   });
 
-  it('429の場合、status=mock_rate_limited', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue(jsonResponse({ error: 'upstream_error', status: 429, items: [] }, { status: 502 }));
+  it('429(rate_limited)の場合、status=mock_rate_limited', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ error: 'rate_limited', items: [] }, { status: 429 }));
 
     const result = await rakutenAdapter.search({ query: 'PS5' });
 
     expect(result.status).toBe('mock_rate_limited');
   });
 
-  it('5xxの場合、status=mock_upstream_error', async () => {
-    globalThis.fetch = vi
-      .fn()
-      .mockResolvedValue(jsonResponse({ error: 'upstream_error', status: 500, items: [] }, { status: 502 }));
+  it('5xx(upstream_error)の場合、status=mock_upstream_error', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ error: 'upstream_error', items: [] }, { status: 502 }));
+
+    const result = await rakutenAdapter.search({ query: 'PS5' });
+
+    expect(result.status).toBe('mock_upstream_error');
+  });
+
+  it('サーバー側タイムアウト(timeout)の場合、status=mock_timeout', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ error: 'timeout', items: [] }, { status: 504 }));
+
+    const result = await rakutenAdapter.search({ query: 'PS5' });
+
+    expect(result.status).toBe('mock_timeout');
+  });
+
+  it('不正なJSON応答(invalid_json)の場合、status=mock_upstream_error', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ error: 'invalid_json', items: [] }, { status: 502 }));
 
     const result = await rakutenAdapter.search({ query: 'PS5' });
 
