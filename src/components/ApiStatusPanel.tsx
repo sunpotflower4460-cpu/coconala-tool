@@ -3,7 +3,7 @@ import { useResearchStore } from '../store/researchStore';
 import type { DataSourceMode } from '../types/market';
 
 const apiPlans = [
-  'v0.2 でも APIキーは不要です。将来もフロントエンドに固定値では書かず、サーバー/Workerの環境変数で管理します。',
+  'APIキーが未設定でも動作します。将来もフロントエンドに固定値では書かず、サーバー/Workerの環境変数で管理します。',
   '楽天APIモックは公式API接続フロー確認用の疑似データです。キー設定時のみ実データに切り替わります。',
   'メルカリ・ヤフオクは検索リンクを開いて手動確認する前提で扱います。',
 ];
