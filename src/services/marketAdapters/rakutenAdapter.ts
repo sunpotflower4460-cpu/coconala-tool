@@ -101,7 +101,7 @@ export const rakutenAdapter: MarketAdapter = {
         searchedAt: new Date().toISOString(),
       };
     } catch (err) {
-      const isAbort = err instanceof DOMException && err.name === 'AbortError';
+      const isAbort = (err as { name?: string } | undefined)?.name === 'AbortError';
       return toMockResponse(trimmed, limit, isAbort ? 'mock_timeout' : 'mock_network');
     } finally {
       clearTimeout(timeoutId);

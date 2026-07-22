@@ -26,12 +26,19 @@
 
 ## QA
 
+CIで自動実行されるもの（`.github/workflows/ci.yml`）:
+
 - [ ] `npm ci`
 - [ ] `npm run lint`
+- [ ] `npm run test`（ユニット・コンポーネントテスト）
 - [ ] `npm run build`
-- [ ] `npm run test`
+- [ ] `npm audit --audit-level=high`
+- [ ] `npm run e2e`（Playwright: サンプル検索・比較追加・利益反映・手動追加・履歴保存/再開・CSV出力・375px横スクロールなし）
+
+人間が実環境で確認するもの:
+
 - [ ] Cloudflare Pages のプレビュー環境で手動QA（`docs/post-deploy-qa.md` に沿って実施）
-- [ ] 幅 375px / 768px / 1280px で崩れがないことを確認
+- [ ] 幅 375px / 768px / 1280px で崩れがないことを確認（実機・実ブラウザ）
 - [ ] 実楽天APIで複数の検索語を確認（PS5・Nintendo Switch・型番・JANコード・0件になる語 等）
 
 ## 販売物

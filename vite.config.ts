@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -17,5 +18,11 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./vitest.setup.ts'],
+    // e2e/ は Playwright（別ランナー）専用のため vitest の対象から除外する。
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
   },
 });

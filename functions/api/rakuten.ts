@@ -222,7 +222,7 @@ async function handleGet(context: PagesFunctionContext, requestId: string): Prom
 
     return successResponse(items, requestId);
   } catch (err) {
-    const isAbort = err instanceof Error && err.name === 'AbortError';
+    const isAbort = (err as { name?: string } | undefined)?.name === 'AbortError';
     return errorResponse(isAbort ? 'timeout' : 'fetch_failed', isAbort ? 504 : 502, requestId);
   } finally {
     clearTimeout(timeoutId);
