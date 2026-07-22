@@ -25,9 +25,11 @@ function validateUrlText(value: string): string {
 export function ManualAddPanel({ onClose, onSuccess }: Props) {
   const { addManualCard, resultCards } = useResearchStore();
   const [form, setForm] = useState({
+    title: '',
     siteName: '',
     pageUrl: '',
     priceText: '',
+    currency: 'JPY' as 'JPY' | 'USD',
     shippingText: '',
     conditionText: '',
     imageUrl: '',
@@ -64,9 +66,11 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
     if (currentUrlError) return;
 
     const card = createManualCard({
+      title: form.title || undefined,
       siteName: form.siteName,
       pageUrl: form.pageUrl,
       priceText: form.priceText,
+      currency: form.currency,
       shippingText: form.shippingText || undefined,
       conditionText: form.conditionText || undefined,
       imageUrl: form.imageUrl || undefined,
@@ -117,6 +121,17 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-slate-400">
+            タイトル（任意）
+            <input
+              type="text"
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="空欄の場合はサイト名から自動生成されます"
+              className={inputClass}
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs text-slate-400">
             サイト名
             <input
               type="text"
@@ -127,19 +142,33 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
             />
           </label>
 
-          <label className="flex flex-col gap-1 text-xs text-slate-400">
-            価格
-            <input
-              type="text"
-              value={form.priceText}
-              onChange={(e) => setForm((f) => ({ ...f, priceText: e.target.value }))}
-              placeholder="例: ¥5,000"
-              className={inputClass}
-            />
-            {!form.priceText.trim() && (
-              <span className="text-xs text-slate-500">価格を入力しないと「価格不明」と表示されます。</span>
-            )}
-          </label>
+          <div className="grid grid-cols-[1fr_auto] gap-3">
+            <label className="flex flex-col gap-1 text-xs text-slate-400">
+              価格
+              <input
+                type="text"
+                value={form.priceText}
+                onChange={(e) => setForm((f) => ({ ...f, priceText: e.target.value }))}
+                placeholder="例: ¥5,000"
+                className={inputClass}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-xs text-slate-400">
+              通貨
+              <select
+                value={form.currency}
+                onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value as 'JPY' | 'USD' }))}
+                aria-label="通貨"
+                className={`${inputClass} w-20`}
+              >
+                <option value="JPY">JPY</option>
+                <option value="USD">USD</option>
+              </select>
+            </label>
+          </div>
+          {!form.priceText.trim() && (
+            <span className="-mt-2 text-xs text-slate-500">価格を入力しないと「価格不明」と表示されます。</span>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <label className="flex flex-col gap-1 text-xs text-slate-400">

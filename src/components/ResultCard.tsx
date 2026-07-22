@@ -1,17 +1,10 @@
 import { useState } from 'react';
-import type { MarketCard } from '../types/market';
+import { SOURCE_TYPE_LABELS, type MarketCard } from '../types/market';
 import { useResearchStore } from '../store/researchStore';
 import { ExternalLink, PlusCircle, CheckCircle } from 'lucide-react';
 
 type Props = {
   card: MarketCard;
-};
-
-const sourceLabels: Record<string, string> = {
-  official_api: '公式API取得',
-  search_api: '検索表示から推定',
-  search_link: '検索リンク',
-  manual: '手動追加',
 };
 
 const demoOriginBadges = {
@@ -80,7 +73,7 @@ export function ResultCard({ card }: Props) {
 
         <div className="flex flex-wrap gap-1.5">
           <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${confidenceColors[card.confidence]}`}>
-            {sourceLabels[card.sourceType]}
+            {SOURCE_TYPE_LABELS[card.sourceType]}
           </span>
           {card.sourceType === 'search_link' && (
             <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-xs text-sky-300">外部検索ページ</span>
