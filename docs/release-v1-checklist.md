@@ -43,14 +43,16 @@ CIで自動実行されるもの（`.github/workflows/ci.yml`）:
 
 ## 販売物
 
-- [ ] 利用規約・免責・サポート範囲・返金/キャンセルの扱いが確定している（`TERMS.md`）
-- [ ] 購入者向けクイックスタートがある
+- [ ] 利用規約・免責・サポート範囲・返金/キャンセルの扱いが確定している（`TERMS.md` / `docs/SUPPORT_POLICY.md`）
+- [ ] 購入者向けクイックスタートがある（`docs/QUICK_START_BUYER.md`）
+- [ ] データの扱いについての説明がある（`docs/PRIVACY_AND_DATA.md`）
+- [ ] `npm run delivery:package` で納品ZIPが生成できる（`docs/DELIVERY_CONTENTS.md` 参照）。事前チェック（バージョン一致・シークレット混入なし等）に失敗しないことを確認する
 - [ ] デモURL、PC/スマホ画面のスクリーンショットがある
 - [ ] 主要フローを見せる短い操作動画がある
 
 ## 人間の最終判断
 
-以下は Claude Code が自動で完了扱いしない項目です。詳細は `docs/MANUAL_STEPS_SALES.md`（未作成の場合は別途整備）を参照してください。
+以下は Claude Code が自動で完了扱いしない項目です。詳細は [`docs/MANUAL_STEPS_SALES.md`](MANUAL_STEPS_SALES.md) を参照してください。
 
 - [ ] 実APIによる検索結果の目視確認
 - [ ] スマホ実機確認

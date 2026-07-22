@@ -2,7 +2,7 @@
 
 物販・せどり向けの相場リサーチ補助ツールです。楽天市場 公式APIの価格候補、他サイトへの検索リンク、手動追加した商品を一つのボードで比較し、利益見込み・履歴・CSV出力までまとめて管理できます。
 
-現在のバージョン: **v0.9.0-rc.5**（正式販売前の候補版）
+現在のバージョン: **v0.9.0-rc.6**（正式販売前の候補版）
 
 ---
 
@@ -115,12 +115,15 @@ See [`docs/phase-roadmap.md`](docs/phase-roadmap.md).
 
 ### 購入者向け
 
+- [`docs/QUICK_START_BUYER.md`](docs/QUICK_START_BUYER.md)
 - [`docs/buyer-handoff.md`](docs/buyer-handoff.md)
 - [`docs/setup-guide.md`](docs/setup-guide.md)
 - [`docs/user-guide.md`](docs/user-guide.md)
 - [`docs/deployment-guide.md`](docs/deployment-guide.md)
 - [`docs/post-deploy-qa.md`](docs/post-deploy-qa.md)
 - [`docs/known-limitations.md`](docs/known-limitations.md)
+- [`docs/SUPPORT_POLICY.md`](docs/SUPPORT_POLICY.md)
+- [`docs/PRIVACY_AND_DATA.md`](docs/PRIVACY_AND_DATA.md)
 - [`docs/coconala-listing-copy.md`](docs/coconala-listing-copy.md)
 
 ### 開発者向け
@@ -130,6 +133,8 @@ See [`docs/phase-roadmap.md`](docs/phase-roadmap.md).
 - [`docs/manual-test-script.md`](docs/manual-test-script.md)
 - [`docs/qa-checklist.md`](docs/qa-checklist.md)
 - [`docs/release-v1-checklist.md`](docs/release-v1-checklist.md)
+- [`docs/DELIVERY_CONTENTS.md`](docs/DELIVERY_CONTENTS.md)
+- [`docs/MANUAL_STEPS_SALES.md`](docs/MANUAL_STEPS_SALES.md)
 - [`docs/product-brief.md`](docs/product-brief.md)
 - [`docs/data-source-policy.md`](docs/data-source-policy.md)
 - [`docs/ux-principles.md`](docs/ux-principles.md)

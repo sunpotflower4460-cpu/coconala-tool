@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## v0.9.0-rc.6 — 納品パッケージ自動生成（PR-6）
+
+- `scripts/create-delivery-package.mjs` を追加（`npm run delivery:package`）。バージョン一致・
+  `package-lock.json` 存在・`.env.example` 存在・シークレット混入なしを事前チェックし、
+  1件でも失敗したらZIPを生成せず中断する
+- コピー対象は除外リストではなく許可リスト方式（secure by default）。`.git` / `.github` /
+  `node_modules` / `.env` / `.dev.vars` / 開発AI向け内部指示書（`AGENTS.md` 等）/
+  出品者向け内部資料（`docs/coconala-listing-copy.md` 等）/ `docs/archive/` / `docs/adr/` は
+  常に除外される
+- 購入者向けドキュメントを新設: `docs/QUICK_START_BUYER.md`, `docs/SUPPORT_POLICY.md`,
+  `docs/PRIVACY_AND_DATA.md`, `docs/DELIVERY_CONTENTS.md`
+- 人間が行うべき作業を一元管理する `docs/MANUAL_STEPS_SALES.md` を新設
+- 旧・納品チェックリスト `docs/delivery-checklist.md` を `docs/archive/` へ移動（
+  `docs/release-v1-checklist.md` と `docs/DELIVERY_CONTENTS.md` に統合）
+- 開発時に紛れ込んでいた不要ファイル（`src/README.md`。実装前のフェーズ0スキャフォールド
+  メモで参照なし）を削除
+- チェックサム生成・シークレット検出・事前チェック失敗時の中断を実際に動作させて確認
+
 ## v0.9.0-rc.5 — 自動QAとデプロイQA（PR-5）
 
 - コンポーネントテスト基盤を追加（@testing-library/react + jsdom）。`vitest.setup.ts` でRTLの自動クリーンアップを明示登録
