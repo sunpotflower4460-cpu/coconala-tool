@@ -13,8 +13,14 @@
 - Playwrightでモバイル幅（375px）・デスクトップ幅の実スクロール（`mouse.wheel`）を用いた
   座標検証・スクリーンショット確認により、重なりが解消したことを確認
 - `npm audit` で新たに検出された高深刻度の脆弱性（`brace-expansion` のDoS、`archiver`経由の
-  推移的依存）を、`archiver`本体はAPI破壊的変更のあるv8へ上げずに`overrides`で
-  `brace-expansion`のみをパッチ版に固定して解消（`npm audit --audit-level=high` が0件に）
+  推移的依存）を解消。当初は `overrides` で `brace-expansion` のみをパッチ版に固定する案を
+  検討したが、`archiver@7` 系が使う旧 `minimatch`（`^2.0.x`系のbrace-expansion実装＝関数呼び出し
+  API前提）は新しい `brace-expansion` の `expand` 名前付きエクスポートAPIと非互換で、
+  `{a,b}` のようなbraceパターンを含むglobを処理すると `TypeError` になることをローカル検証で
+  確認。この非互換を上書きで隠すのではなく、`archiver` を新しい `minimatch`（v10系、新APIに
+  対応済み）を使うv8へ更新し、`scripts/create-delivery-package.mjs` 側もv8の新コンストラクタ
+  （`archiver('zip', opts)` → `new ZipArchive(opts)`）に追従。`overrides` は不要になり撤去
+  （`npm audit --audit-level=high` が0件に）
 
 ## v0.9.0-rc.7 — ココナラ販売物の完成（PR-7）
 
