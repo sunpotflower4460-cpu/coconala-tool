@@ -1,5 +1,27 @@
 # CHANGELOG
 
+## v0.9.0-rc.8 — sticky ヘッダーの視認性強化（UI/UX調整）
+
+- スクロール中、sticky ヘッダーの背景が薄すぎて下を通過するカードの文字と重なって見える
+  不具合を修正。`.glass`（不透明度5%＋backdrop-filter任せ）をヘッダーに流用していたのが原因
+- ヘッダー専用の `.glass-header` を新設し、`backdrop-filter` 非対応環境やOS設定
+  （`prefers-reduced-transparency: reduce`）でも常に不透明な背景（`--color-bg-card-solid`）を
+  保証。対応環境では `color-mix()` で82%不透明＋ぼかしのガラス表現を維持
+  （backdrop-filter単体の対応状況に視認性を依存させない設計に変更）
+- 他の `.glass` 使用箇所（サイドパネル・カード等）はスクロール時に背景と共に流れるため
+  同種のリスクがなく、変更していない
+- Playwrightでモバイル幅（375px）・デスクトップ幅の実スクロール（`mouse.wheel`）を用いた
+  座標検証・スクリーンショット確認により、重なりが解消したことを確認
+- `npm audit` で新たに検出された高深刻度の脆弱性（`brace-expansion` のDoS、`archiver`経由の
+  推移的依存）を解消。当初は `overrides` で `brace-expansion` のみをパッチ版に固定する案を
+  検討したが、`archiver@7` 系が使う旧 `minimatch`（`^2.0.x`系のbrace-expansion実装＝関数呼び出し
+  API前提）は新しい `brace-expansion` の `expand` 名前付きエクスポートAPIと非互換で、
+  `{a,b}` のようなbraceパターンを含むglobを処理すると `TypeError` になることをローカル検証で
+  確認。この非互換を上書きで隠すのではなく、`archiver` を新しい `minimatch`（v10系、新APIに
+  対応済み）を使うv8へ更新し、`scripts/create-delivery-package.mjs` 側もv8の新コンストラクタ
+  （`archiver('zip', opts)` → `new ZipArchive(opts)`）に追従。`overrides` は不要になり撤去
+  （`npm audit --audit-level=high` が0件に）
+
 ## v0.9.0-rc.7 — ココナラ販売物の完成（PR-7）
 
 - `docs/coconala-listing-copy.md` を全面整備: サービスタイトルを master指示書の推奨表現

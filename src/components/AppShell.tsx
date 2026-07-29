@@ -47,7 +47,7 @@ export function AppShell() {
     <div className="min-h-screen px-3 py-4 sm:px-4 sm:py-6 md:px-8">
       {/* Sticky glass top bar: title + persistent demo badge + theme selector */}
       <header className="sticky top-0 z-30 mb-6 md:mb-8">
-        <div className="glass flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+        <div className="glass-header flex flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent/80">
               Market Card Research
