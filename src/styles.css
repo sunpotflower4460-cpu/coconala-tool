@@ -206,6 +206,7 @@ body {
      常に不透明な背景を保証する（.glass より不透明度を大幅に上げる）。 */
   .glass-header {
     @apply rounded-panel border border-white/10 shadow-glass-1;
+
     background-color: var(--color-bg-card-solid);
   }
 
