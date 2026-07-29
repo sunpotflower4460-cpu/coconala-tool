@@ -201,6 +201,22 @@ body {
     @apply border-accent/60 bg-white/10;
   }
 
+  /* sticky ヘッダー専用: スクロールで下を通過するカードの文字が
+     透けて重なって見えないよう、backdrop-filter 非対応環境でも
+     常に不透明な背景を保証する（.glass より不透明度を大幅に上げる）。 */
+  .glass-header {
+    @apply rounded-panel border border-white/10 shadow-glass-1;
+    background-color: var(--color-bg-card-solid);
+  }
+
+  @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+    .glass-header {
+      background-color: color-mix(in srgb, var(--color-bg-card-solid) 82%, transparent);
+      backdrop-filter: blur(20px) saturate(140%);
+      -webkit-backdrop-filter: blur(20px) saturate(140%);
+    }
+  }
+
   /* 価格・利益などの数値は等幅で高コントラストに。 */
   .num {
     font-variant-numeric: tabular-nums;
@@ -232,7 +248,8 @@ body {
   .glass,
   .glass-card,
   .glass-modal,
-  .glass-input {
+  .glass-input,
+  .glass-header {
     background: var(--color-bg-card-solid, #11151f) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
