@@ -50,7 +50,6 @@ export function ProductSearchBar({ onSearch }: Props) {
             type="text"
             value={query}
             maxLength={MAX_SEARCH_QUERY_LENGTH}
-            value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="商品名・型番・JAN・URLを入力"
