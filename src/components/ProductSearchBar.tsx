@@ -7,15 +7,26 @@ type Props = {
   onSearch: () => void;
 };
 
+const MAX_SEARCH_QUERY_LENGTH = 100;
+
 export function ProductSearchBar({ onSearch }: Props) {
   const { query, setQuery, setSearchResult, setIsSearching, isSearching, dataSourceMode, resetSession } =
     useResearchStore();
 
   async function handleSearch() {
-    if (!query.trim() || isSearching) return;
+    const requestedQuery = query.trim();
+    const requestedMode = dataSourceMode;
+    if (!requestedQuery || isSearching) return;
+
     setIsSearching(true);
     try {
-      const response = await runMarketSearch(query, dataSourceMode, 8);
+      const response = await runMarketSearch(requestedQuery, requestedMode, 8);
+      const current = useResearchStore.getState();
+
+      // 検索中にユーザーがクエリを編集・クリアしたり、データソースを切り替えた場合、
+      // 遅れて返ってきた旧リクエストの結果で現在の画面状態を上書きしない。
+      if (current.query.trim() !== requestedQuery || current.dataSourceMode !== requestedMode) return;
+
       setSearchResult(response);
       onSearch();
     } finally {
@@ -37,6 +48,8 @@ export function ProductSearchBar({ onSearch }: Props) {
           />
           <input
             type="text"
+            value={query}
+            maxLength={MAX_SEARCH_QUERY_LENGTH}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
