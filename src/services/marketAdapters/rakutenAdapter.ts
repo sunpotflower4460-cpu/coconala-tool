@@ -83,19 +83,30 @@ export const rakutenAdapter: MarketAdapter = {
         return toMockResponse(trimmed, limit, 'mock_upstream_error');
       }
 
-      const data = (await res.json()) as RakutenApiResponse;
+      let data: RakutenApiResponse;
+      try {
+        data = (await res.json()) as RakutenApiResponse;
+      } catch {
+        // JSONとして宣言された壊れた応答は「通信失敗」ではなく応答不整合として扱う。
+        return toMockResponse(trimmed, limit, 'mock_upstream_error');
+      }
 
       if (data.error || !res.ok) {
         return toMockResponse(trimmed, limit, ERROR_CODE_TO_MOCK_STATUS[data.error ?? ''] ?? 'mock_upstream_error');
       }
 
-      const items = Array.isArray(data.items) ? data.items : [];
-      if (!items.length) {
+      // 200でも期待する `items` 配列が無い場合は「0件」ではなく契約/スキーマ不整合。
+      // API変更や誤配信を正常な空検索と誤認しない。
+      if (!Array.isArray(data.items)) {
+        return toMockResponse(trimmed, limit, 'mock_upstream_error');
+      }
+
+      if (!data.items.length) {
         return { cards: [], status: 'empty', warnings: [EMPTY_WARNING], searchedAt: new Date().toISOString() };
       }
 
       return {
-        cards: items.map((item) => mapRakutenItemToMarketCard(item)),
+        cards: data.items.map((item) => mapRakutenItemToMarketCard(item)),
         status: 'official_api',
         warnings: [REAL_WARNING],
         searchedAt: new Date().toISOString(),
