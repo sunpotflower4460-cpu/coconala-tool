@@ -23,6 +23,7 @@
 - [ ] 楽天 Application ID がフロントエンドの成果物に含まれない（`grep -r "SERVER_RAKUTEN" dist/` で何も出ない）
 - [ ] APIキーやシークレットがビルド成果物・リポジトリに含まれない
 - [ ] 高頻度スクレイピングを行うコードが追加されていない
+- [ ] 本番 `/api/rakuten` を公開する場合、Origin検査だけではCLI濫用を防げないことを理解し、Cloudflare Rate Limiting/WAFを設定するか、設定しない理由を記録する
 
 ## QA
 
@@ -40,6 +41,20 @@ CIで自動実行されるもの（`.github/workflows/ci.yml`）:
 - [ ] Cloudflare Pages のプレビュー環境で手動QA（`docs/post-deploy-qa.md` に沿って実施）
 - [ ] 幅 375px / 768px / 1280px で崩れがないことを確認（実機・実ブラウザ）
 - [ ] 実楽天APIで複数の検索語を確認（PS5・Nintendo Switch・型番・JANコード・0件になる語 等）
+
+## 本番故障注入ゲート
+
+詳細なリスク・再現手順・期待結果は [`PRODUCTION_FAILURE_RISK_MATRIX.md`](PRODUCTION_FAILURE_RISK_MATRIX.md) を参照する。
+
+- [ ] API / 認証・秘密情報 / 通信 / 同時実行 / データ不整合 / ユーザー操作 / 外部サービス障害 / セキュリティのP0項目を確認した
+- [ ] キー未設定・無効キー・429・5xx・timeout・HTML/不正JSON応答で、アプリが落ちず実データと誤表示しない
+- [ ] 検索中に検索語を変更しても、遅れて返った旧検索結果が現在の検索語へ混入しない
+- [ ] 検索中にデータソースを変更しても、旧モードの結果が混入しない
+- [ ] 別origin / same-siteブラウザアクセスが `/api/rakuten` で403になる
+- [ ] localStorage容量超過時に履歴保存失敗が利用者へ分かる
+- [ ] localStorageを壊れたJSONへ変更して再読込し、白画面にならないことを確認する（現状Openリスク。失敗する場合は正式販売前に修正または仕様化）
+- [ ] CSV Formula Injectionテストが通り、Excel等で式として実行されない
+- [ ] 本番成果物に楽天Application ID・シークレットが含まれない
 
 ## 販売物
 
