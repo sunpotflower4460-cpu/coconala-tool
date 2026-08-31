@@ -3,6 +3,7 @@ import { AlertTriangle, FolderClock, Play, Save, Trash2 } from 'lucide-react';
 import { useHistoryStore, MAX_SESSIONS, wasSessionPersisted } from '../features/history/historyStore';
 import { useResearchStore } from '../store/researchStore';
 import { DATA_SOURCE_MODE_LABELS, SEARCH_STATUS_LABELS } from '../types/market';
+import { MAX_HISTORY_NAME_LENGTH } from '../lib/limits';
 
 type Props = {
   onLoadSession?: () => void;
@@ -65,6 +66,7 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
       <div className="mt-3 flex gap-2">
         <input
           type="text"
+          maxLength={MAX_HISTORY_NAME_LENGTH}
           value={name}
           onChange={(event) => setName(event.target.value)}
           placeholder="保存名（例: PS5 5月相場）"
@@ -118,7 +120,10 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
                 再開
               </button>
               <button
-                onClick={() => deleteSession(session.id)}
+                onClick={() => {
+                  if (!window.confirm('この履歴を削除しますか？元に戻せません。')) return;
+                  deleteSession(session.id);
+                }}
                 className="flex items-center gap-1 rounded-full border border-red-300/20 bg-red-400/10 px-2.5 py-1 text-[10px] text-red-200 hover:bg-red-400/20"
               >
                 <Trash2 size={11} />

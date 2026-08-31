@@ -2,6 +2,17 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { DataSourceMode, MarketCard, MarketSearchResponse, MarketSearchStatus, ProfitSettings, ThemeId } from '../types/market';
 import { clampAmount, clampFeeRate } from '../features/profit/profitCalculator';
+import { MAX_SEARCH_QUERY_LENGTH } from '../lib/limits';
+import {
+  RESEARCH_PERSIST_VERSION,
+  RESEARCH_STORAGE_KEY,
+  defaultProfitSettings,
+  sanitizeCards,
+  sanitizeDataSourceMode,
+  sanitizeProfitSettings,
+  sanitizeResearchPersisted,
+  sanitizeThemeId,
+} from '../lib/persistSanitize';
 
 type PriceField = 'buyPrice' | 'sellPrice';
 
@@ -36,16 +47,11 @@ type ResearchStore = {
     profitSettings: ProfitSettings;
     dataSourceMode?: DataSourceMode;
   }) => void;
+  clearSearch: () => void;
   resetSession: () => void;
 };
 
-const defaultProfitSettings: ProfitSettings = {
-  buyPrice: 0,
-  sellPrice: 0,
-  shippingCost: 0,
-  feeRate: 10,
-  exchangeRate: 155,
-};
+export { defaultProfitSettings };
 
 export const useResearchStore = create<ResearchStore>()(
   persist(
@@ -63,22 +69,24 @@ export const useResearchStore = create<ResearchStore>()(
       isSearching: false,
       lastSearchedAt: null,
 
-      setQuery: (q) => set({ query: q }),
+      setQuery: (q) => set({ query: q.slice(0, MAX_SEARCH_QUERY_LENGTH) }),
 
       setSearchResult: (response) =>
         set({
-          resultCards: response.cards,
+          resultCards: sanitizeCards(response.cards),
           searchStatus: response.status,
-          searchWarnings: response.warnings,
+          searchWarnings: Array.isArray(response.warnings) ? response.warnings : [],
           lastSearchedAt: response.searchedAt,
         }),
 
       setIsSearching: (isSearching) => set({ isSearching }),
 
       addComparedCard: (card) => {
+        const sanitized = sanitizeCards([card])[0];
+        if (!sanitized) return;
         const { comparedCards } = get();
-        if (comparedCards.find((c) => c.id === card.id)) return;
-        set({ comparedCards: [...comparedCards, card] });
+        if (comparedCards.find((c) => c.id === sanitized.id)) return;
+        set({ comparedCards: [...comparedCards, sanitized] });
       },
 
       removeComparedCard: (id) => {
@@ -90,15 +98,27 @@ export const useResearchStore = create<ResearchStore>()(
       isCompared: (id) => get().comparedCards.some((c) => c.id === id),
 
       addManualCard: (card) => {
+        const sanitized = sanitizeCards([card])[0];
+        if (!sanitized) return;
         set((state) => ({
-          resultCards: [card, ...state.resultCards],
-          comparedCards: [...state.comparedCards, card],
+          resultCards: [sanitized, ...state.resultCards],
+          comparedCards: state.comparedCards.some((c) => c.id === sanitized.id)
+            ? state.comparedCards
+            : [...state.comparedCards, sanitized],
         }));
       },
 
-      setDataSourceMode: (mode) => set({ dataSourceMode: mode }),
+      setDataSourceMode: (mode) => {
+        const next = sanitizeDataSourceMode(mode);
+        if (!next) return;
+        set({ dataSourceMode: next });
+      },
 
-      setTheme: (theme) => set({ theme }),
+      setTheme: (theme) => {
+        const next = sanitizeThemeId(theme);
+        if (!next) return;
+        set({ theme: next });
+      },
 
       setProfitSettings: (settings) => {
         set((state) => ({
@@ -110,7 +130,6 @@ export const useResearchStore = create<ResearchStore>()(
             ...(settings.feeRate !== undefined && { feeRate: clampFeeRate(settings.feeRate) }),
             ...(settings.exchangeRate !== undefined && { exchangeRate: clampAmount(settings.exchangeRate) }),
           },
-          // 手動入力は、その項目のカード由来表示をクリアする。
           ...(settings.buyPrice !== undefined && { buyPriceSource: null }),
           ...(settings.sellPrice !== undefined && { sellPriceSource: null }),
         }));
@@ -125,16 +144,25 @@ export const useResearchStore = create<ResearchStore>()(
 
       loadResearchSession: (payload) =>
         set({
-          query: payload.query,
-          resultCards: payload.resultCards,
-          comparedCards: payload.comparedCards,
-          profitSettings: payload.profitSettings,
-          ...(payload.dataSourceMode !== undefined && { dataSourceMode: payload.dataSourceMode }),
+          query: typeof payload.query === 'string' ? payload.query.slice(0, MAX_SEARCH_QUERY_LENGTH) : '',
+          resultCards: sanitizeCards(payload.resultCards),
+          comparedCards: sanitizeCards(payload.comparedCards),
+          profitSettings: sanitizeProfitSettings(payload.profitSettings),
+          dataSourceMode: sanitizeDataSourceMode(payload.dataSourceMode) ?? get().dataSourceMode,
           buyPriceSource: null,
           sellPriceSource: null,
-          // 履歴からの復元はライブな検索結果ではないため、直近の検索状態バッジは表示しない。
           searchStatus: null,
           searchWarnings: [],
+          lastSearchedAt: null,
+        }),
+
+      clearSearch: () =>
+        set({
+          query: '',
+          resultCards: [],
+          searchStatus: null,
+          searchWarnings: [],
+          isSearching: false,
           lastSearchedAt: null,
         }),
 
@@ -154,12 +182,25 @@ export const useResearchStore = create<ResearchStore>()(
         })),
     }),
     {
-      name: 'coconala-tool-research',
+      name: RESEARCH_STORAGE_KEY,
+      version: RESEARCH_PERSIST_VERSION,
       partialize: (state) => ({
         dataSourceMode: state.dataSourceMode,
         theme: state.theme,
         profitSettings: state.profitSettings,
       }),
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...sanitizeResearchPersisted(persistedState),
+      }),
     },
   ),
 );
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === RESEARCH_STORAGE_KEY) {
+      void useResearchStore.persist.rehydrate();
+    }
+  });
+}

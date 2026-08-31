@@ -69,4 +69,12 @@ describe('ProfitPanel', () => {
     // sell 10000 - fee(10%)=1000 - buy 6000 - shipping 500 = 2500
     expect(await screen.findByText(/\+2,500/)).toBeInTheDocument();
   });
+
+  it('shows 0% fee as 0 instead of looking like the default 10', () => {
+    useResearchStore.setState({
+      profitSettings: { ...defaultProfitSettings, feeRate: 0 },
+    });
+    render(<ProfitPanel />);
+    expect(screen.getByLabelText('手数料率 (%)')).toHaveValue(0);
+  });
 });

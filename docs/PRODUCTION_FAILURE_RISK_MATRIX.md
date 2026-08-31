@@ -1,6 +1,6 @@
 # 本番故障リスク・再現テストマトリクス
 
-最終更新: 2026-09-01
+最終更新: 2026-08-31
 
 対象: 相場カード比較ボード (`coconala-tool`)
 
@@ -235,11 +235,11 @@
 ## CONC-05 同じアプリを複数タブで開き、両方から履歴保存/削除
 
 - 重大度: P1
-- 状態: Open
+- 状態: Protected
 - 故障: localStorageのlast-write-winsで別タブの更新を上書き
-- 再現: Tab A/Bを開く -> A保存 -> B保存/削除 -> 再読込
-- 期待結果（現状目標）: データ消失が起き得るため、正式仕様として「同時に複数タブで編集しない」を明記するか、storage event同期/競合解決を実装
-- 手動テスト: 本番ブラウザ2タブ
+- 再現: Tab A/Bを開く -> A保存 -> B保存/削除
+- 期待結果: 他タブの `storage` イベントで履歴/設定を再ハイドレートする。同時書き込みの完全なマージはしない
+- 自動テスト: 手動（2タブ）。再ハイドレート実装は `historyStore.ts` / `researchStore.ts`
 
 ---
 
@@ -248,12 +248,11 @@
 ## DATA-01 localStorage容量超過
 
 - 重大度: P1
-- 状態: Partial
+- 状態: Protected
 - 故障: 保存ボタンを押したのに再読込後に履歴が消える
 - 再現: `localStorage.setItem`をQuotaExceededErrorにする
-- 期待結果: 「保存に失敗」と表示し、成功扱いしない
-- 自動テスト: `historyStore.test.ts`で永続化失敗検知。UIのエラー表示は手動/E2Eで確認
-- 既知事項: in-memory一覧には一時的に保存済み項目が見える可能性があるため改善余地あり
+- 期待結果: 「保存に失敗」と表示し、成功扱いしない。メモリ上の一覧からも当該セッションを取り除く
+- 自動テスト: `historyStore.test.ts`
 
 ## DATA-02 ブラウザでStorage利用が禁止
 
@@ -267,19 +266,20 @@
 ## DATA-03 localStorage JSONが手動編集/破損
 
 - 重大度: P1
-- 状態: Open
+- 状態: Protected
 - 故障: Zustand hydration時に不正値・古い構造が混入し、画面クラッシュや誤計算
 - 再現: DevTools Applicationで `coconala-tool-research` / `coconala-tool-history` を壊れたJSONや型違いへ変更してreload
-- 期待結果: 既定値へフォールバックし、画面をクラッシュさせない。将来はversion/migrate/schema validationを追加する
-- 販売判定: 少なくとも壊れたJSONで白画面にならないことを手動確認
+- 期待結果: 既定値へフォールバックし、画面をクラッシュさせない。javascript: URLは除去。利益設定はクランプ
+- 自動テスト: `src/lib/persistSanitize.test.ts`, `researchStore.test.ts`, `e2e/core-flows.spec.ts`
 
 ## DATA-04 将来バージョンで保存形式を変更
 
 - 重大度: P1
-- 状態: Open
+- 状態: Protected
 - 故障: アップデート後に旧履歴が読めない
 - 再現: 現行localStorageスナップショットを保存 -> schema変更版で起動
-- 期待結果: persist version/migrateを導入するまでは破壊的変更をしない。変更時はmigration test必須
+- 期待結果: persist version と merge 時サニタイズで未知フィールドを無視し、壊れた値は既定へ戻す
+- 自動テスト: `src/lib/persistSanitize.test.ts`
 
 ## DATA-05 利益設定にNaN/Infinity/負数/100%超手数料
 
@@ -324,10 +324,20 @@
 ## USER-03 極端に長い手動タイトル/メモ/画像URL
 
 - 重大度: P2
-- 状態: Open
+- 状態: Protected
 - 故障: UI性能低下、localStorage容量圧迫
 - 再現: 数十万文字をフォームへ貼付
-- 期待結果: 将来maxLengthを設定。現状は購入者向けに通常の情報量での利用を前提とする
+- 期待結果: タイトル200 / メモ500 / URL 2000 等の maxLength で入力を制限する
+- 自動テスト: フォーム maxLength。サニタイズは `persistSanitize.test.ts`
+
+## USER-06 検索クリア（×）が比較と利益まで消える
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 「検索内容をクリア」と書いてあるのに比較ボードと利益入力が消える
+- 再現: 比較に追加してから検索欄の × を押す
+- 期待結果: 検索語と検索結果だけ消える。比較ボードと利益設定は残る
+- 自動テスト: `researchStore.test.ts`, `ProductSearchBar.test.tsx`, `e2e/core-flows.spec.ts`
 
 ## USER-04 同一URLを複数回手動追加
 
@@ -341,10 +351,11 @@
 ## USER-05 履歴削除を誤クリック
 
 - 重大度: P2
-- 状態: Open
+- 状態: Protected
 - 故障: 元に戻せない履歴削除
 - 再現: 履歴の削除をクリック
-- 期待結果: 現状即削除。販売後の問い合わせで頻発する場合は確認ダイアログ/Undoを追加
+- 期待結果: 確認ダイアログ後に削除。キャンセルなら残る
+- 自動テスト: `e2e/core-flows.spec.ts`
 
 ---
 
@@ -458,10 +469,11 @@
 ## SEC-06 手動画像URLによる外部トラッキング/混在コンテンツ
 
 - 重大度: P2
-- 状態: Open
-- 故障: 手動追加した画像URLへブラウザがアクセスし、第三者へIP/Referer等が渡る。HTTP画像はHTTPSページでブロックされる可能性
-- 再現: 自前サーバー画像URLを手動追加してnetwork確認
-- 期待結果: 購入者が入力した外部画像であることを理解できる。将来はHTTPS限定/画像非表示設定を検討
+- 状態: Protected
+- 故障: 手動追加した画像URLへブラウザがアクセスし、第三者へIP/Referer等が渡る。HTTP画像はHTTPSページでブロックされる可能性。javascript: が img/href に入る
+- 再現: `javascript:alert(1)` や `http://` 画像URLを手動追加。履歴から javascript: カードを復元
+- 期待結果: ページURLは http/https のみ。画像URLは https のみ。危険URLはリンク/画像として描画しない
+- 自動テスト: `safeUrl.test.ts`, `ResultCard.test.tsx`, `manualCardFactory.test.ts`, `e2e/core-flows.spec.ts`
 
 ## SEC-07 CSV formula injection
 
@@ -516,9 +528,7 @@
 正式販売判断で特に認識しておくべき未完了項目:
 
 1. **公開 `/api/rakuten` のCLI濫用**: Origin検査だけでは完全防御できない。Cloudflare Rate Limiting/WAFを推奨。
-2. **複数タブ同時編集**: localStorageのlast-write-wins競合が残る。単一タブ運用を明記するか同期処理を追加。
-3. **破損/旧localStorageのschema validation**: persist version/migrationがまだ無い。アップデートで保存形式を壊さないこと。
-4. **極端に長い手動入力**: 検索語は100文字へ制限したが、手動タイトル/メモ等は上限未設定。
-5. **手動画像URL**: 外部画像ロードによるプライバシー/混在コンテンツリスク。
+2. **複数タブの同時書き込みマージ**: 他タブの更新は `storage` イベントで再読込するが、同時保存の3-way mergeはしない。
+3. **https の外部画像URL**: ユーザーが貼った https 画像は読み込む（トラッキングピクセルになり得る）。javascript/http は拒否済み。
 
-これらは「今すぐ全て機能追加する」より、販売スコープと運用に合わせて優先順位を決める。P0の公開プロキシ濫用対策だけは、本番Cloudflare設定時に必ず判断する。
+P0の公開プロキシ濫用対策だけは、本番Cloudflare設定時に必ず判断する。

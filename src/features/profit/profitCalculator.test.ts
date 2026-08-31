@@ -118,5 +118,10 @@ describe('profitCalculator', () => {
       const card = makeCard({ priceValue: undefined, currency: 'JPY' });
       expect(toJpyPrice(card, 155)).toBeUndefined();
     });
+
+    it('returns undefined for Infinity prices instead of producing Infinity円', () => {
+      const card = makeCard({ priceValue: Number.POSITIVE_INFINITY, currency: 'USD' });
+      expect(toJpyPrice(card, 155)).toBeUndefined();
+    });
   });
 });

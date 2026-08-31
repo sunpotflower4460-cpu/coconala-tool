@@ -2,15 +2,14 @@ import { Search, X } from 'lucide-react';
 import { useResearchStore } from '../store/researchStore';
 import { DataSourceModeSelector } from './DataSourceModeSelector';
 import { runMarketSearch } from '../services/marketAdapters/marketSearchService';
+import { MAX_SEARCH_QUERY_LENGTH } from '../lib/limits';
 
 type Props = {
   onSearch: () => void;
 };
 
-const MAX_SEARCH_QUERY_LENGTH = 100;
-
 export function ProductSearchBar({ onSearch }: Props) {
-  const { query, setQuery, setSearchResult, setIsSearching, isSearching, dataSourceMode, resetSession } =
+  const { query, setQuery, setSearchResult, setIsSearching, isSearching, dataSourceMode, clearSearch } =
     useResearchStore();
 
   async function handleSearch() {
@@ -59,8 +58,7 @@ export function ProductSearchBar({ onSearch }: Props) {
           {query && (
             <button
               onClick={() => {
-                setQuery('');
-                resetSession();
+                clearSearch();
               }}
               aria-label="検索内容をクリア"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/50 hover:text-ink transition"

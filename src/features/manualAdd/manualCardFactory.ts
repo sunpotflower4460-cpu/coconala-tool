@@ -1,6 +1,15 @@
 import type { MarketCard } from '../../types/market';
 import { detectSiteNameFromUrl } from './siteDetector';
 import { clampAmount } from '../profit/profitCalculator';
+import { toSafeHttpUrl, toSafeHttpsUrl } from '../../lib/safeUrl';
+import {
+  MAX_CARD_CONDITION_TEXT_LENGTH,
+  MAX_CARD_NOTE_LENGTH,
+  MAX_CARD_PRICE_TEXT_LENGTH,
+  MAX_CARD_SHIPPING_TEXT_LENGTH,
+  MAX_CARD_SITE_NAME_LENGTH,
+  MAX_CARD_TITLE_LENGTH,
+} from '../../lib/limits';
 
 let counter = 0;
 
@@ -25,24 +34,27 @@ export function createManualCard(params: {
   note?: string;
 }): MarketCard {
   const id = `manual-${Date.now()}-${++counter}`;
-  const detectedSite = params.siteName.trim() || detectSiteNameFromUrl(params.pageUrl);
+  const pageUrl = toSafeHttpUrl(params.pageUrl) ?? '';
+  const detectedSite = params.siteName.trim().slice(0, MAX_CARD_SITE_NAME_LENGTH) || detectSiteNameFromUrl(pageUrl);
   const numericPrice = parsePriceValue(params.priceText);
-  const title = params.title?.trim() || (detectedSite ? `${detectedSite} の出品` : '手動追加カード');
+  const title =
+    params.title?.trim().slice(0, MAX_CARD_TITLE_LENGTH) ||
+    (detectedSite ? `${detectedSite} の出品` : '手動追加カード');
 
   return {
     id,
     title,
     siteName: detectedSite || '不明',
     sourceType: 'manual',
-    priceText: params.priceText,
+    priceText: params.priceText.slice(0, MAX_CARD_PRICE_TEXT_LENGTH),
     priceValue: numericPrice,
     currency: params.currency ?? 'JPY',
-    imageUrl: params.imageUrl || undefined,
-    pageUrl: params.pageUrl,
-    shippingText: params.shippingText || undefined,
-    conditionText: params.conditionText || undefined,
+    imageUrl: toSafeHttpsUrl(params.imageUrl),
+    pageUrl,
+    shippingText: params.shippingText?.slice(0, MAX_CARD_SHIPPING_TEXT_LENGTH) || undefined,
+    conditionText: params.conditionText?.slice(0, MAX_CARD_CONDITION_TEXT_LENGTH) || undefined,
     confidence: 'high',
-    note: params.note || '手動追加',
+    note: (params.note || '手動追加').slice(0, MAX_CARD_NOTE_LENGTH),
     createdAt: new Date().toISOString(),
   };
 }

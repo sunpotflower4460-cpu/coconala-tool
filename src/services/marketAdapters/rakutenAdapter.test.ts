@@ -175,6 +175,49 @@ describe('rakutenAdapter.search', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
+  it('1件の壊れた商品で検索全体を mock_network に落とさず、有効な商品だけ残す', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      jsonResponse({
+        items: [
+          {
+            itemCode: 'bad',
+            itemName: 'broken',
+            itemPrice: { toLocaleString: () => { throw new Error('boom'); } },
+            itemUrl: 'javascript:alert(1)',
+          },
+          {
+            itemCode: 'shop:ok',
+            itemName: '正常な商品',
+            shopName: 'shop',
+            itemPrice: 1000,
+            mediumImageUrls: [],
+            itemUrl: 'https://item.rakuten.co.jp/shop/ok/',
+            postageFlag: 0,
+          },
+        ],
+        source: 'official_api',
+      }),
+    );
+
+    const result = await rakutenAdapter.search({ query: 'PS5' });
+
+    expect(result.status).toBe('official_api');
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0].id).toBe('rakuten-shop:ok');
+  });
+
+  it('商品は返ってきたが1件もカード化できない場合は empty と誤認せず mock_upstream_error', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      jsonResponse({
+        items: [{ itemCode: 'x', itemName: 'no-url', itemPrice: 1, itemUrl: 'javascript:alert(1)' }],
+        source: 'official_api',
+      }),
+    );
+
+    const result = await rakutenAdapter.search({ query: 'PS5' });
+    expect(result.status).toBe('mock_upstream_error');
+  });
+
   it('モックにフォールバックしても該当がない場合、候補キーワードの案内を含む', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ error: 'no_key', items: [] }, { status: 503 }));
 

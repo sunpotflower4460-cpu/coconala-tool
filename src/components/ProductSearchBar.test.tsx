@@ -26,10 +26,18 @@ describe('ProductSearchBar', () => {
     useResearchStore.setState({
       query: '',
       resultCards: [],
+      comparedCards: [],
       isSearching: false,
       searchStatus: null,
       searchWarnings: [],
       dataSourceMode: 'sample',
+      profitSettings: {
+        buyPrice: 0,
+        sellPrice: 0,
+        shippingCost: 0,
+        feeRate: 10,
+        exchangeRate: 155,
+      },
     });
   });
 
@@ -144,5 +152,34 @@ describe('ProductSearchBar', () => {
     await waitFor(() => expect(useResearchStore.getState().isSearching).toBe(false));
     expect(useResearchStore.getState().dataSourceMode).toBe('rakuten_mock');
     expect(onSearch).not.toHaveBeenCalled();
+  });
+
+  it('検索クリアは比較ボードと利益設定を消さない', async () => {
+    useResearchStore.setState({
+      comparedCards: [
+        {
+          id: 'keep-me',
+          title: '比較中カード',
+          siteName: 'sample',
+          sourceType: 'manual',
+          pageUrl: 'https://example.com/keep',
+          confidence: 'high',
+          createdAt: '2026-08-31T00:00:00.000Z',
+        },
+      ],
+      profitSettings: {
+        buyPrice: 1234,
+        sellPrice: 0,
+        shippingCost: 0,
+        feeRate: 10,
+        exchangeRate: 155,
+      },
+    });
+    render(<ProductSearchBar onSearch={() => {}} />);
+    await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), 'PS5');
+    await userEvent.click(screen.getByRole('button', { name: '検索内容をクリア' }));
+    expect(useResearchStore.getState().query).toBe('');
+    expect(useResearchStore.getState().comparedCards).toHaveLength(1);
+    expect(useResearchStore.getState().profitSettings.buyPrice).toBe(1234);
   });
 });

@@ -64,4 +64,10 @@ describe('ResultCard', () => {
     expect(await screen.findByRole('button', { name: /比較中/ })).toBeInTheDocument();
     expect(useResearchStore.getState().comparedCards).toHaveLength(1);
   });
+
+  it('javascript: の pageUrl では元ページリンクを出さない', () => {
+    render(<ResultCard card={makeCard({ pageUrl: 'javascript:alert(1)', imageUrl: 'javascript:alert(1)' })} />);
+    expect(screen.queryByRole('link', { name: '元ページを見る' })).not.toBeInTheDocument();
+    expect(screen.getByText('元ページなし')).toBeInTheDocument();
+  });
 });

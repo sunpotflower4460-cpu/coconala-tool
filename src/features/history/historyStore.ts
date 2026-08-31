@@ -2,6 +2,15 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { DataSourceMode, MarketSearchStatus, ProfitSettings, SavedResearchSession } from '../../types/market';
 import type { MarketCard } from '../../types/market';
+import { MAX_HISTORY_NAME_LENGTH, MAX_SEARCH_QUERY_LENGTH } from '../../lib/limits';
+import {
+  HISTORY_PERSIST_VERSION,
+  HISTORY_STORAGE_KEY,
+  sanitizeCards,
+  sanitizeDataSourceMode,
+  sanitizeHistoryPersisted,
+  sanitizeProfitSettings,
+} from '../../lib/persistSanitize';
 
 type SessionSnapshot = {
   name: string;
@@ -25,7 +34,7 @@ type HistoryStore = {
 /** localStorage 1件あたりの保存上限。超過分は古い履歴から自動的に破棄する。 */
 export const MAX_SESSIONS = 20;
 
-export const HISTORY_STORAGE_KEY = 'coconala-tool-history';
+export { HISTORY_STORAGE_KEY };
 
 /**
  * 実際に localStorage への書き込みが成功したかを確認する。
@@ -57,14 +66,14 @@ export const useHistoryStore = create<HistoryStore>()(
         const now = new Date().toISOString();
         const saved: SavedResearchSession = {
           id: createSessionId(),
-          name: snapshot.name,
-          query: snapshot.query,
-          resultCards: snapshot.resultCards,
-          comparedCards: snapshot.comparedCards,
-          profitSettings: snapshot.profitSettings,
-          dataSourceMode: snapshot.dataSourceMode,
+          name: snapshot.name.trim().slice(0, MAX_HISTORY_NAME_LENGTH) || `${snapshot.query || 'リサーチ'} ${new Date().toLocaleString()}`,
+          query: snapshot.query.slice(0, MAX_SEARCH_QUERY_LENGTH),
+          resultCards: sanitizeCards(snapshot.resultCards),
+          comparedCards: sanitizeCards(snapshot.comparedCards),
+          profitSettings: sanitizeProfitSettings(snapshot.profitSettings),
+          dataSourceMode: sanitizeDataSourceMode(snapshot.dataSourceMode) ?? 'sample',
           searchStatus: snapshot.searchStatus,
-          searchWarnings: snapshot.searchWarnings,
+          searchWarnings: Array.isArray(snapshot.searchWarnings) ? snapshot.searchWarnings : [],
           lastSearchedAt: snapshot.lastSearchedAt,
           createdAt: now,
           updatedAt: now,
@@ -73,6 +82,13 @@ export const useHistoryStore = create<HistoryStore>()(
         set((state) => ({
           sessions: [saved, ...state.sessions].slice(0, MAX_SESSIONS),
         }));
+
+        if (!wasSessionPersisted(saved.id)) {
+          set((state) => ({
+            sessions: state.sessions.filter((session) => session.id !== saved.id),
+          }));
+        }
+
         return saved;
       },
       deleteSession: (id) =>
@@ -83,6 +99,19 @@ export const useHistoryStore = create<HistoryStore>()(
     }),
     {
       name: HISTORY_STORAGE_KEY,
+      version: HISTORY_PERSIST_VERSION,
+      merge: (persistedState, currentState) => ({
+        ...currentState,
+        ...sanitizeHistoryPersisted(persistedState),
+      }),
     },
   ),
 );
+
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('storage', (event) => {
+    if (event.key === HISTORY_STORAGE_KEY) {
+      void useHistoryStore.persist.rehydrate();
+    }
+  });
+}

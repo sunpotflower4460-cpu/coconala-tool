@@ -3,6 +3,16 @@ import { X } from 'lucide-react';
 import { useResearchStore } from '../../store/researchStore';
 import { createManualCard } from './manualCardFactory';
 import { detectSiteNameFromUrl } from './siteDetector';
+import { toSafeHttpUrl, toSafeHttpsUrl } from '../../lib/safeUrl';
+import {
+  MAX_CARD_CONDITION_TEXT_LENGTH,
+  MAX_CARD_NOTE_LENGTH,
+  MAX_CARD_PRICE_TEXT_LENGTH,
+  MAX_CARD_SHIPPING_TEXT_LENGTH,
+  MAX_CARD_SITE_NAME_LENGTH,
+  MAX_CARD_TITLE_LENGTH,
+  MAX_URL_LENGTH,
+} from '../../lib/limits';
 
 type Props = {
   onClose: () => void;
@@ -11,15 +21,18 @@ type Props = {
 
 function validateUrlText(value: string): string {
   if (!value.trim()) return 'URLを入力してください。';
-  try {
-    const parsed = new URL(value);
-    if (!['http:', 'https:'].includes(parsed.protocol)) {
-      return 'http または https のURLを入力してください。';
-    }
-    return '';
-  } catch {
-    return 'URL形式が正しくありません。例: https://example.com/item';
+  if (!toSafeHttpUrl(value)) {
+    return 'http または https のURLを入力してください。';
   }
+  return '';
+}
+
+function validateImageUrlText(value: string): string {
+  if (!value.trim()) return '';
+  if (!toSafeHttpsUrl(value)) {
+    return '画像URLは https のみ利用できます。';
+  }
+  return '';
 }
 
 export function ManualAddPanel({ onClose, onSuccess }: Props) {
@@ -36,6 +49,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
     note: '',
   });
   const [urlError, setUrlError] = useState('');
+  const [imageUrlError, setImageUrlError] = useState('');
   const [duplicateWarning, setDuplicateWarning] = useState('');
 
   function checkDuplicate(url: string) {
@@ -62,8 +76,10 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const currentUrlError = validateUrlText(form.pageUrl);
+    const currentImageError = validateImageUrlText(form.imageUrl);
     setUrlError(currentUrlError);
-    if (currentUrlError) return;
+    setImageUrlError(currentImageError);
+    if (currentUrlError || currentImageError) return;
 
     const card = createManualCard({
       title: form.title || undefined,
@@ -97,12 +113,13 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
           <label className="flex flex-col gap-1 text-xs text-slate-400">
             URL <span className="text-red-400">*</span>
             <input
               required
               type="url"
+              maxLength={MAX_URL_LENGTH}
               value={form.pageUrl}
               onChange={(e) => {
                 const nextValue = e.target.value;
@@ -124,6 +141,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
             タイトル（任意）
             <input
               type="text"
+              maxLength={MAX_CARD_TITLE_LENGTH}
               value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               placeholder="空欄の場合はサイト名から自動生成されます"
@@ -135,6 +153,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
             サイト名
             <input
               type="text"
+              maxLength={MAX_CARD_SITE_NAME_LENGTH}
               value={form.siteName}
               onChange={(e) => setForm((f) => ({ ...f, siteName: e.target.value }))}
               placeholder="URLから自動検出されます"
@@ -147,6 +166,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
               価格
               <input
                 type="text"
+                maxLength={MAX_CARD_PRICE_TEXT_LENGTH}
                 value={form.priceText}
                 onChange={(e) => setForm((f) => ({ ...f, priceText: e.target.value }))}
                 placeholder="例: ¥5,000"
@@ -175,6 +195,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
               送料
               <input
                 type="text"
+                maxLength={MAX_CARD_SHIPPING_TEXT_LENGTH}
                 value={form.shippingText}
                 onChange={(e) => setForm((f) => ({ ...f, shippingText: e.target.value }))}
                 placeholder="例: 送料無料"
@@ -185,6 +206,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
               状態
               <input
                 type="text"
+                maxLength={MAX_CARD_CONDITION_TEXT_LENGTH}
                 value={form.conditionText}
                 onChange={(e) => setForm((f) => ({ ...f, conditionText: e.target.value }))}
                 placeholder="例: 新品"
@@ -197,16 +219,23 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
             画像URL（任意）
             <input
               type="url"
+              maxLength={MAX_URL_LENGTH}
               value={form.imageUrl}
-              onChange={(e) => setForm((f) => ({ ...f, imageUrl: e.target.value }))}
+              onChange={(e) => {
+                const nextValue = e.target.value;
+                setForm((f) => ({ ...f, imageUrl: nextValue }));
+                if (imageUrlError) setImageUrlError(validateImageUrlText(nextValue));
+              }}
               placeholder="https://..."
               className={inputClass}
             />
+            {imageUrlError && <span className="text-xs text-red-300">{imageUrlError}</span>}
           </label>
 
           <label className="flex flex-col gap-1 text-xs text-slate-400">
             メモ（任意）
             <textarea
+              maxLength={MAX_CARD_NOTE_LENGTH}
               value={form.note}
               onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))}
               placeholder="気づいた点など"
