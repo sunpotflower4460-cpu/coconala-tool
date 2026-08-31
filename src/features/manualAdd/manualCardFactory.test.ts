@@ -39,6 +39,17 @@ describe('createManualCard', () => {
     expect(card.priceValue).toBe(500);
   });
 
+  it('rejects javascript: pageUrl and imageUrl', () => {
+    const card = createManualCard(
+      baseParams({
+        pageUrl: 'javascript:alert(1)',
+        imageUrl: 'javascript:alert(1)',
+      }),
+    );
+    expect(card.pageUrl).toBe('');
+    expect(card.imageUrl).toBeUndefined();
+  });
+
   it('caps an absurdly large price at MAX_AMOUNT', () => {
     const card = createManualCard(baseParams({ priceText: '999999999999999' }));
     expect(card.priceValue).toBe(MAX_AMOUNT);

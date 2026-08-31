@@ -103,3 +103,56 @@ test('リサーチ履歴: 保存して一覧に表示され、再開すると保
   await page.getByRole('button', { name: '再開' }).click();
   await expect(page.getByText('比較ボード (1件)')).toBeVisible();
 });
+
+test('検索クリアは比較ボードを消さない', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('商品名・型番・JAN・URL').fill('PS5');
+  await page.getByRole('button', { name: 'まとめて探す' }).click();
+  await page.getByRole('button', { name: '比較に追加' }).first().click();
+  await expect(page.getByText('比較ボード (1件)')).toBeVisible();
+
+  await page.getByRole('button', { name: '検索内容をクリア' }).click();
+  await expect(page.getByText('比較ボード (1件)')).toBeVisible();
+});
+
+test('手動追加: javascript URL は拒否される', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('商品名・型番・JAN・URL').fill('PS5');
+  await page.getByRole('button', { name: 'まとめて探す' }).click();
+  await expect(page.getByText(/検索結果 \(\d+件\)/)).toBeVisible();
+
+  await page.getByRole('button', { name: '手動で追加' }).click();
+  const urlInput = page.locator('input[type="url"]').first();
+  await urlInput.fill('javascript:alert(1)');
+  await page.locator('form button[type="submit"]').click();
+  await expect(page.getByText(/http または https のURLを入力してください/)).toBeVisible();
+  await expect(page.getByText('E2Eテスト商品')).toHaveCount(0);
+});
+
+test('壊れた localStorage でも白画面にならない', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('coconala-tool-research', '{not-json');
+    localStorage.setItem(
+      'coconala-tool-history',
+      JSON.stringify({ state: { sessions: 'broken' }, version: 0 }),
+    );
+  });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: '相場カード比較ボード' })).toBeVisible();
+  await page.getByLabel('商品名・型番・JAN・URL').fill('PS5');
+  await page.getByRole('button', { name: 'まとめて探す' }).click();
+  await expect(page.getByText(/検索結果 \(\d+件\)/)).toBeVisible();
+});
+
+test('履歴削除は確認ダイアログ後に消える', async ({ page }) => {
+  await page.goto('/');
+  await page.getByLabel('商品名・型番・JAN・URL').fill('PS5');
+  await page.getByRole('button', { name: 'まとめて探す' }).click();
+  await page.getByLabel('保存名').fill('削除確認テスト');
+  await page.getByRole('button', { name: '保存' }).click();
+  await expect(page.getByText('削除確認テスト')).toBeVisible();
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: '削除' }).click();
+  await expect(page.getByText('削除確認テスト')).toHaveCount(0);
+});

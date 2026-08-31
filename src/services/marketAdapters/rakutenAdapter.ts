@@ -1,5 +1,5 @@
 import type { MarketAdapter, MarketSearchRequest, MarketSearchResponse } from './types';
-import type { MarketSearchStatus } from '../../types/market';
+import type { MarketCard, MarketSearchStatus } from '../../types/market';
 import { mapRakutenItemToMarketCard } from './rakutenMapper';
 import { searchRakutenMockItems } from '../../mocks/rakutenSearchMock';
 import type { RakutenMockItem } from '../../mocks/rakutenSearchMock';
@@ -41,10 +41,16 @@ const ERROR_CODE_TO_MOCK_STATUS: Partial<Record<string, MockStatus>> = {
 };
 
 /** 実APIに到達できないときのフォールバック。UXを壊さないよう必ずカードを返す。 */
+function mapItemsToCards(items: RakutenMockItem[]): MarketCard[] {
+  return items
+    .map((item) => mapRakutenItemToMarketCard(item))
+    .filter((card): card is MarketCard => Boolean(card));
+}
+
 function toMockResponse(query: string, limit: number, status: MockStatus): MarketSearchResponse {
   const response = searchRakutenMockItems(query, limit);
-  const cards = response.Items.map(({ Item }) => ({
-    ...mapRakutenItemToMarketCard(Item),
+  const cards = mapItemsToCards(response.Items.map(({ Item }) => Item)).map((card) => ({
+    ...card,
     note: '楽天市場 公式API想定モック',
     demoOrigin: 'mock' as const,
   }));
@@ -105,8 +111,14 @@ export const rakutenAdapter: MarketAdapter = {
         return { cards: [], status: 'empty', warnings: [EMPTY_WARNING], searchedAt: new Date().toISOString() };
       }
 
+      const cards = mapItemsToCards(data.items);
+      if (!cards.length) {
+        // 商品は返ってきたが、必須URL等が欠けて1件もカード化できない = 契約不整合。
+        return toMockResponse(trimmed, limit, 'mock_upstream_error');
+      }
+
       return {
-        cards: data.items.map((item) => mapRakutenItemToMarketCard(item)),
+        cards,
         status: 'official_api',
         warnings: [REAL_WARNING],
         searchedAt: new Date().toISOString(),

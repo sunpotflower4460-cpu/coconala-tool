@@ -3,6 +3,7 @@ import { ExternalLink, X } from 'lucide-react';
 import { useResearchStore } from '../store/researchStore';
 import type { MarketCard } from '../types/market';
 import { toJpyPrice } from '../features/profit/profitCalculator';
+import { toSafeHttpUrl, toSafeHttpsUrl } from '../lib/safeUrl';
 
 function CompareCardItem({ card }: { card: MarketCard }) {
   const [imageError, setImageError] = useState(false);
@@ -10,6 +11,8 @@ function CompareCardItem({ card }: { card: MarketCard }) {
   const normalizedPrice = toJpyPrice(card, profitSettings.exchangeRate);
   const hasPrice = typeof normalizedPrice === 'number';
   const priceSourceLabel = `${card.siteName}${card.priceText ? ` ${card.priceText}` : ''}`;
+  const safePageUrl = toSafeHttpUrl(card.pageUrl);
+  const safeImageUrl = toSafeHttpsUrl(card.imageUrl);
   const handleUseAsBuy = () => {
     if (normalizedPrice === undefined) return;
     applyPriceFromCard('buyPrice', normalizedPrice, priceSourceLabel);
@@ -21,9 +24,9 @@ function CompareCardItem({ card }: { card: MarketCard }) {
 
   return (
     <div className="glass-card flex items-center gap-3 p-3">
-      {card.imageUrl && !imageError ? (
+      {safeImageUrl && !imageError ? (
         <img
-          src={card.imageUrl}
+          src={safeImageUrl}
           alt={card.title}
           className="h-12 w-16 shrink-0 rounded-lg object-cover"
           onError={() => setImageError(true)}
@@ -69,15 +72,19 @@ function CompareCardItem({ card }: { card: MarketCard }) {
         >
           <X size={16} />
         </button>
-        <a
-          href={card.pageUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="元ページを開く"
-          className="flex h-9 w-11 items-center justify-center rounded-control text-ink/55 hover:bg-white/10 hover:text-ink transition"
-        >
-          <ExternalLink size={14} />
-        </a>
+        {safePageUrl ? (
+          <a
+            href={safePageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="元ページを開く"
+            className="flex h-9 w-11 items-center justify-center rounded-control text-ink/55 hover:bg-white/10 hover:text-ink transition"
+          >
+            <ExternalLink size={14} />
+          </a>
+        ) : (
+          <span className="flex h-9 w-11 items-center justify-center text-[10px] text-ink/35">—</span>
+        )}
       </div>
     </div>
   );

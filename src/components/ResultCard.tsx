@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { SOURCE_TYPE_LABELS, type MarketCard } from '../types/market';
 import { useResearchStore } from '../store/researchStore';
 import { ExternalLink, PlusCircle, CheckCircle } from 'lucide-react';
+import { toSafeHttpUrl, toSafeHttpsUrl } from '../lib/safeUrl';
 
 type Props = {
   card: MarketCard;
@@ -32,6 +33,8 @@ export function ResultCard({ card }: Props) {
   const [imageError, setImageError] = useState(false);
   const { addComparedCard, removeComparedCard, isCompared } = useResearchStore();
   const compared = isCompared(card.id);
+  const safePageUrl = toSafeHttpUrl(card.pageUrl);
+  const safeImageUrl = toSafeHttpsUrl(card.imageUrl);
 
   return (
     <div className="glass-card group flex flex-col overflow-hidden">
@@ -46,9 +49,9 @@ export function ResultCard({ card }: Props) {
 
       {/* Image */}
       <div className="relative z-10 h-44 overflow-hidden bg-slate-800">
-        {card.imageUrl && !imageError ? (
+        {safeImageUrl && !imageError ? (
           <img
-            src={card.imageUrl}
+            src={safeImageUrl}
             alt={card.title}
             className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
             onError={() => setImageError(true)}
@@ -93,15 +96,21 @@ export function ResultCard({ card }: Props) {
         </div>
 
         <div className="flex gap-2 pt-1">
-          <a
-            href={card.pageUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex flex-1 items-center justify-center gap-1 rounded-control border border-white/12 py-2 text-xs text-ink/80 hover:bg-white/10 transition"
-          >
-            <ExternalLink size={13} />
-            元ページを見る
-          </a>
+          {safePageUrl ? (
+            <a
+              href={safePageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-1 items-center justify-center gap-1 rounded-control border border-white/12 py-2 text-xs text-ink/80 hover:bg-white/10 transition"
+            >
+              <ExternalLink size={13} />
+              元ページを見る
+            </a>
+          ) : (
+            <span className="flex flex-1 items-center justify-center rounded-control border border-white/12 py-2 text-xs text-ink/45">
+              元ページなし
+            </span>
+          )}
           <button
             onClick={() =>
               compared ? removeComparedCard(card.id) : addComparedCard(card)

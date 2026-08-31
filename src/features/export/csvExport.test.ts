@@ -83,6 +83,15 @@ describe('buildResearchCsv', () => {
     }
   });
 
+  it('neutralizes tab/CR-prefixed formula injection payloads', () => {
+    const card = makeCard({ title: '\t=HYPERLINK("https://evil.example")' });
+    const csv = buildResearchCsv([card], profitSettings, '2026-06-24T00:00:00.000Z');
+    const dataLine = csv.split('\n')[1];
+    expect(dataLine.startsWith('\t=')).toBe(false);
+    expect(dataLine.startsWith('=HYPERLINK')).toBe(false);
+    expect(dataLine).toContain("'=HYPERLINK");
+  });
+
   it('does not alter a benign title that happens to contain these characters mid-string', () => {
     const card = makeCard({ title: 'PS5 CFI-2000A01 (新品)' });
     const csv = buildResearchCsv([card], profitSettings, '2026-06-24T00:00:00.000Z');

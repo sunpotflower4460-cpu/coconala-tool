@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## v0.9.0-rc.9 — 本番故障リスクの残バグ修正
+
+開発AIが見落としていた本番故障経路を、QA観点で再現テスト付きで塞いだ。
+
+- 壊れた / 型違い localStorage を persist merge でサニタイズし、白画面や NaN円を防ぐ
+- `javascript:` / `data:` / HTTP画像URLをカード描画・手動追加・履歴復元から排除
+- 楽天商品で https 商品URLが無いカードを落とす。1件の壊れた商品で検索全体を通信失敗扱いにしない
+- 検索クリア（×）が比較ボードと利益設定まで消していたデータ消失を修正
+- 手数料率 0% が空欄＋プレースホルダ 10 に見えていた表示不整合を修正
+- CSV のタブ/CR 起点 Formula Injection を無害化
+- 履歴保存失敗時にメモリ上の一覧からも取り除く。削除は確認ダイアログ
+- 手動入力に maxLength。Error Boundary で予期せぬ描画例外から復旧
+- 他タブの localStorage 変更を `storage` イベントで再ハイドレート
+- 再現手順と期待結果は `docs/PRODUCTION_FAILURE_RISK_MATRIX.md`
+
 ## v0.9.0-rc.8 — sticky ヘッダーの視認性強化（UI/UX調整）
 
 - スクロール中、sticky ヘッダーの背景が薄すぎて下を通過するカードの文字と重なって見える

@@ -52,7 +52,7 @@ CIで自動実行されるもの（`.github/workflows/ci.yml`）:
 - [ ] 検索中にデータソースを変更しても、旧モードの結果が混入しない
 - [ ] 別origin / same-siteブラウザアクセスが `/api/rakuten` で403になる
 - [ ] localStorage容量超過時に履歴保存失敗が利用者へ分かる
-- [ ] localStorageを壊れたJSONへ変更して再読込し、白画面にならないことを確認する（現状Openリスク。失敗する場合は正式販売前に修正または仕様化）
+- [ ] localStorageを壊れたJSONへ変更して再読込し、白画面にならないことを確認する
 - [ ] CSV Formula Injectionテストが通り、Excel等で式として実行されない
 - [ ] 本番成果物に楽天Application ID・シークレットが含まれない
 

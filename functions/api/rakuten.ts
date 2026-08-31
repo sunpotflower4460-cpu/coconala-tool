@@ -239,7 +239,7 @@ async function handleGet(context: PagesFunctionContext, requestId: string): Prom
           ? ((entry as { Item: Record<string, unknown> }).Item ?? {})
           : (entry as Record<string, unknown>);
       return normalizeItem(record ?? {});
-    }).filter((item) => item.itemCode && item.itemName);
+    }).filter((item) => item.itemCode && item.itemName && item.itemUrl);
 
     return successResponse(items, requestId);
   } catch (err) {

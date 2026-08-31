@@ -61,4 +61,75 @@ describe('researchStore profit settings validation', () => {
     useResearchStore.getState().resetSession();
     expect(useResearchStore.getState().buyPriceSource).toBeNull();
   });
+
+  it('clearSearch keeps compared cards and profit settings', () => {
+    useResearchStore.setState({
+      query: 'PS5',
+      resultCards: [
+        {
+          id: 'c1',
+          title: 'PS5',
+          siteName: 'sample',
+          sourceType: 'manual',
+          pageUrl: 'https://example.com/ps5',
+          confidence: 'high',
+          createdAt: '2026-08-31T00:00:00.000Z',
+        },
+      ],
+      comparedCards: [
+        {
+          id: 'c1',
+          title: 'PS5',
+          siteName: 'sample',
+          sourceType: 'manual',
+          pageUrl: 'https://example.com/ps5',
+          confidence: 'high',
+          createdAt: '2026-08-31T00:00:00.000Z',
+        },
+      ],
+      profitSettings: { ...defaultProfitSettings, buyPrice: 8000 },
+    });
+    useResearchStore.getState().clearSearch();
+    expect(useResearchStore.getState().query).toBe('');
+    expect(useResearchStore.getState().resultCards).toHaveLength(0);
+    expect(useResearchStore.getState().comparedCards).toHaveLength(1);
+    expect(useResearchStore.getState().profitSettings.buyPrice).toBe(8000);
+  });
+
+  it('loadResearchSession sanitizes NaN profit and javascript URLs', () => {
+    useResearchStore.getState().loadResearchSession({
+      query: 'x'.repeat(200),
+      resultCards: [
+        {
+          id: 'xss',
+          title: 'evil',
+          siteName: 'x',
+          sourceType: 'manual',
+          pageUrl: 'javascript:alert(1)',
+          imageUrl: 'javascript:alert(1)',
+          confidence: 'high',
+          createdAt: '2026-08-31T00:00:00.000Z',
+        },
+      ],
+      comparedCards: [],
+      profitSettings: {
+        buyPrice: Number.NaN,
+        sellPrice: Number.POSITIVE_INFINITY,
+        shippingCost: -1,
+        feeRate: 250,
+        exchangeRate: Number.NaN,
+      },
+    });
+    const state = useResearchStore.getState();
+    expect(state.query).toHaveLength(100);
+    expect(state.resultCards[0].pageUrl).toBe('');
+    expect(state.resultCards[0].imageUrl).toBeUndefined();
+    expect(state.profitSettings).toEqual({
+      buyPrice: 0,
+      sellPrice: 0,
+      shippingCost: 0,
+      feeRate: 100,
+      exchangeRate: 0,
+    });
+  });
 });

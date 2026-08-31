@@ -209,7 +209,7 @@ describe('functions/api/rakuten onRequest', () => {
     expect(body.error).toBe('timeout');
   });
 
-  it('http のURLは除外し、https のURLのみ通す', async () => {
+  it('http の商品URLはカードごと除外する', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       upstreamJsonResponse({
         Items: [
@@ -229,8 +229,7 @@ describe('functions/api/rakuten onRequest', () => {
     );
     const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5', appId: 'key' }));
     const body = await readJson(res);
-    expect(body.items[0].itemUrl).toBe('');
-    expect(body.items[0].mediumImageUrls).toHaveLength(0);
+    expect(body.items).toHaveLength(0);
   });
 
   it('商品名・ショップ名が最大長でクランプされる', async () => {
@@ -263,7 +262,7 @@ describe('functions/api/rakuten onRequest', () => {
         Items: [
           { Item: { itemCode: '', itemName: '名前だけ', itemPrice: 1000 } },
           { Item: { itemCode: 'shop:2', itemName: '', itemPrice: 1000 } },
-          { Item: { itemCode: 'shop:3', itemName: '正常', itemPrice: -50, mediumImageUrls: [] } },
+          { Item: { itemCode: 'shop:3', itemName: '正常', itemPrice: -50, mediumImageUrls: [], itemUrl: 'https://item.rakuten.co.jp/shop/3/' } },
         ],
       }),
     );
@@ -272,6 +271,35 @@ describe('functions/api/rakuten onRequest', () => {
     expect(body.items).toHaveLength(1);
     expect(body.items[0].itemCode).toBe('shop:3');
     expect(body.items[0].itemPrice).toBe(0);
+  });
+
+  it('https の商品URLが無い壊れた商品はレスポンスから除外する', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      upstreamJsonResponse({
+        Items: [
+          {
+            Item: {
+              itemCode: 'shop:http',
+              itemName: 'HTTP商品',
+              itemPrice: 1000,
+              itemUrl: 'http://insecure.example.com/item',
+            },
+          },
+          {
+            Item: {
+              itemCode: 'shop:ok',
+              itemName: 'HTTPS商品',
+              itemPrice: 2000,
+              itemUrl: 'https://item.rakuten.co.jp/shop/ok/',
+            },
+          },
+        ],
+      }),
+    );
+    const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5', appId: 'key' }));
+    const body = await readJson(res);
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0].itemCode).toBe('shop:ok');
   });
 
   it('正常応答には items / source / status / requestId が含まれる', async () => {

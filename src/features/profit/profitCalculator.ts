@@ -39,7 +39,10 @@ export function profitBadge(profit: number, margin: number) {
 }
 
 export function toJpyPrice(card: MarketCard, exchangeRate: number): number | undefined {
-  if (typeof card.priceValue !== 'number' || Number.isNaN(card.priceValue)) return undefined;
-  if (card.currency === 'USD') return Math.round(card.priceValue * exchangeRate);
+  if (typeof card.priceValue !== 'number' || !Number.isFinite(card.priceValue)) return undefined;
+  if (card.currency === 'USD') {
+    const converted = card.priceValue * (Number.isFinite(exchangeRate) ? exchangeRate : 0);
+    return Number.isFinite(converted) ? Math.round(converted) : undefined;
+  }
   return Math.round(card.priceValue);
 }

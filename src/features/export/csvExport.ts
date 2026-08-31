@@ -42,7 +42,8 @@ const cardHeader = [
  * 表計算ソフトが数式として評価しないよう先頭にテキストマーカー（`'`）を付与する。
  */
 function neutralizeFormula(value: string): string {
-  return /^[=+\-@]/.test(value) ? `'${value}` : value;
+  const withoutDangerousPrefix = value.replace(/^[\uFEFF\t\r\n\0]+/, '');
+  return /^[=+\-@]/.test(withoutDangerousPrefix) ? `'${withoutDangerousPrefix}` : withoutDangerousPrefix;
 }
 
 function escapeCsvCell(value: string | number | undefined): string {

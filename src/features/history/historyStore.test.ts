@@ -106,6 +106,7 @@ describe('wasSessionPersisted', () => {
     });
     const saved = useHistoryStore.getState().saveSession(baseSnapshot());
     expect(wasSessionPersisted(saved.id)).toBe(false);
+    expect(useHistoryStore.getState().sessions.some((session) => session.id === saved.id)).toBe(false);
   });
 
   it('returns false when localStorage access itself throws', () => {
