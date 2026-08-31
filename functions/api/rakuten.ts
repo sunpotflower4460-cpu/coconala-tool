@@ -8,8 +8,9 @@
  * セキュリティ:
  *  - `SERVER_RAKUTEN_APP_ID` は Cloudflare Pages の環境変数（暗号化）に設定する。
  *  - `VITE_` プレフィックスのフロント変数には絶対に置かない。
- *  - GET 以外は 405。`q` は trim 後 1〜100文字、制御文字は除去。`limit` は 1〜30 に固定。
- *  - Origin ヘッダーが付いていて、かつ自ホストと異なる場合は 403（同一オリジン運用が基本）。
+ *  - GET 以外は 405。`q` は trim 後 1〜100文字、制御文字は除去。`limit` は整数 1〜30 に固定。
+ *  - Origin ヘッダーが付いている場合は完全な origin（scheme/host/port）が自ホストと一致する場合のみ許可する。
+ *    ブラウザの Sec-Fetch-Site が same-site / cross-site の場合も拒否する。
  *  - 上流通信には約8秒のタイムアウトを設定し、内部例外・Application ID をクライアントへ返さない。
  *
  * 利用:
@@ -38,6 +39,12 @@ const UPSTREAM_TIMEOUT_MS = 8_000;
 const MAX_TEXT_LENGTH = 200;
 const MAX_SHOP_NAME_LENGTH = 100;
 const MAX_URL_LENGTH = 2000;
+
+const RESPONSE_HEADERS = {
+  'content-type': 'application/json; charset=utf-8',
+  'cache-control': 'no-store',
+  'x-content-type-options': 'nosniff',
+} as const;
 
 /** フロントの rakutenMapper が期待する最小フィールド形へ正規化する。 */
 type NormalizedItem = {
@@ -72,7 +79,7 @@ function createRequestId(): string {
 function successResponse(items: NormalizedItem[], requestId: string): Response {
   return new Response(JSON.stringify({ items, source: 'official_api', status: 'ok', requestId }), {
     status: 200,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+    headers: RESPONSE_HEADERS,
   });
 }
 
@@ -93,7 +100,7 @@ function errorResponse(
     }),
     {
       status: httpStatus,
-      headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+      headers: RESPONSE_HEADERS,
     },
   );
 }
@@ -147,14 +154,28 @@ function isRakutenSearchPayload(value: unknown): value is { Items: unknown[] } {
   return Boolean(value) && typeof value === 'object' && Array.isArray((value as { Items?: unknown }).Items);
 }
 
+/**
+ * ブラウザからの別origin利用を抑止する。
+ * `Origin` が無いCLI等は許可するため、公開プロキシの濫用対策はCloudflare側のRate Limiting/WAFも併用する。
+ */
 function isSameOrigin(request: Request): boolean {
+  const fetchSite = request.headers.get('sec-fetch-site');
+  if (fetchSite === 'same-site' || fetchSite === 'cross-site') return false;
+
   const origin = request.headers.get('origin');
-  if (!origin) return true; // Origin 未送信（非ブラウザ・同一オリジンGET等）は許可する。
+  if (!origin) return true;
   try {
-    return new URL(origin).host === new URL(request.url).host;
+    return new URL(origin).origin === new URL(request.url).origin;
   } catch {
     return false;
   }
+}
+
+function parseLimit(value: string | null): number {
+  if (value === null || value.trim() === '') return DEFAULT_LIMIT;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return DEFAULT_LIMIT;
+  return Math.min(Math.max(Math.trunc(parsed), MIN_LIMIT), MAX_LIMIT);
 }
 
 async function handleGet(context: PagesFunctionContext, requestId: string): Promise<Response> {
@@ -166,13 +187,13 @@ async function handleGet(context: PagesFunctionContext, requestId: string): Prom
 
   const url = new URL(request.url);
   const rawQuery = stripControlChars((url.searchParams.get('q') ?? '').trim());
-  const limit = Math.min(Math.max(Number(url.searchParams.get('limit')) || DEFAULT_LIMIT, MIN_LIMIT), MAX_LIMIT);
+  const limit = parseLimit(url.searchParams.get('limit'));
 
   if (!rawQuery || rawQuery.length > MAX_QUERY_LENGTH) {
     return errorResponse('invalid_query', 400, requestId);
   }
 
-  const appId = env.SERVER_RAKUTEN_APP_ID;
+  const appId = env.SERVER_RAKUTEN_APP_ID?.trim();
   if (!appId) {
     // キー未設定: フロントはモックにフォールバックする。キー文字列は一切返さない。
     return errorResponse('no_key', 503, requestId);

@@ -15,6 +15,17 @@ function jsonResponse(body: unknown, init: MockInit = {}): Response {
   } as unknown as Response;
 }
 
+function brokenJsonResponse(): Response {
+  return {
+    ok: true,
+    status: 200,
+    headers: { get: () => 'application/json' },
+    json: async () => {
+      throw new SyntaxError('Unexpected end of JSON input');
+    },
+  } as unknown as Response;
+}
+
 describe('rakutenAdapter.search', () => {
   const originalFetch = globalThis.fetch;
 
@@ -58,6 +69,24 @@ describe('rakutenAdapter.search', () => {
     expect(result.status).toBe('empty');
     expect(result.cards).toHaveLength(0);
     expect(result.warnings.length).toBeGreaterThan(0);
+  });
+
+  it('200でもitems配列が無い場合は空検索と誤認せずmock_upstream_errorへフォールバックする', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ source: 'official_api', status: 'ok' }));
+
+    const result = await rakutenAdapter.search({ query: 'PS5' });
+
+    expect(result.status).toBe('mock_upstream_error');
+    expect(result.cards.every((c) => c.demoOrigin === 'mock')).toBe(true);
+  });
+
+  it('Content-TypeがJSONでも本文のJSON parseが壊れている場合はmock_upstream_error', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(brokenJsonResponse());
+
+    const result = await rakutenAdapter.search({ query: 'PS5' });
+
+    expect(result.status).toBe('mock_upstream_error');
+    expect(result.warnings.join(' ')).toContain('予期しない応答');
   });
 
   it('キー未設定(no_key)の場合、status=mock_no_key でモックにフォールバックする', async () => {
@@ -134,6 +163,16 @@ describe('rakutenAdapter.search', () => {
     const result = await promise;
 
     expect(result.status).toBe('mock_timeout');
+  });
+
+  it('空クエリではfetchせずemptyを返す', async () => {
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy;
+
+    const result = await rakutenAdapter.search({ query: '   ' });
+
+    expect(result.status).toBe('empty');
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 
   it('モックにフォールバックしても該当がない場合、候補キーワードの案内を含む', async () => {
