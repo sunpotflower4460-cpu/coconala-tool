@@ -21,7 +21,7 @@ APIキーやサーバー設定なしでも、サンプルデータとモック�
 | 項目 | 値 |
 |------|-----|
 | ビルドコマンド | `npm run build` |
-| 出力ディレクトリ | `dist` |
+| 出力ディレクトリ | `dist/client`（静的 SPA。Workers 成果物は `dist/coconala_tool`） |
 | 推奨 Node バージョン | 20.x（`.nvmrc` 参照） |
 
 ---
@@ -46,12 +46,12 @@ APIキーやサーバー設定なしでも、サンプルデータとモック�
 3. ビルド設定を以下の通り入力します：
    - **Framework preset**: Vite
    - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
+   - **Build output directory**: `dist/client`
    - **Node.js version**: `20`（Environment variables に `NODE_VERSION=20` を設定）
 4. 「Save and Deploy」をクリックします
 5. デプロイ完了後、発行された `*.pages.dev` URL でアプリが利用できます
 
-GitHub 連携で **Workers Builds**（チェック名 `Workers Builds: coconala-tool`）を使う場合は、リポジトリ直下の `wrangler.jsonc` が必要です。ダッシュボード上の Worker 名は `coconala-tool` と一致させてください。ビルドは `npm run build`、デプロイは `npx wrangler deploy`（または `npm run deploy`）です。`/api/rakuten` は `worker.ts` 経由で既存の Pages Function と同じハンドラを呼びます。
+GitHub 連携で **Workers Builds**（チェック名 `Workers Builds: coconala-tool`）を使う場合は、リポジトリ直下の `wrangler.jsonc` と `@cloudflare/vite-plugin` が必要です。ダッシュボード上の Worker 名は `coconala-tool` と一致させてください。ビルドは `npm run build`（プラグインが `dist/coconala_tool/wrangler.json` を生成）、デプロイは `npx wrangler deploy`（または `npm run deploy`）です。プレビューブランチは `npx wrangler versions upload` です。`/api/rakuten` は `worker.ts` 経由で既存の Pages Function と同じハンドラを呼びます。ローカル E2E 用の `npm run preview` は `vite preview` のままです（`wrangler dev` に変更しません）。
 
 ### メリット
 
@@ -99,7 +99,7 @@ GitHub 連携で **Workers Builds**（チェック名 `Workers Builds: coconala-
 3. フレームワークが「Vite」として自動検出されることを確認します
 4. ビルド設定を確認します：
    - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
+   - **Output Directory**: `dist/client`
 5. 「Deploy」をクリックします
 6. デプロイ完了後、発行された `*.vercel.app` URL でアプリが利用できます
 
@@ -153,7 +153,7 @@ GitHub 連携で **Workers Builds**（チェック名 `Workers Builds: coconala-
          - uses: peaceiris/actions-gh-pages@v4
            with:
              github_token: ${{ secrets.GITHUB_TOKEN }}
-             publish_dir: ./dist
+             publish_dir: ./dist/client
    ```
 
 3. リポジトリの Settings → Pages → Source を「gh-pages ブランチ」に設定します

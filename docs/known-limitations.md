@@ -16,4 +16,4 @@
 - 検索欄の「×」は検索語と検索結果だけを消し、比較ボードと利益設定は残します。
 - 履歴削除は確認ダイアログのあと実行されます。
 - 壊れた localStorage（不正JSON・型違い）は既定値へフォールバックし、アプリを落とさないようにしています。
-- Cloudflare Workers Builds は `wrangler.jsonc`（Worker 名 `coconala-tool`）で静的 SPA と `/api/rakuten` をデプロイします。楽天キーは `SERVER_RAKUTEN_APP_ID` をダッシュボードのシークレットに置きます。
+- Cloudflare Workers Builds は `wrangler.jsonc`（Worker 名 `coconala-tool`）と `@cloudflare/vite-plugin` で静的 SPA と `/api/rakuten` をデプロイします。楽天キーは `SERVER_RAKUTEN_APP_ID` をダッシュボードのシークレットに置きます。`npm run preview` は Playwright のため `vite preview` のままです。

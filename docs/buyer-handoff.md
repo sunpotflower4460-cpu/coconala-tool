@@ -57,7 +57,7 @@ npm run dev
 npm run build
 ```
 
-`dist/` フォルダが生成されます。このフォルダをホスティングサービスにアップロードすることで公開できます。
+`dist/client/` に静的 SPA が出力されます。静的ホストへ上げる場合はこのフォルダを使います。Cloudflare Workers へ出す場合は `npm run deploy`（中で `wrangler deploy`）を使います。
 
 ---
 
@@ -69,7 +69,7 @@ npm run build
 **Cloudflare Pages（推奨・楽天API正式対応）:**
 1. GitHub リポジトリに push
 2. Cloudflare Pages でリポジトリを連携
-3. ビルドコマンド: `npm run build`、出力ディレクトリ: `dist`
+3. ビルドコマンド: `npm run build`、出力ディレクトリ: `dist/client`
 
 **Vercel（静的UIのみ）:**
 1. GitHub リポジトリに push

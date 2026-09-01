@@ -48,7 +48,7 @@ npm run e2e     # Playwright E2E（初回のみ `npx playwright install --with-d
 ```
 
 - デプロイ用ビルドコマンド: `npm run build`
-- 出力ディレクトリ: `dist`
+- 出力ディレクトリ: `dist/client`（Workers 成果物は `dist/coconala_tool`）
 - デプロイ後の確認: [`docs/post-deploy-qa.md`](docs/post-deploy-qa.md)
 - CI（`.github/workflows/ci.yml`）は上記に加え `npm audit --audit-level=high` を実行します
 
