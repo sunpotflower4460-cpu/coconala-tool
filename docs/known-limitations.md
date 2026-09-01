@@ -17,3 +17,4 @@
 - 履歴削除は確認ダイアログのあと実行されます。
 - 壊れた localStorage（不正JSON・型違い）は既定値へフォールバックし、アプリを落とさないようにしています。
 - Cloudflare Workers Builds は `wrangler.jsonc`（Worker 名 `coconala-tool`）と `@cloudflare/vite-plugin` で静的 SPA と `/api/rakuten` をデプロイします。楽天キーは `SERVER_RAKUTEN_APP_ID` をダッシュボードのシークレットに置きます。`npm run preview` は Playwright のため `vite preview` のままです。
+- 納品物の品質ゲートは GitHub Actions の `build` です。Workers Builds の GitHub チェックは、ダッシュボードの API トークン切れや Git 連携不備で **リポジトリが正しくても即失敗**します。ログは Cloudflare ダッシュボードにだけあり、対処手順は `docs/deployment-guide.md` を参照してください。

@@ -11,6 +11,7 @@
 - 同一検索語でもリクエスト世代で古い応答を捨て、clear 後の再検索を上書きしない
 - JSON の null / プリミティブ / 配列応答を通信失敗ではなく上流契約不整合として分類する
 - Cloudflare Workers Builds 向けに `wrangler.jsonc`・Worker エントリ・`@cloudflare/vite-plugin` を追加（Worker 名 `coconala-tool`。既存 Pages Function と同じ `/api/rakuten` ハンドラ。E2E の `preview` は `vite preview` のまま）
+- Workers Builds の GitHub チェックが即失敗する場合は、リポジトリ設定ではなく Cloudflare ダッシュボードの API トークン / Git 連携を直す手順を `docs/deployment-guide.md` に追記（品質ゲートは GitHub Actions `build`）
 
 ## v0.9.0-rc.9 — 本番故障リスクの残バグ修正
 
