@@ -53,6 +53,18 @@ APIキーやサーバー設定なしでも、サンプルデータとモック�
 
 GitHub 連携で **Workers Builds**（チェック名 `Workers Builds: coconala-tool`）を使う場合は、リポジトリ直下の `wrangler.jsonc` と `@cloudflare/vite-plugin` が必要です。ダッシュボード上の Worker 名は `coconala-tool` と一致させてください。ビルドは `npm run build`（プラグインが `dist/coconala_tool/wrangler.json` を生成）、デプロイは `npx wrangler deploy`（または `npm run deploy`）です。プレビューブランチは `npx wrangler versions upload` です。`/api/rakuten` は `worker.ts` 経由で既存の Pages Function と同じハンドラを呼びます。ローカル E2E 用の `npm run preview` は `vite preview` のままです（`wrangler dev` に変更しません）。
 
+納品物の品質ゲートは GitHub Actions の `build` ジョブです（lint / test / build / e2e / audit）。Workers Builds の GitHub チェックは Cloudflare ダッシュボード側の Git 連携・API トークンで動き、リポジトリの設定が正しくても即失敗することがあります。失敗時のログは GitHub には出ず、ダッシュボードの Build History にだけあります。
+
+### Workers Builds が GitHub 上で即失敗する場合
+
+GitHub のチェック開始時刻と終了時刻が同じで、注釈もログもないときは、クローンや `npm run build` の前に Cloudflare 側で弾かれています。リポジトリの `wrangler.jsonc` をいじるより、ダッシュボードを直してください。
+
+1. [Workers Builds のトラブルシュート](https://developers.cloudflare.com/workers/ci-cd/builds/troubleshoot/) のとおり、**Build Configuration の API トークンが削除・再発行済み（stale）でないか**を確認する。該当する場合は新しいトークンを作って選び直し、Retry build する。
+2. Worker 名が `wrangler.jsonc` の `name`（`coconala-tool`）と一致しているか確認する。
+3. Build command を `npm run build`、Deploy command を `npx wrangler deploy`、非本番ブランチを `npx wrangler versions upload` にする。
+4. Git 連携そのものが壊れているときは、Settings → Builds から Git 連携を外して入れ直す。
+5. `account_id` は購入者の Cloudflare アカウントごとに違うため、このリポジトリには書きません。自分のアカウントで `wrangler deploy` するときだけ、必要ならローカルの設定や環境変数で指定してください。
+
 ### メリット
 
 - 無料枠が大きい（月 500 ビルド、帯域無制限）
