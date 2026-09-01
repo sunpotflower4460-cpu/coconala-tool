@@ -400,6 +400,152 @@ describe('functions/api/rakuten onRequest', () => {
     expect(body.items.every((item: { itemPrice: number }) => item.itemPrice !== 0)).toBe(true);
   });
 
+  it.each(['HEAD', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'] as const)(
+    '%s は GET 以外として 405 method_not_allowed',
+    async (method) => {
+      const res = await onRequest(makeContext({ method, search: '?q=PS5', appId: 'key' }));
+      expect(res.status).toBe(405);
+      expect((await readJson(res)).error).toBe('method_not_allowed');
+    },
+  );
+
+  it('q が重複する場合は先頭の値だけを使い、上流へ1キーワードだけ送る', async () => {
+    let capturedUrl = '';
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      capturedUrl = url;
+      return Promise.resolve(upstreamJsonResponse({ Items: [] }));
+    });
+    const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5&q=Nintendo', appId: 'key' }));
+    expect(res.status).toBe(200);
+    expect(new URL(capturedUrl).searchParams.get('keyword')).toBe('PS5');
+    expect(new URL(capturedUrl).searchParams.getAll('keyword')).toEqual(['PS5']);
+  });
+
+  it('Unicode / 絵文字の検索語はエンコードしたまま上流 keyword に渡す', async () => {
+    let capturedUrl = '';
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      capturedUrl = url;
+      return Promise.resolve(upstreamJsonResponse({ Items: [] }));
+    });
+    const query = 'ＰＳ５🎮';
+    const res = await onRequest(
+      makeContext({ method: 'GET', search: `?q=${encodeURIComponent(query)}`, appId: 'key' }),
+    );
+    expect(res.status).toBe(200);
+    expect(new URL(capturedUrl).searchParams.get('keyword')).toBe(query);
+  });
+
+  it('検索語に &applicationId= を混ぜても楽天の applicationId を上書きできない', async () => {
+    let capturedUrl = '';
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      capturedUrl = url;
+      return Promise.resolve(upstreamJsonResponse({ Items: [] }));
+    });
+    const injected = 'PS5&applicationId=attacker-key&hits=1';
+    await onRequest(
+      makeContext({ method: 'GET', search: `?q=${encodeURIComponent(injected)}`, appId: 'real-app-id' }),
+    );
+    const upstream = new URL(capturedUrl);
+    expect(upstream.searchParams.get('applicationId')).toBe('real-app-id');
+    expect(upstream.searchParams.getAll('applicationId')).toEqual(['real-app-id']);
+    expect(upstream.searchParams.get('keyword')).toBe(injected);
+  });
+
+  it('Origin: null は 403 forbidden_origin', async () => {
+    const res = await onRequest(
+      makeContext({ method: 'GET', search: '?q=PS5', origin: 'null', appId: 'key' }),
+    );
+    expect(res.status).toBe(403);
+    expect((await readJson(res)).error).toBe('forbidden_origin');
+  });
+
+  it('formatVersion=2 のフラット Items もカード化する', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      upstreamJsonResponse({
+        Items: [
+          {
+            itemCode: 'shop:flat',
+            itemName: 'フラット商品',
+            itemPrice: 3000,
+            itemUrl: 'https://item.rakuten.co.jp/shop/flat/',
+          },
+        ],
+      }),
+    );
+    const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5', appId: 'key' }));
+    const body = await readJson(res);
+    expect(res.status).toBe(200);
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0].itemCode).toBe('shop:flat');
+  });
+
+  it('文字列の正当価格は数値化し、カンマ付き・指数表記の異常値は除外する', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      upstreamJsonResponse({
+        Items: [
+          {
+            Item: {
+              itemCode: 'shop:str',
+              itemName: '文字価格',
+              itemPrice: '79800',
+              itemUrl: 'https://item.rakuten.co.jp/shop/str/',
+            },
+          },
+          {
+            Item: {
+              itemCode: 'shop:comma',
+              itemName: 'カンマ価格',
+              itemPrice: '79,800',
+              itemUrl: 'https://item.rakuten.co.jp/shop/comma/',
+            },
+          },
+          {
+            Item: {
+              itemCode: 'shop:sci',
+              itemName: '指数価格',
+              itemPrice: 1e20,
+              itemUrl: 'https://item.rakuten.co.jp/shop/sci/',
+            },
+          },
+        ],
+      }),
+    );
+    const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5', appId: 'key' }));
+    const body = await readJson(res);
+    expect(body.items.map((item: { itemCode: string }) => item.itemCode)).toEqual(['shop:str']);
+    expect(body.items[0].itemPrice).toBe(79800);
+  });
+
+  it('巨大な Items でも例外にせずキーを返さず、名前はクランプする', async () => {
+    const bulky = Array.from({ length: 80 }, (_, index) => ({
+      Item: {
+        itemCode: `shop:${index}`,
+        itemName: `商品${index}-${'あ'.repeat(400)}`,
+        itemPrice: 1000 + index,
+        itemUrl: `https://item.rakuten.co.jp/shop/${index}/`,
+      },
+    }));
+    globalThis.fetch = vi.fn().mockResolvedValue(upstreamJsonResponse({ Items: bulky }));
+    const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5', appId: 'super-secret-app-id' }));
+    const text = await res.text();
+    const body = JSON.parse(text) as { items: Array<{ itemName: string }> };
+    expect(res.status).toBe(200);
+    expect(body.items).toHaveLength(80);
+    expect(body.items[0].itemName.length).toBeLessThanOrEqual(200);
+    expect(text).not.toContain('super-secret-app-id');
+  });
+
+  it('上流200でも error フィールド付き JSON は契約不正として invalid_json', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      upstreamJsonResponse({ error: 'something-went-wrong', error_description: 'secret-detail' }),
+    );
+    const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5', appId: 'key' }));
+    const body = await readJson(res);
+    expect(res.status).toBe(502);
+    expect(body.error).toBe('invalid_json');
+    expect(JSON.stringify(body)).not.toContain('secret-detail');
+  });
+
   it('正当な 0 円商品は残す', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(
       upstreamJsonResponse({

@@ -249,4 +249,15 @@ describe('ProductSearchBar', () => {
     deferredB.resolveSearch(emptyResponse);
     await waitFor(() => expect(useResearchStore.getState().isSearching).toBe(false));
   });
+
+  it('Enter 連打でも検索中は2回目を送らない', async () => {
+    const deferred = deferredSearch();
+    const searchSpy = vi.spyOn(marketSearchService, 'runMarketSearch').mockReturnValue(deferred.promise);
+    render(<ProductSearchBar onSearch={() => {}} />);
+    const input = screen.getByLabelText('商品名・型番・JAN・URL');
+    await userEvent.type(input, 'PS5{Enter}{Enter}');
+    expect(searchSpy).toHaveBeenCalledTimes(1);
+    deferred.resolveSearch(emptyResponse);
+    await waitFor(() => expect(useResearchStore.getState().isSearching).toBe(false));
+  });
 });

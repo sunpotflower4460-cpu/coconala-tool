@@ -159,4 +159,72 @@ describe('researchStore search request identity', () => {
     expect(useResearchStore.getState().isSearching).toBe(false);
     expect(useResearchStore.getState().finishSearchIfCurrent(id as number)).toBe(false);
   });
+
+  it('履歴再開中は進行中検索を無効化し、公式ライブ状態を復元しない', () => {
+    const inFlight = useResearchStore.getState().beginSearch();
+    useResearchStore.getState().loadResearchSession({
+      query: 'Nintendo',
+      resultCards: [
+        {
+          id: 'restored',
+          title: '再開カード',
+          siteName: '楽天市場',
+          sourceType: 'official_api',
+          pageUrl: 'https://item.rakuten.co.jp/shop/ps5/',
+          confidence: 'high',
+          createdAt: '2026-08-31T00:00:00.000Z',
+        },
+      ],
+      comparedCards: [],
+      profitSettings: { ...defaultProfitSettings },
+      dataSourceMode: 'rakuten_mock',
+    });
+    expect(useResearchStore.getState().isCurrentSearchRequest(inFlight as number)).toBe(false);
+    expect(useResearchStore.getState().isSearching).toBe(false);
+    expect(useResearchStore.getState().searchStatus).toBeNull();
+    expect(useResearchStore.getState().query).toBe('Nintendo');
+    expect(useResearchStore.getState().resultCards[0]?.id).toBe('restored');
+  });
+
+  it('同じ id の比較カードは二重追加しない', () => {
+    const card = {
+      id: 'dup',
+      title: '同じカード',
+      siteName: 'sample',
+      sourceType: 'manual' as const,
+      pageUrl: 'https://example.com/item',
+      confidence: 'high' as const,
+      createdAt: '2026-08-31T00:00:00.000Z',
+    };
+    useResearchStore.getState().addComparedCard(card);
+    useResearchStore.getState().addComparedCard(card);
+    expect(useResearchStore.getState().comparedCards).toHaveLength(1);
+  });
+
+  it('persist 対象は theme / データソース / 利益設定だけで、検索中フラグは残さない', () => {
+    useResearchStore.setState({
+      isSearching: true,
+      query: 'PS5',
+      resultCards: [
+        {
+          id: 'c1',
+          title: 'PS5',
+          siteName: 'sample',
+          sourceType: 'manual',
+          pageUrl: 'https://example.com/ps5',
+          confidence: 'high',
+          createdAt: '2026-08-31T00:00:00.000Z',
+        },
+      ],
+    });
+    const persisted = JSON.parse(localStorage.getItem('coconala-tool-research') ?? '{}') as {
+      state?: Record<string, unknown>;
+    };
+    expect(persisted.state?.isSearching).toBeUndefined();
+    expect(persisted.state?.resultCards).toBeUndefined();
+    expect(persisted.state?.query).toBeUndefined();
+    expect(persisted.state).toHaveProperty('theme');
+    expect(persisted.state).toHaveProperty('dataSourceMode');
+    expect(persisted.state).toHaveProperty('profitSettings');
+  });
 });

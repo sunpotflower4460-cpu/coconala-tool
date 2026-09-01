@@ -90,4 +90,57 @@ describe('AppShell', () => {
 
     expect(await screen.findByText(/該当する候補が見つかりませんでした/)).toBeInTheDocument();
   });
+
+  it('履歴再開後は公式データ取得中バッジを出さない', async () => {
+    render(<AppShell />);
+    await runSearch('PS5', {
+      cards: [
+        {
+          id: 'r1',
+          title: 'PS5 本体',
+          siteName: '楽天市場',
+          sourceType: 'official_api',
+          priceText: '¥79,800',
+          priceValue: 79800,
+          currency: 'JPY',
+          pageUrl: 'https://item.rakuten.co.jp/shop/ps5/',
+          confidence: 'high',
+          createdAt: '2026-07-22T00:00:00.000Z',
+        },
+      ],
+      status: 'official_api',
+      warnings: ['楽天市場 公式API取得。価格・在庫は変動します。'],
+      searchedAt: '2026-07-22T00:00:00.000Z',
+    });
+    expect(await screen.findByText('公式データ取得中 — 楽天市場')).toBeInTheDocument();
+
+    useResearchStore.getState().loadResearchSession({
+      query: 'PS5',
+      resultCards: [
+        {
+          id: 'r1',
+          title: 'PS5 本体',
+          siteName: '楽天市場',
+          sourceType: 'official_api',
+          priceText: '¥79,800',
+          priceValue: 79800,
+          currency: 'JPY',
+          pageUrl: 'https://item.rakuten.co.jp/shop/ps5/',
+          confidence: 'high',
+          createdAt: '2026-07-22T00:00:00.000Z',
+        },
+      ],
+      comparedCards: [],
+      profitSettings: {
+        buyPrice: 0,
+        sellPrice: 0,
+        shippingCost: 0,
+        feeRate: 10,
+        exchangeRate: 155,
+      },
+    });
+
+    expect(await screen.findByText('デモ表示中 — サンプル/モックデータ')).toBeInTheDocument();
+    expect(screen.queryByText(/公式データ取得中/)).not.toBeInTheDocument();
+  });
 });

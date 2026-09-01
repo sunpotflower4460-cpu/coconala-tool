@@ -123,5 +123,12 @@ describe('profitCalculator', () => {
       const card = makeCard({ priceValue: Number.POSITIVE_INFINITY, currency: 'USD' });
       expect(toJpyPrice(card, 155)).toBeUndefined();
     });
+
+    it('為替レート 0 / 負数 / NaN では USD を ¥0 にせず換算不能にする', () => {
+      const card = makeCard({ priceValue: 100, currency: 'USD' });
+      expect(toJpyPrice(card, 0)).toBeUndefined();
+      expect(toJpyPrice(card, -155)).toBeUndefined();
+      expect(toJpyPrice(card, Number.NaN)).toBeUndefined();
+    });
   });
 });

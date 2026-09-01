@@ -18,6 +18,20 @@ describe('toSafeHttpUrl', () => {
   it('前後空白は trim したうえで判定する', () => {
     expect(toSafeHttpUrl('  https://example.com/a  ')).toBe('https://example.com/a');
   });
+
+  it('data / blob / file / vbscript / プロトコル相対 URL を拒否する', () => {
+    expect(toSafeHttpUrl('data:text/html,<script>alert(1)</script>')).toBeUndefined();
+    expect(toSafeHttpUrl('blob:https://example.com/uuid')).toBeUndefined();
+    expect(toSafeHttpUrl('file:///etc/passwd')).toBeUndefined();
+    expect(toSafeHttpUrl('vbscript:msgbox(1)')).toBeUndefined();
+    expect(toSafeHttpUrl('//evil.example.com/item')).toBeUndefined();
+  });
+
+  it('javascript: の大文字・空白・タブ混在も拒否する', () => {
+    expect(toSafeHttpUrl('JavaScript:alert(1)')).toBeUndefined();
+    expect(toSafeHttpUrl('\tjavascript:alert(1)')).toBeUndefined();
+    expect(toSafeHttpsUrl(' JavaScript:alert(1) ')).toBeUndefined();
+  });
 });
 
 describe('toSafeHttpsUrl', () => {
