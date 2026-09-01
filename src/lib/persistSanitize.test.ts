@@ -9,6 +9,7 @@ import {
   sanitizeSavedSession,
   sanitizeSearchStatus,
   sanitizeSearchWarnings,
+  sanitizeThemeId,
   migrateHistoryPersisted,
   defaultProfitSettings,
 } from './persistSanitize';
@@ -258,5 +259,26 @@ describe('sanitizeCards', () => {
   it('配列以外は空配列', () => {
     expect(sanitizeCards(undefined)).toEqual([]);
     expect(sanitizeCards({ id: 'x' })).toEqual([]);
+  });
+});
+
+describe('prototype pollution / unknown keys', () => {
+  it('JSON の __proto__ / constructor をテーマや利益に採用しない', () => {
+    const polluted = JSON.parse('{"__proto__":{"theme":"hacked"},"constructor":{"prototype":{"theme":"hacked"}}}');
+    expect(sanitizeResearchPersisted(polluted)).toEqual({});
+    expect(sanitizeThemeId(({} as { theme?: string }).theme)).toBeUndefined();
+  });
+
+  it('未知フィールドを混入しても許可キー以外は残さない', () => {
+    const result = sanitizeResearchPersisted({
+      theme: 'dark-trader',
+      isSearching: true,
+      query: '<script>alert(1)</script>',
+      extra: { nested: true },
+    });
+    expect(result).toEqual({ theme: 'dark-trader' });
+    expect(result).not.toHaveProperty('isSearching');
+    expect(result).not.toHaveProperty('query');
+    expect(result).not.toHaveProperty('extra');
   });
 });

@@ -41,7 +41,9 @@ export function profitBadge(profit: number, margin: number) {
 export function toJpyPrice(card: MarketCard, exchangeRate: number): number | undefined {
   if (typeof card.priceValue !== 'number' || !Number.isFinite(card.priceValue)) return undefined;
   if (card.currency === 'USD') {
-    const converted = card.priceValue * (Number.isFinite(exchangeRate) ? exchangeRate : 0);
+    // レート未入力・0 は「0円」にせず換算不能として扱う。$100 × 0 = ¥0 の誤適用を防ぐ。
+    if (!Number.isFinite(exchangeRate) || exchangeRate <= 0) return undefined;
+    const converted = card.priceValue * exchangeRate;
     return Number.isFinite(converted) ? Math.round(converted) : undefined;
   }
   return Math.round(card.priceValue);

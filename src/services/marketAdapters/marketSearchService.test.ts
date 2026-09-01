@@ -47,4 +47,10 @@ describe('runMarketSearch (sample mode)', () => {
     expect(typeof result.searchedAt).toBe('string');
     expect(Number.isNaN(Date.parse(result.searchedAt))).toBe(false);
   });
+
+  it('URL を検索語にしても例外にせず 0件扱いにできる', async () => {
+    const result = await runMarketSearch('https://jp.mercari.com/search?keyword=PS5', 'sample', 8);
+    expect(result.status).toBe('sample');
+    expect(Array.isArray(result.cards)).toBe(true);
+  });
 });

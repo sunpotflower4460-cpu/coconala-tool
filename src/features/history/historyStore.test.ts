@@ -325,3 +325,19 @@ describe('history persist rollback', () => {
     expect(fresh.useHistoryStore.getState().sessions.map((session) => session.id)).toEqual(beforeIds);
   });
 });
+
+describe('history store storage event', () => {
+  it('他タブ相当の storage イベントで rehydrate する', async () => {
+    const spy = vi.spyOn(useHistoryStore.persist, 'rehydrate').mockResolvedValue();
+    window.dispatchEvent(new StorageEvent('storage', { key: HISTORY_STORAGE_KEY, newValue: '{}' }));
+    expect(spy).toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
+  it('無関係な key の storage イベントでは rehydrate しない', () => {
+    const spy = vi.spyOn(useHistoryStore.persist, 'rehydrate').mockResolvedValue();
+    window.dispatchEvent(new StorageEvent('storage', { key: 'other-key', newValue: '{}' }));
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+});

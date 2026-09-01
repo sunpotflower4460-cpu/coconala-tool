@@ -22,7 +22,7 @@ APIキーやサーバー設定なしでも、サンプルデータとモック�
 |------|-----|
 | ビルドコマンド | `npm run build` |
 | 出力ディレクトリ | `dist/client`（静的 SPA。Workers 成果物は `dist/coconala_tool`） |
-| 推奨 Node バージョン | 20.x（`.nvmrc` 参照） |
+| 推奨 Node バージョン | 22.x（`.nvmrc` / `.node-version` 参照） |
 
 ---
 
@@ -47,7 +47,7 @@ APIキーやサーバー設定なしでも、サンプルデータとモック�
    - **Framework preset**: Vite
    - **Build command**: `npm run build`
    - **Build output directory**: `dist/client`
-   - **Node.js version**: `20`（Environment variables に `NODE_VERSION=20` を設定）
+   - **Node.js version**: `22`（Workers Builds のビルドイメージは 22/24 を事前インストール。`.nvmrc` も 22。Environment variables に `NODE_VERSION=20` が残っている場合は 22 に更新する）
 4. 「Save and Deploy」をクリックします
 5. デプロイ完了後、発行された `*.pages.dev` URL でアプリが利用できます
 
@@ -63,7 +63,8 @@ GitHub のチェック開始時刻と終了時刻が同じで、注釈もログ�
 2. Worker 名が `wrangler.jsonc` の `name`（`coconala-tool`）と一致しているか確認する。
 3. Build command を `npm run build`、Deploy command を `npx wrangler deploy`、非本番ブランチを `npx wrangler versions upload` にする。
 4. Git 連携そのものが壊れているときは、Settings → Builds から Git 連携を外して入れ直す。
-5. `account_id` は購入者の Cloudflare アカウントごとに違うため、このリポジトリには書きません。自分のアカウントで `wrangler deploy` するときだけ、必要ならローカルの設定や環境変数で指定してください。
+5. ダッシュボードの Build Variables に `NODE_VERSION=20` が残っている場合は削除するか `22` にする。Node 20 は 2026-04-30 に EOL で、Workers Builds のイメージは 22/24 を事前インストールする。`.nvmrc` は 22。
+6. `account_id` は購入者の Cloudflare アカウントごとに違うため、このリポジトリには書きません。自分のアカウントで `wrangler deploy` するときだけ、必要ならローカルの設定や環境変数で指定してください。
 
 ### メリット
 
@@ -159,7 +160,7 @@ GitHub のチェック開始時刻と終了時刻が同じで、注釈もログ�
          - uses: actions/checkout@v4
          - uses: actions/setup-node@v4
            with:
-             node-version: '20'
+             node-version: '22'
          - run: npm install
          - run: npm run build
          - uses: peaceiris/actions-gh-pages@v4

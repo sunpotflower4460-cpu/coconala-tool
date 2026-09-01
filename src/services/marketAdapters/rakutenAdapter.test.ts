@@ -303,4 +303,27 @@ describe('rakutenAdapter.search', () => {
     expect(result.status).toBe('empty');
     expect(result.cards).toHaveLength(0);
   });
+
+  it('HTTP 204 や空 Content-Type は mock_upstream_error（network ではない）', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse('', { status: 204, contentType: '' }));
+    const result = await rakutenAdapter.search({ query: 'PS5' });
+    expect(result.status).toBe('mock_upstream_error');
+    expect(result.cards.every((card) => card.demoOrigin === 'mock')).toBe(true);
+  });
+
+  it('Content-Type に charset が付いていても JSON として扱う', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      jsonResponse({ items: [] }, { contentType: 'application/json; charset=utf-8' }),
+    );
+    const result = await rakutenAdapter.search({ query: 'PS5' });
+    expect(result.status).toBe('empty');
+  });
+
+  it('fetch_failed 相当の未知エラーコードは mock_upstream_error', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      jsonResponse({ error: 'fetch_failed', items: [] }, { status: 502 }),
+    );
+    const result = await rakutenAdapter.search({ query: 'PS5' });
+    expect(result.status).toBe('mock_upstream_error');
+  });
 });

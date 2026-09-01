@@ -36,7 +36,7 @@
 
 ## Quick Start
 
-Node.js 20 LTS を推奨します（`.nvmrc` 参照。22 でも動作しますが基準は 20 LTS）。
+Node.js 22 LTS を推奨します（`.nvmrc` 参照）。
 
 ```bash
 npm ci          # lockfile に固定されたバージョンを再現インストール

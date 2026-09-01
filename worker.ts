@@ -10,7 +10,8 @@ import type { RakutenFunctionEnv } from './functions/api/rakuten';
 export default {
   async fetch(request: Request, env: RakutenFunctionEnv): Promise<Response> {
     const pathname = new URL(request.url).pathname;
-    if (pathname === '/api/rakuten') {
+    // リバプロや末尾スラッシュ正規化漏れで `/api/rakuten/` になっても同じハンドラへ渡す。
+    if (pathname === '/api/rakuten' || pathname === '/api/rakuten/') {
       return onRequest({ request, env });
     }
     return new Response('Not found', { status: 404 });

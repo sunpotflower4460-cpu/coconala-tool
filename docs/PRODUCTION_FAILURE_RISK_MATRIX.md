@@ -1,6 +1,6 @@
 # 本番故障リスク・再現テストマトリクス
 
-最終更新: 2026-08-31
+最終更新: 2026-09-01
 
 対象: 相場カード比較ボード (`coconala-tool`) v0.9.0-rc.10
 
@@ -98,8 +98,84 @@
 - 状態: Partial
 - 故障: JSON parse時のメモリ/CPU増大
 - 再現: テスト環境で数MB〜数十MB相当のItemsを返す
-- 期待結果: Functionsの制限内で失敗しても502/モックへ倒れ、秘密情報を返さない
-- 自動化: 未実装。楽天API自体がhits上限30のため実リスクは低いが、プロキシ契約試験として残す
+- 期待結果: Functionsの制限内で失敗しても502/モックへ倒れ、秘密情報を返さない。80件程度の肥大 Items は正規化して返し、名前はクランプ、キーは返さない
+- 自動テスト: `functions/api/rakuten.test.ts`（80件・長文。数十MB級は未実施）
+
+## API-08 HEAD / OPTIONS / PUT / DELETE / PATCH
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 将来の処理追加時に攻撃面が広がる。CORS preflight（OPTIONS）を誤って 200 で通す
+- 再現: `HEAD|OPTIONS|PUT|DELETE|PATCH /api/rakuten?q=PS5`
+- 期待結果: いずれも HTTP 405 / `method_not_allowed`。楽天APIへは通信しない
+- 自動テスト: `functions/api/rakuten.test.ts`
+
+## API-09 重複クエリ `q=PS5&q=Nintendo`
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 後勝ち/配列化で想定外キーワードを上流へ送り、表示と検索が食い違う
+- 再現: `GET /api/rakuten?q=PS5&q=Nintendo`
+- 期待結果: 先頭の `q=PS5` のみを keyword として送る
+- 自動テスト: `functions/api/rakuten.test.ts`
+
+## API-10 Unicode / 全角 / 絵文字の検索語
+
+- 重大度: P2
+- 状態: Protected
+- 故障: エンコード漏れで 400、または上流へ壊れたバイト列を送る
+- 再現: `q=ＰＳ５🎮`（URLエンコード）
+- 期待結果: 200。上流 `keyword` は元の文字を保持。アプリは落ちない
+- 自動テスト: `functions/api/rakuten.test.ts`
+
+## API-11 検索語への `applicationId` インジェクション
+
+- 重大度: P0
+- 状態: Protected
+- 故障: `q=PS5&applicationId=attacker` が楽天URLの別パラメータとして解釈され、キーを差し替えられる
+- 再現: `q=` に `PS5&applicationId=attacker-key&hits=1` をエンコードして送る
+- 期待結果: `URLSearchParams.set` により keyword 1値としてエンコードされる。`applicationId` はサーバーキーのまま
+- 自動テスト: `functions/api/rakuten.test.ts`
+
+## API-12 Worker パスの末尾スラッシュ / 大文字
+
+- 重大度: P1
+- 状態: Protected
+- 故障: リバプロが `/api/rakuten/` を付けると 404 HTML になり、フロントが実データもモックも正しく扱えない
+- 再現:
+  1. `GET /api/rakuten/?q=PS5`
+  2. `GET /API/rakuten?q=PS5`
+- 期待結果:
+  1. 既存ハンドラと同じ（キー未設定なら 503 `no_key`）
+  2. Worker は API として扱わず 404（静的SPA側へ任せる）
+- 自動テスト: `worker.test.ts`
+
+## API-13 `Origin: null`
+
+- 重大度: P0
+- 状態: Protected
+- 故障: サンドボックス iframe / ローカルファイルからプロキシを叩ける
+- 再現: `Origin: null`
+- 期待結果: 403 `forbidden_origin`
+- 自動テスト: `functions/api/rakuten.test.ts`
+
+## API-14 formatVersion=2 フラット Items
+
+- 重大度: P1
+- 状態: Protected
+- 故障: `{ Item: {...} }` だけ想定すると実APIのフラット配列を全件捨て、「0件」と誤認する
+- 再現: `Items: [{ itemCode, itemName, itemPrice, itemUrl }]`（Item ラッパなし）
+- 期待結果: 正規化してカード化。status ok
+- 自動テスト: `functions/api/rakuten.test.ts`
+
+## API-15 文字列価格 / カンマ価格 / 指数表記
+
+- 重大度: P0
+- 状態: Protected
+- 故障: `"79,800"` や `1e20` を 0 円や巨大値として利益計算する
+- 再現: itemPrice が `"79800"` / `"79,800"` / `1e20`
+- 期待結果: 数字文字列のみ採用。カンマ付き・上限超えは除外。¥0 へ変換しない
+- 自動テスト: `functions/api/rakuten.test.ts`, `rakutenMapper.test.ts`
 
 ---
 
@@ -146,6 +222,24 @@
 - 再現: 別PC/CLIからOriginなしで本番 `/api/rakuten?q=PS5` を連続実行
 - 期待結果: **コードだけで完全防止はできない**。Cloudflare Rate Limiting/WAFで閾値超過を429/ブロックし、通常利用は維持する
 - 販売前条件: Cloudflare側のrate limit設定手順をデプロイガイドへ反映することを推奨
+
+## AUTH-05 Worker env の Application ID 引き回し
+
+- 重大度: P0
+- 状態: Protected
+- 故障: Pages Function では隠れていても Worker エントリが env を渡さず常に no_key、またはレスポンスへキーが混入
+- 再現: `worker.fetch(..., { SERVER_RAKUTEN_APP_ID: 'secret' })` で空 Items を返す mock
+- 期待結果: 上流には applicationId が付く。クライアント本文・エラーに secret は出ない
+- 自動テスト: `worker.test.ts`
+
+## AUTH-06 フロントに `VITE_` でキーを置いてしまう
+
+- 重大度: P0
+- 状態: Protected / Continuous
+- 故障: ビルド成果物にキーが埋め込まれる
+- 再現: `grep -R "VITE_.*RAKUTEN\\|SERVER_RAKUTEN" dist src --exclude-dir=node_modules`
+- 期待結果: フロント固定値なし。サーバー env のみ
+- 手動/CI: release checklist の secret scan。コード上 `VITE_` 楽天キーは存在しない
 
 ---
 
@@ -196,6 +290,28 @@
 - 期待結果: `Cache-Control: no-store`。API結果はキャッシュしない
 - 自動テスト: `functions/api/rakuten.test.ts`
 
+## NET-06 204 / 空 Content-Type / charset 付き JSON
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 空応答や `application/json; charset=utf-8` を誤分類し、通信失敗やクラッシュになる
+- 再現:
+  1. HTTP 204 + 空 Content-Type
+  2. `Content-Type: application/json; charset=utf-8` + `{ items: [] }`
+- 期待結果:
+  1. `mock_upstream_error`（`mock_network` ではない）
+  2. 正常な empty 検索
+- 自動テスト: `rakutenAdapter.test.ts`
+
+## NET-07 未知のエラーコード `fetch_failed`
+
+- 重大度: P1
+- 状態: Protected
+- 故障: プロキシの `fetch_failed` を無視して空成功や例外にする
+- 再現: JSON `{ error: 'fetch_failed' }` + HTTP 502
+- 期待結果: `mock_upstream_error`
+- 自動テスト: `rakutenAdapter.test.ts`
+
 ---
 
 # 4. 同時実行・競合
@@ -205,7 +321,7 @@
 - 重大度: P1
 - 状態: Protected
 - 故障: 同じAPIを二重送信し、レート枠消費・状態競合
-- 再現: 検索開始直後にボタンを再クリック
+- 再現: 検索開始直後にボタンを再クリック、または Enter 連打
 - 期待結果: `isSearching`中は2回目を送らない（`beginSearch` が null）
 - 自動テスト: `ProductSearchBar.test.tsx`, `researchStore.test.ts`
 
@@ -252,7 +368,34 @@
 - 故障: localStorageのlast-write-winsで別タブの更新を上書き
 - 再現: Tab A/Bを開く -> A保存 -> B保存/削除
 - 期待結果: 他タブの `storage` イベントで履歴/設定を再ハイドレートする。同時書き込みの完全なマージはしない
-- 自動テスト: 手動（2タブ）。再ハイドレート実装は `historyStore.ts` / `researchStore.ts`
+- 自動テスト: 手動（2タブ）+ `e2e/production-failure.spec.ts` + `historyStore.test.ts`。再ハイドレート実装は `historyStore.ts` / `researchStore.ts`
+
+## CONC-06 検索中に履歴再開
+
+- 重大度: P0
+- 状態: Protected
+- 故障: 再開後に遅延した検索結果が、保存スナップショットを上書きする
+- 再現: beginSearch のあと `loadResearchSession`
+- 期待結果: 旧 requestId は無効。`isSearching=false`。`searchStatus` は null（ライブな公式取得中と誤認しない）
+- 自動テスト: `researchStore.test.ts`, `AppShell.test.tsx`
+
+## CONC-07 同じカードの比較追加連打
+
+- 重大度: P2
+- 状態: Protected
+- 故障: 同一 id が比較ボードに複数入り、利益反映が重複する
+- 再現: `addComparedCard` を同一カードで2回
+- 期待結果: 1件のまま
+- 自動テスト: `researchStore.test.ts`
+
+## CONC-08 Enter 連打
+
+- 重大度: P1
+- 状態: Protected
+- 故障: ボタン無効化前に keydown が二重発火し API を二重送信
+- 再現: 入力後 Enter を2回
+- 期待結果: `runMarketSearch` は1回
+- 自動テスト: `ProductSearchBar.test.tsx`
 
 ---
 
@@ -318,6 +461,60 @@
 - 期待結果: 先頭へ `'` を付けテキスト化
 - 自動テスト: `csvExport.test.ts`
 
+## DATA-07 Prototype pollution（`__proto__` / constructor）
+
+- 重大度: P0
+- 状態: Protected
+- 故障: 壊した localStorage で Object.prototype や theme を汚染し、全ユーザー操作が壊れる
+- 再現: persist JSON に `__proto__` / `constructor` を入れて hydrate
+- 期待結果: 許可キー以外は採用しない。既定 theme を汚染しない
+- 自動テスト: `persistSanitize.test.ts`
+
+## DATA-08 persist に検索中フラグやカード配列が残る
+
+- 重大度: P1
+- 状態: Protected
+- 故障: リロード後も `isSearching=true` のままボタンが死ぬ。古い検索結果が「最新」として残る
+- 再現: 検索中に localStorage `coconala-tool-research` を見る
+- 期待結果: persist は theme / dataSourceMode / profitSettings のみ
+- 自動テスト: `researchStore.test.ts`
+
+## DATA-09 履歴再開なのに「公式データ取得中」になる / 逆に公式カードなのにデモと矛盾
+
+- 重大度: P0
+- 状態: Protected
+- 故障: 保存時点の公式取得を、再開後もライブ接続と誤認する
+- 再現: `searchStatus=official_api` の履歴を再開
+- 期待結果: ヘッダーはデモ表示。カードのソースラベル（当時の種別）は残る。ライブバッジは出ない
+- 自動テスト: `AppShell.test.tsx`, `e2e/production-failure.spec.ts`
+
+## DATA-10 為替レート 0 で USD が ¥0 になる
+
+- 重大度: P0
+- 状態: Protected
+- 故障: `$100 × 0 = 0円` を仕入れに適用し、利益が過大に見える
+- 再現: USD カードを比較に入れ、ドル円レートを 0 にする
+- 期待結果: 円換算不能。仕入れ/販売に使うボタンは無効
+- 自動テスト: `profitCalculator.test.ts`, `CompareBoard.test.tsx`
+
+## DATA-11 未知キーや XSS 文字列を persist に混入
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 将来フィールドや script が state に混ざり、表示や計算が壊れる
+- 再現: `{ theme, isSearching, query: '<script>' }` を sanitize
+- 期待結果: theme のみ残る
+- 自動テスト: `persistSanitize.test.ts`
+
+## DATA-12 比較ボード件数に上限がない
+
+- 重大度: P2
+- 状態: Partial
+- 故障: 大量追加で localStorage / 描画が重くなる
+- 再現: 比較カードを数十件追加
+- 期待結果: 現状は id 重複だけ防ぐ。件数上限は未実装。履歴は 20 件で抑制
+- 自動化: 重複防止のみ `researchStore.test.ts`
+
 ---
 
 # 6. ユーザー操作
@@ -376,6 +573,33 @@
 - 期待結果: 確認ダイアログ後に削除。キャンセルなら残る
 - 自動テスト: `e2e/core-flows.spec.ts`
 
+## USER-07 検索欄に URL を貼る
+
+- 重大度: P1
+- 状態: Protected
+- 故障: URL をキーワードとして送りアプリが落ちる、または意図しない外部リクエスト
+- 再現: `https://jp.mercari.com/search?keyword=PS5` でサンプル検索
+- 期待結果: 例外にしない。該当なしまたは部分一致。外部へスクレイピングしない
+- 自動テスト: `marketSearchService.test.ts`, `e2e/production-failure.spec.ts`
+
+## USER-08 例外時の復旧で全データ消去
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 白画面のまま操作不能。または復旧ボタンが storage を消さずループする
+- 再現: 子コンポーネントが throw
+- 期待結果: エラー画面。「保存データを消して再読み込み」で2キーを削除して reload
+- 自動テスト: `AppErrorBoundary.test.tsx`
+
+## USER-09 URL を検索語にしてもショートカットが壊れない
+
+- 重大度: P1
+- 状態: Protected
+- 故障: `&` `"` `<script>` が検索リンクへ生挿入され、別サイトへ誘導される
+- 再現: `buildSearchLinks('PS5&foo="bar"<script>')`
+- 期待結果: `encodeURIComponent` 済み。https 絶対URLのみ
+- 自動テスト: `searchLinkBuilder.test.ts`
+
 ---
 
 # 7. 外部サービス障害
@@ -433,6 +657,41 @@
 - 期待結果: UI/モックは動くが「公式API取得」にはならない。README/販売文と一致
 - 手動テスト: deployment guide
 
+## EXT-07 楽天が 200 で error オブジェクトだけ返す
+
+- 重大度: P0
+- 状態: Protected
+- 故障: エラー詳細を利用者へ出したり、空成功にして 0件と誤認する
+- 再現: `{ error: '...', error_description: 'secret-detail' }` で Items なし
+- 期待結果: 502 `invalid_json`。詳細本文は透過しない。フロントは `mock_upstream_error`
+- 自動テスト: `functions/api/rakuten.test.ts`
+
+## EXT-08 商品画像 CDN が 403 / 壊れる
+
+- 重大度: P2
+- 状態: Protected
+- 故障: 壊れた img でレイアウト崩壊
+- 再現: 画像 URL が 403（`onError`）
+- 期待結果: NO IMAGE プレースホルダ。カード自体は残る
+- コード: `ResultCard.tsx` / `CompareBoard.tsx` の `onError`
+
+## EXT-09 検索ショートカット先（メルカリ等）の仕様変更
+
+- 重大度: P2
+- 状態: External
+- 故障: リンクが 404 や別検索になる
+- 再現: 各ショートカットを開く
+- 期待結果: アプリは落ちない。リンク切れは手動更新。スクレイピングしない
+- 手動テスト: post-deploy QA
+
+## EXT-10 Google Fonts CDN 障害
+
+- 重大度: P2
+- 状態: External
+- 故障: フォントだけシステムフォントへフォールバック。機能は維持
+- 再現: fonts.googleapis.com をブロック
+- 期待結果: 検索・比較・利益は操作可能
+
 ---
 
 # 8. セキュリティ
@@ -475,6 +734,7 @@
 - 再現: `<img src=x onerror=alert(1)>`, `<script>alert(1)</script>` をタイトル/ショップ名へ入れる
 - 期待結果: Reactのテキスト描画として表示され、HTMLとして実行されない
 - 追加推奨: E2Eで `window.alert` が呼ばれないことを回帰確認
+- 自動テスト: `ResultCard.test.tsx`, `e2e/production-failure.spec.ts`
 
 ## SEC-05 外部リンクのreverse tabnabbing
 
@@ -484,6 +744,7 @@
 - 再現: 元ページリンクを開く
 - 期待結果: `target=_blank`には`rel="noopener noreferrer"`
 - コード確認: `ResultCard.tsx`等
+- 自動テスト: `ResultCard.test.tsx`, `e2e/production-failure.spec.ts`
 
 ## SEC-06 手動画像URLによる外部トラッキング/混在コンテンツ
 
@@ -518,6 +779,50 @@
 - 期待結果: `Content-Type: application/json`, `X-Content-Type-Options: nosniff`, `Cache-Control: no-store`
 - 自動テスト: `functions/api/rakuten.test.ts`
 
+## SEC-10 追加スキーム（data / blob / file / vbscript / プロトコル相対）
+
+- 重大度: P0
+- 状態: Protected
+- 故障: javascript 以外の危険 URL でスクリプト実行やローカルファイル参照
+- 再現: `data:`, `blob:`, `file:`, `vbscript:`, `//evil.example.com`
+- 期待結果: リンク・画像として採用しない
+- 自動テスト: `safeUrl.test.ts`
+
+## SEC-11 検索ショートカット XSS / open redirect
+
+- 重大度: P0
+- 状態: Protected
+- 故障: 検索語が href に生挿入される
+- 再現: 特殊文字を含む検索語でショートカットを生成
+- 期待結果: encode 済み https URL。`rel="noopener noreferrer"`
+- 自動テスト: `searchLinkBuilder.test.ts`, `e2e/production-failure.spec.ts`
+
+## SEC-12 CSP 未設定
+
+- 重大度: P1
+- 状態: Open / External
+- 故障: もし XSS が1つでも残るとインライン script が動く
+- 再現: 本番レスポンスヘッダーに CSP が無い
+- 期待結果: 現状アプリ側では未設定。Cloudflare で `Content-Security-Policy` を検討（Google Fonts を許可する必要あり）
+- 備考: React のテキスト描画と URL サニタイズが第一防御
+
+## SEC-13 クリックジャッキング
+
+- 重大度: P2
+- 状態: Open / External
+- 故障: 悪意サイトが iframe で本アプリを重ね、比較追加や履歴削除を誘導
+- 再現: 外部ページから iframe で本番 URL を表示
+- 期待結果: アプリコードでは未防止。Cloudflare で `X-Frame-Options: DENY` または `frame-ancestors 'none'` を推奨
+
+## SEC-14 パス大文字小文字の取り違え
+
+- 重大度: P1
+- 状態: Protected
+- 故障: `/API/rakuten` が Worker に載り、Origin 検査をバイパスした別実装になる
+- 再現: `GET /API/rakuten?q=PS5`
+- 期待結果: Worker は 404。`run_worker_first` は `/api/*`
+- 自動テスト: `worker.test.ts`
+
 ---
 
 # 販売前に必ず行う「故障注入」セット
@@ -533,12 +838,16 @@
 7. 検索中に検索語変更 -> 旧結果が混ざらない
 8. 検索中にデータソース変更 -> 旧結果が混ざらない
 9. localStorage容量超過 -> 保存失敗が利用者へ分かる
-10. localStorage破損 -> 白画面にならない（現状Open。販売前に手動確認）
+10. localStorage破損 -> 白画面にならない（`e2e/core-flows.spec.ts`）
 11. 別origin / same-site request -> 403
 12. CLI連打 -> Cloudflare rate limitが働くこと（設定する場合）
 13. CSV formula injection -> Excelで式実行されない
 14. 375px実機/ブラウザ -> 横スクロールなし
 15. 本番成果物secret scan -> Application IDなし
+16. 履歴の HTML タイトル -> テキスト表示、alert なし
+17. 複数タブで履歴保存 -> 他タブへ反映
+18. USD × 為替0 -> 仕入れに 0円を入れない
+19. `/api/rakuten/` 末尾スラッシュ -> ハンドラが応答
 
 ---
 
@@ -549,5 +858,7 @@
 1. **公開 `/api/rakuten` のCLI濫用**: Origin検査だけでは完全防御できない。Cloudflare Rate Limiting/WAFを推奨。
 2. **複数タブの同時書き込みマージ**: 他タブの更新は `storage` イベントで再読込するが、同時保存の3-way mergeはしない。
 3. **https の外部画像URL**: ユーザーが貼った https 画像は読み込む（トラッキングピクセルになり得る）。javascript/http は拒否済み。
+4. **CSP / クリックジャッキング**: アプリ側未設定。Cloudflare ヘッダーでの防御を推奨。
+5. **比較ボード件数上限**: 重複 id は防ぐが件数キャップは無い。履歴は20件。
 
 P0の公開プロキシ濫用対策だけは、本番Cloudflare設定時に必ず判断する。

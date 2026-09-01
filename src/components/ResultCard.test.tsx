@@ -70,4 +70,20 @@ describe('ResultCard', () => {
     expect(screen.queryByRole('link', { name: '元ページを見る' })).not.toBeInTheDocument();
     expect(screen.getByText('元ページなし')).toBeInTheDocument();
   });
+
+  it('HTML を含むタイトルはテキストとして描画し、img/script を実行しない', () => {
+    const { container } = render(
+      <ResultCard card={makeCard({ title: '<img src=x onerror="alert(1)">', siteName: '<script>alert(1)</script>' })} />,
+    );
+    expect(screen.getByText('<img src=x onerror="alert(1)">')).toBeInTheDocument();
+    expect(container.querySelector('img[src="x"]')).toBeNull();
+    expect(container.querySelector('script')).toBeNull();
+  });
+
+  it('元ページリンクは noopener noreferrer 付きで開く', () => {
+    render(<ResultCard card={makeCard()} />);
+    const link = screen.getByRole('link', { name: '元ページを見る' });
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
 });
