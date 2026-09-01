@@ -51,6 +51,8 @@ APIキーやサーバー設定なしでも、サンプルデータとモック�
 4. 「Save and Deploy」をクリックします
 5. デプロイ完了後、発行された `*.pages.dev` URL でアプリが利用できます
 
+GitHub 連携で **Workers Builds**（チェック名 `Workers Builds: coconala-tool`）を使う場合は、リポジトリ直下の `wrangler.jsonc` が必要です。ダッシュボード上の Worker 名は `coconala-tool` と一致させてください。ビルドは `npm run build`、デプロイは `npx wrangler deploy`（または `npm run deploy`）です。`/api/rakuten` は `worker.ts` 経由で既存の Pages Function と同じハンドラを呼びます。
+
 ### メリット
 
 - 無料枠が大きい（月 500 ビルド、帯域無制限）

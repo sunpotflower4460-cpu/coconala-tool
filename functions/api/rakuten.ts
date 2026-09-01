@@ -21,13 +21,13 @@
  *  { items: NormalizedItem[], source: 'official_api', status: 'ok' | 'error', requestId: string, error?: string, upstreamStatus?: number }
  */
 
-interface Env {
+export type RakutenFunctionEnv = {
   SERVER_RAKUTEN_APP_ID?: string;
-}
+};
 
 type PagesFunctionContext = {
   request: Request;
-  env: Env;
+  env: RakutenFunctionEnv;
 };
 
 const RAKUTEN_ENDPOINT = 'https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601';

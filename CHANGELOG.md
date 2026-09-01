@@ -10,6 +10,7 @@
 - 楽天商品の不正価格を ¥0 に変換せず、その商品だけ除外する。正当な 0 円は残す
 - 同一検索語でもリクエスト世代で古い応答を捨て、clear 後の再検索を上書きしない
 - JSON の null / プリミティブ / 配列応答を通信失敗ではなく上流契約不整合として分類する
+- Cloudflare Workers Builds 向けに `wrangler.jsonc` と Worker エントリを追加（Worker 名 `coconala-tool`。既存 Pages Function と同じ `/api/rakuten` ハンドラ）
 
 ## v0.9.0-rc.9 — 本番故障リスクの残バグ修正
 
