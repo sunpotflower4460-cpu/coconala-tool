@@ -29,9 +29,15 @@ type ResearchStore = {
   searchWarnings: string[];
   isSearching: boolean;
   lastSearchedAt: string | null;
+  /** 進行中の検索リクエスト世代。clear / 新しい検索で増やす。 */
+  searchRequestId: number;
   setQuery: (q: string) => void;
   setSearchResult: (response: MarketSearchResponse) => void;
   setIsSearching: (isSearching: boolean) => void;
+  /** 検索開始。既に検索中なら null。呼び出し側は最新世代以外の結果を捨てる。 */
+  beginSearch: () => number | null;
+  isCurrentSearchRequest: (requestId: number) => boolean;
+  finishSearchIfCurrent: (requestId: number) => boolean;
   addComparedCard: (card: MarketCard) => void;
   removeComparedCard: (id: string) => void;
   isCompared: (id: string) => boolean;
@@ -68,6 +74,7 @@ export const useResearchStore = create<ResearchStore>()(
       searchWarnings: [],
       isSearching: false,
       lastSearchedAt: null,
+      searchRequestId: 0,
 
       setQuery: (q) => set({ query: q.slice(0, MAX_SEARCH_QUERY_LENGTH) }),
 
@@ -80,6 +87,21 @@ export const useResearchStore = create<ResearchStore>()(
         }),
 
       setIsSearching: (isSearching) => set({ isSearching }),
+
+      beginSearch: () => {
+        if (get().isSearching) return null;
+        const searchRequestId = get().searchRequestId + 1;
+        set({ searchRequestId, isSearching: true });
+        return searchRequestId;
+      },
+
+      isCurrentSearchRequest: (requestId) => get().searchRequestId === requestId,
+
+      finishSearchIfCurrent: (requestId) => {
+        if (get().searchRequestId !== requestId) return false;
+        set({ isSearching: false });
+        return true;
+      },
 
       addComparedCard: (card) => {
         const sanitized = sanitizeCards([card])[0];
@@ -151,20 +173,24 @@ export const useResearchStore = create<ResearchStore>()(
           dataSourceMode: sanitizeDataSourceMode(payload.dataSourceMode) ?? get().dataSourceMode,
           buyPriceSource: null,
           sellPriceSource: null,
+          // 保存スナップショットはライブな検索状態ではない。進行中リクエストも無効化する。
           searchStatus: null,
           searchWarnings: [],
           lastSearchedAt: null,
+          isSearching: false,
+          searchRequestId: get().searchRequestId + 1,
         }),
 
       clearSearch: () =>
-        set({
+        set((state) => ({
           query: '',
           resultCards: [],
           searchStatus: null,
           searchWarnings: [],
           isSearching: false,
           lastSearchedAt: null,
-        }),
+          searchRequestId: state.searchRequestId + 1,
+        })),
 
       resetSession: () =>
         set((state) => ({
@@ -179,6 +205,7 @@ export const useResearchStore = create<ResearchStore>()(
           searchWarnings: [],
           isSearching: false,
           lastSearchedAt: null,
+          searchRequestId: state.searchRequestId + 1,
         })),
     }),
     {

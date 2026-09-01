@@ -89,13 +89,20 @@ export const rakutenAdapter: MarketAdapter = {
         return toMockResponse(trimmed, limit, 'mock_upstream_error');
       }
 
-      let data: RakutenApiResponse;
+      let parsed: unknown;
       try {
-        data = (await res.json()) as RakutenApiResponse;
+        parsed = await res.json();
       } catch {
         // JSONとして宣言された壊れた応答は「通信失敗」ではなく応答不整合として扱う。
         return toMockResponse(trimmed, limit, 'mock_upstream_error');
       }
+
+      // null / 配列 / 文字列 / 数値は property access で例外になり得る。通信失敗ではない。
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return toMockResponse(trimmed, limit, 'mock_upstream_error');
+      }
+
+      const data = parsed as RakutenApiResponse;
 
       if (data.error || !res.ok) {
         return toMockResponse(trimmed, limit, ERROR_CODE_TO_MOCK_STATUS[data.error ?? ''] ?? 'mock_upstream_error');

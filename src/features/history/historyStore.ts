@@ -6,10 +6,14 @@ import { MAX_HISTORY_NAME_LENGTH, MAX_SEARCH_QUERY_LENGTH } from '../../lib/limi
 import {
   HISTORY_PERSIST_VERSION,
   HISTORY_STORAGE_KEY,
+  migrateHistoryPersisted,
   sanitizeCards,
   sanitizeDataSourceMode,
   sanitizeHistoryPersisted,
+  sanitizeLastSearchedAt,
   sanitizeProfitSettings,
+  sanitizeSearchStatus,
+  sanitizeSearchWarnings,
 } from '../../lib/persistSanitize';
 
 type SessionSnapshot = {
@@ -60,7 +64,7 @@ function createSessionId() {
 
 export const useHistoryStore = create<HistoryStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       sessions: [],
       saveSession: (snapshot) => {
         const now = new Date().toISOString();
@@ -72,21 +76,30 @@ export const useHistoryStore = create<HistoryStore>()(
           comparedCards: sanitizeCards(snapshot.comparedCards),
           profitSettings: sanitizeProfitSettings(snapshot.profitSettings),
           dataSourceMode: sanitizeDataSourceMode(snapshot.dataSourceMode) ?? 'sample',
-          searchStatus: snapshot.searchStatus,
-          searchWarnings: Array.isArray(snapshot.searchWarnings) ? snapshot.searchWarnings : [],
-          lastSearchedAt: snapshot.lastSearchedAt,
+          searchStatus: sanitizeSearchStatus(snapshot.searchStatus),
+          searchWarnings: sanitizeSearchWarnings(snapshot.searchWarnings),
+          lastSearchedAt: sanitizeLastSearchedAt(snapshot.lastSearchedAt),
           createdAt: now,
           updatedAt: now,
         };
 
-        set((state) => ({
-          sessions: [saved, ...state.sessions].slice(0, MAX_SESSIONS),
-        }));
+        const beforeSessions = get().sessions;
+        try {
+          set({
+            sessions: [saved, ...beforeSessions].slice(0, MAX_SESSIONS),
+          });
+        } catch {
+          // persist の setItem が同期例外でも、メモリ更新は先に完了している。
+        }
 
         if (!wasSessionPersisted(saved.id)) {
-          set((state) => ({
-            sessions: state.sessions.filter((session) => session.id !== saved.id),
-          }));
+          // 上限超過で古い1件を落としたあとに永続化が失敗すると、新件だけ消すと
+          // 元の最古セッションが戻らず件数が減る。保存前の配列そのものへ戻す。
+          try {
+            set({ sessions: beforeSessions });
+          } catch {
+            // rollback の persist が再度失敗しても、メモリ上は保存前へ戻っている。
+          }
         }
 
         return saved;
@@ -100,6 +113,7 @@ export const useHistoryStore = create<HistoryStore>()(
     {
       name: HISTORY_STORAGE_KEY,
       version: HISTORY_PERSIST_VERSION,
+      migrate: (persistedState, fromVersion) => migrateHistoryPersisted(persistedState, fromVersion),
       merge: (persistedState, currentState) => ({
         ...currentState,
         ...sanitizeHistoryPersisted(persistedState),

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { mapRakutenItemToMarketCard } from './rakutenMapper';
+import { mapRakutenItemToMarketCard, parseRakutenItemPrice } from './rakutenMapper';
 import type { RakutenMockItem } from '../../mocks/rakutenSearchMock';
+import { MAX_AMOUNT } from '../../features/profit/profitCalculator';
 
 function makeItem(overrides: Partial<RakutenMockItem> = {}): RakutenMockItem {
   return {
@@ -34,10 +35,44 @@ describe('mapRakutenItemToMarketCard', () => {
     expect(mapRakutenItemToMarketCard(makeItem({ itemUrl: '' }))).toBeNull();
   });
 
-  it('does not throw when itemPrice is undefined and clamps Infinity', () => {
-    expect(() => mapRakutenItemToMarketCard(makeItem({ itemPrice: undefined as unknown as number }))).not.toThrow();
-    const inf = mapRakutenItemToMarketCard(makeItem({ itemPrice: Number.POSITIVE_INFINITY }));
-    expect(inf?.priceValue).toBe(0);
+  it('不正な itemPrice ではカードを作らず ¥0 に変換しない', () => {
+    expect(mapRakutenItemToMarketCard(makeItem({ itemPrice: undefined as unknown as number }))).toBeNull();
+    expect(mapRakutenItemToMarketCard(makeItem({ itemPrice: Number.POSITIVE_INFINITY }))).toBeNull();
+    expect(mapRakutenItemToMarketCard(makeItem({ itemPrice: Number.NaN }))).toBeNull();
+    expect(mapRakutenItemToMarketCard(makeItem({ itemPrice: 'abc' as unknown as number }))).toBeNull();
+    expect(mapRakutenItemToMarketCard(makeItem({ itemPrice: null as unknown as number }))).toBeNull();
+  });
+
+  it('正当な 0 円商品は残し、priceValue は 0 のまま', () => {
+    const card = mapRakutenItemToMarketCard(makeItem({ itemPrice: 0 }));
+    expect(card).not.toBeNull();
+    expect(card?.priceValue).toBe(0);
+    expect(card?.priceText).toBe('¥0');
+  });
+
+  it('正常価格と不正価格が混在しても正常商品だけ残る', () => {
+    const mixed: RakutenMockItem[] = [
+      makeItem({ itemCode: 'shop:ok1', itemPrice: 79800 }),
+      makeItem({ itemCode: 'shop:undef', itemPrice: undefined as unknown as number }),
+      makeItem({ itemCode: 'shop:abc', itemPrice: 'abc' as unknown as number }),
+      makeItem({ itemCode: 'shop:nan', itemPrice: Number.NaN }),
+      makeItem({ itemCode: 'shop:ok2', itemPrice: 1200 }),
+    ];
+    const cards = mixed.map(mapRakutenItemToMarketCard).filter((card): card is NonNullable<typeof card> => Boolean(card));
+    expect(cards.map((card) => card.id)).toEqual(['rakuten-shop:ok1', 'rakuten-shop:ok2']);
+    expect(cards.every((card) => card.priceValue !== 0 || card.id.endsWith('zero'))).toBe(true);
+  });
+
+  it('parseRakutenItemPrice は不正値を 0 へ変換しない', () => {
+    expect(parseRakutenItemPrice(undefined)).toBeUndefined();
+    expect(parseRakutenItemPrice(null)).toBeUndefined();
+    expect(parseRakutenItemPrice('abc')).toBeUndefined();
+    expect(parseRakutenItemPrice(Number.NaN)).toBeUndefined();
+    expect(parseRakutenItemPrice(Number.POSITIVE_INFINITY)).toBeUndefined();
+    expect(parseRakutenItemPrice(-1)).toBeUndefined();
+    expect(parseRakutenItemPrice(MAX_AMOUNT + 1)).toBeUndefined();
+    expect(parseRakutenItemPrice(0)).toBe(0);
+    expect(parseRakutenItemPrice('1234')).toBe(1234);
   });
 
   it('drops javascript: image URLs', () => {

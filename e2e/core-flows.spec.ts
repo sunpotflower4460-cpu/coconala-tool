@@ -144,6 +144,47 @@ test('壊れた localStorage でも白画面にならない', async ({ page }) =
   await expect(page.getByText(/検索結果 \(\d+件\)/)).toBeVisible();
 });
 
+test('version 0 の履歴は hydrate 後も名前と検索語が残る', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem(
+      'coconala-tool-history',
+      JSON.stringify({
+        state: {
+          sessions: [
+            {
+              id: 'legacy-1',
+              name: '旧形式の履歴',
+              query: 'PS5',
+              resultCards: [],
+              comparedCards: [],
+              profitSettings: {
+                buyPrice: 1000,
+                sellPrice: 2000,
+                shippingCost: 0,
+                feeRate: 10,
+                exchangeRate: 155,
+              },
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              dataSourceMode: 'sample',
+              searchStatus: 'sample',
+              searchWarnings: ['サンプルデータ'],
+              lastSearchedAt: '2026-01-01T00:00:00.000Z',
+            },
+            { name: '壊れた履歴' },
+          ],
+        },
+        version: 0,
+      }),
+    );
+  });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: '相場カード比較ボード' })).toBeVisible();
+  await expect(page.getByText('旧形式の履歴')).toBeVisible();
+  await expect(page.getByText('壊れた履歴')).toHaveCount(0);
+  await expect(page.getByText(/クエリなし|PS5/)).toBeVisible();
+});
+
 test('履歴削除は確認ダイアログ後に消える', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('商品名・型番・JAN・URL').fill('PS5');

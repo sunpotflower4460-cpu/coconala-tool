@@ -133,3 +133,30 @@ describe('researchStore profit settings validation', () => {
     });
   });
 });
+
+describe('researchStore search request identity', () => {
+  beforeEach(() => {
+    useResearchStore.setState({
+      isSearching: false,
+      searchRequestId: 0,
+      query: '',
+      resultCards: [],
+    });
+  });
+
+  it('beginSearch は連打時に2件目を作らない', () => {
+    const first = useResearchStore.getState().beginSearch();
+    const second = useResearchStore.getState().beginSearch();
+    expect(first).toBe(1);
+    expect(second).toBeNull();
+    expect(useResearchStore.getState().isSearching).toBe(true);
+  });
+
+  it('clearSearch は進行中リクエストを無効化し isSearching を落とす', () => {
+    const id = useResearchStore.getState().beginSearch();
+    useResearchStore.getState().clearSearch();
+    expect(useResearchStore.getState().isCurrentSearchRequest(id as number)).toBe(false);
+    expect(useResearchStore.getState().isSearching).toBe(false);
+    expect(useResearchStore.getState().finishSearchIfCurrent(id as number)).toBe(false);
+  });
+});

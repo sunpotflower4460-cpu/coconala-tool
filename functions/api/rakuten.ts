@@ -136,15 +136,39 @@ function normalizeImageUrls(value: unknown): Array<{ imageUrl: string }> {
     .filter((entry): entry is { imageUrl: string } => Boolean(entry));
 }
 
-function normalizeItem(raw: Record<string, unknown>): NormalizedItem {
-  const itemUrl = raw.itemUrl;
+const MAX_ITEM_PRICE = 100_000_000;
+
+/**
+ * 楽天 itemPrice を採用してよい値だけ返す。不正値は 0 へ変換せず捨てる。
+ * 正当な 0 円は 0 のまま残す。
+ */
+function parseItemPrice(value: unknown): number | undefined {
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value) || value < 0 || value > MAX_ITEM_PRICE) return undefined;
+    return value;
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value.trim());
+    if (!Number.isFinite(parsed) || parsed < 0 || parsed > MAX_ITEM_PRICE) return undefined;
+    return parsed;
+  }
+  return undefined;
+}
+
+function normalizeItem(raw: Record<string, unknown>): NormalizedItem | null {
+  const itemCode = clampText(raw.itemCode, MAX_TEXT_LENGTH);
+  const itemName = clampText(raw.itemName, MAX_TEXT_LENGTH);
+  const itemUrl = isHttpsUrl(raw.itemUrl) ? raw.itemUrl : '';
+  const itemPrice = parseItemPrice(raw.itemPrice);
+  if (!itemCode || !itemName || !itemUrl || itemPrice === undefined) return null;
+
   return {
-    itemCode: clampText(raw.itemCode, MAX_TEXT_LENGTH),
-    itemName: clampText(raw.itemName, MAX_TEXT_LENGTH),
+    itemCode,
+    itemName,
     shopName: clampText(raw.shopName, MAX_SHOP_NAME_LENGTH),
-    itemPrice: Number.isFinite(Number(raw.itemPrice)) ? Math.max(0, Number(raw.itemPrice)) : 0,
+    itemPrice,
     mediumImageUrls: normalizeImageUrls(raw.mediumImageUrls),
-    itemUrl: isHttpsUrl(itemUrl) ? itemUrl : '',
+    itemUrl,
     postageFlag: Number(raw.postageFlag) === 0 ? 0 : 1,
   };
 }
@@ -234,12 +258,16 @@ async function handleGet(context: PagesFunctionContext, requestId: string): Prom
 
     const items = data.Items.map((entry) => {
       // formatVersion=2 は item が直接、旧形式は { Item: {...} }。
-      const record =
+      const nested =
         entry && typeof entry === 'object' && 'Item' in (entry as Record<string, unknown>)
-          ? ((entry as { Item: Record<string, unknown> }).Item ?? {})
-          : (entry as Record<string, unknown>);
-      return normalizeItem(record ?? {});
-    }).filter((item) => item.itemCode && item.itemName && item.itemUrl);
+          ? (entry as { Item: unknown }).Item
+          : entry;
+      const record =
+        nested && typeof nested === 'object' && !Array.isArray(nested)
+          ? (nested as Record<string, unknown>)
+          : {};
+      return normalizeItem(record);
+    }).filter((item): item is NormalizedItem => Boolean(item));
 
     return successResponse(items, requestId);
   } catch (err) {
