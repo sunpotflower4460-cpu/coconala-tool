@@ -9,27 +9,29 @@ type Props = {
 };
 
 export function ProductSearchBar({ onSearch }: Props) {
-  const { query, setQuery, setSearchResult, setIsSearching, isSearching, dataSourceMode, clearSearch } =
+  const { query, setQuery, setSearchResult, isSearching, dataSourceMode, clearSearch } =
     useResearchStore();
 
   async function handleSearch() {
     const requestedQuery = query.trim();
     const requestedMode = dataSourceMode;
-    if (!requestedQuery || isSearching) return;
+    if (!requestedQuery) return;
 
-    setIsSearching(true);
+    const requestId = useResearchStore.getState().beginSearch();
+    if (requestId === null) return;
+
     try {
       const response = await runMarketSearch(requestedQuery, requestedMode, 8);
       const current = useResearchStore.getState();
 
-      // 検索中にユーザーがクエリを編集・クリアしたり、データソースを切り替えた場合、
-      // 遅れて返ってきた旧リクエストの結果で現在の画面状態を上書きしない。
+      // 同一クエリでも、クリア後の再検索や連打で生まれた古い世代は捨てる。
+      if (!current.isCurrentSearchRequest(requestId)) return;
       if (current.query.trim() !== requestedQuery || current.dataSourceMode !== requestedMode) return;
 
       setSearchResult(response);
       onSearch();
     } finally {
-      setIsSearching(false);
+      useResearchStore.getState().finishSearchIfCurrent(requestId);
     }
   }
 

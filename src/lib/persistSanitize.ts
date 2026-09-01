@@ -1,6 +1,7 @@
 import type {
   DataSourceMode,
   MarketCard,
+  MarketSearchStatus,
   ProfitSettings,
   SavedResearchSession,
   SourceType,
@@ -16,6 +17,8 @@ import {
   MAX_CARD_TITLE_LENGTH,
   MAX_HISTORY_NAME_LENGTH,
   MAX_SEARCH_QUERY_LENGTH,
+  MAX_SEARCH_WARNING_LENGTH,
+  MAX_SEARCH_WARNINGS,
 } from './limits';
 import { toSafeHttpUrl, toSafeHttpsUrl } from './safeUrl';
 
@@ -27,9 +30,23 @@ export const HISTORY_PERSIST_VERSION = 1;
 const THEME_IDS: ThemeId[] = ['simple-pro', 'soft-market', 'dark-trader', 'natural-board'];
 const DATA_SOURCE_MODES: DataSourceMode[] = ['sample', 'rakuten_mock'];
 const SOURCE_TYPES: SourceType[] = ['official_api', 'search_api', 'search_link', 'manual'];
+const MARKET_SEARCH_STATUSES: MarketSearchStatus[] = [
+  'sample',
+  'official_api',
+  'mock_no_key',
+  'mock_timeout',
+  'mock_network',
+  'mock_rate_limited',
+  'mock_upstream_error',
+  'empty',
+];
 const CONFIDENCES = ['high', 'medium', 'low'] as const;
 const CURRENCIES = ['JPY', 'USD', 'EUR', 'OTHER'] as const;
 const DEMO_ORIGINS = ['sample', 'mock'] as const;
+
+/** `new Date().toISOString()` 相当の日時だけを履歴メタデータとして残す。不正値は変換せず捨てる。 */
+const ISO_DATE_TIME_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,3})?(Z|[+-]\d{2}:\d{2})$/;
+const MAX_LAST_SEARCHED_AT_LENGTH = 40;
 
 export const defaultProfitSettings: ProfitSettings = {
   buyPrice: 0,
@@ -51,6 +68,27 @@ function clampText(value: unknown, maxLength: number): string {
 
 export function sanitizeDataSourceMode(value: unknown): DataSourceMode | undefined {
   return DATA_SOURCE_MODES.includes(value as DataSourceMode) ? (value as DataSourceMode) : undefined;
+}
+
+export function sanitizeSearchStatus(value: unknown): MarketSearchStatus | null {
+  return MARKET_SEARCH_STATUSES.includes(value as MarketSearchStatus) ? (value as MarketSearchStatus) : null;
+}
+
+export function sanitizeSearchWarnings(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((entry): entry is string => typeof entry === 'string')
+    .map((entry) => entry.slice(0, MAX_SEARCH_WARNING_LENGTH))
+    .slice(0, MAX_SEARCH_WARNINGS);
+}
+
+export function sanitizeLastSearchedAt(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length === 0 || value.length > MAX_LAST_SEARCHED_AT_LENGTH) {
+    return null;
+  }
+  if (!ISO_DATE_TIME_PATTERN.test(value)) return null;
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? value : null;
 }
 
 export function sanitizeThemeId(value: unknown): ThemeId | undefined {
@@ -131,9 +169,9 @@ export function sanitizeSavedSession(value: unknown): SavedResearchSession | und
     createdAt: typeof record.createdAt === 'string' ? record.createdAt : new Date(0).toISOString(),
     updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : new Date(0).toISOString(),
     dataSourceMode: sanitizeDataSourceMode(record.dataSourceMode) ?? 'sample',
-    searchStatus: null,
-    searchWarnings: [],
-    lastSearchedAt: null,
+    searchStatus: sanitizeSearchStatus(record.searchStatus),
+    searchWarnings: sanitizeSearchWarnings(record.searchWarnings),
+    lastSearchedAt: sanitizeLastSearchedAt(record.lastSearchedAt),
   };
 }
 
@@ -161,4 +199,20 @@ export function sanitizeHistoryPersisted(value: unknown): { sessions: SavedResea
   return {
     sessions: sessions.map(sanitizeSavedSession).filter((session): session is SavedResearchSession => Boolean(session)),
   };
+}
+
+/**
+ * Zustand persist の version 0（version 未指定で保存されたデータ）→ 1 の移行。
+ * 壊れた個別セッションだけを捨て、正常なセッションと検索メタデータは可能な限り残す。
+ * 完全に壊れた state は空履歴へフォールバックし、hydrate を失敗させない。
+ */
+export function migrateHistoryPersisted(
+  persistedState: unknown,
+  _fromVersion: number,
+): { sessions: SavedResearchSession[] } {
+  try {
+    return sanitizeHistoryPersisted(persistedState);
+  } catch {
+    return { sessions: [] };
+  }
 }

@@ -227,4 +227,80 @@ describe('rakutenAdapter.search', () => {
     expect(result.cards).toHaveLength(0);
     expect(result.warnings.some((w) => w.includes('PS5'))).toBe(true);
   });
+
+  it('不正価格の商品だけ除外し、検索全体は成功して ¥0 へ変換しない', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      jsonResponse({
+        items: [
+          {
+            itemCode: 'shop:ok1',
+            itemName: '正常1',
+            shopName: 'shop',
+            itemPrice: 79800,
+            mediumImageUrls: [],
+            itemUrl: 'https://item.rakuten.co.jp/shop/ok1/',
+            postageFlag: 0,
+          },
+          {
+            itemCode: 'shop:undef',
+            itemName: '価格なし',
+            shopName: 'shop',
+            itemUrl: 'https://item.rakuten.co.jp/shop/undef/',
+            postageFlag: 0,
+          },
+          {
+            itemCode: 'shop:abc',
+            itemName: '文字価格',
+            shopName: 'shop',
+            itemPrice: 'abc',
+            itemUrl: 'https://item.rakuten.co.jp/shop/abc/',
+            postageFlag: 0,
+          },
+          {
+            itemCode: 'shop:nan',
+            itemName: 'NaN価格',
+            shopName: 'shop',
+            itemPrice: Number.NaN,
+            itemUrl: 'https://item.rakuten.co.jp/shop/nan/',
+            postageFlag: 0,
+          },
+          {
+            itemCode: 'shop:ok2',
+            itemName: '正常2',
+            shopName: 'shop',
+            itemPrice: 1200,
+            mediumImageUrls: [],
+            itemUrl: 'https://item.rakuten.co.jp/shop/ok2/',
+            postageFlag: 0,
+          },
+        ],
+        source: 'official_api',
+      }),
+    );
+
+    const result = await rakutenAdapter.search({ query: 'PS5' });
+    expect(result.status).toBe('official_api');
+    expect(result.cards.map((card) => card.id)).toEqual(['rakuten-shop:ok1', 'rakuten-shop:ok2']);
+    expect(result.cards.every((card) => card.priceValue !== 0)).toBe(true);
+  });
+
+  it.each([
+    ['null', null],
+    ['string', 'hello'],
+    ['number', 123],
+    ['array', []],
+    ['empty object', {}],
+  ] as const)('HTTP 200 JSON が %s のときは mock_upstream_error（network ではない）', async (_label, body) => {
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(body));
+    const result = await rakutenAdapter.search({ query: 'PS5' });
+    expect(result.status).toBe('mock_upstream_error');
+    expect(result.cards.every((card) => card.demoOrigin === 'mock')).toBe(true);
+  });
+
+  it('{ items: [] } は正常な empty 検索として扱う', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ items: [] }));
+    const result = await rakutenAdapter.search({ query: 'PS5' });
+    expect(result.status).toBe('empty');
+    expect(result.cards).toHaveLength(0);
+  });
 });

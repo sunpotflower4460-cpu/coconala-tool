@@ -262,7 +262,7 @@ describe('functions/api/rakuten onRequest', () => {
         Items: [
           { Item: { itemCode: '', itemName: '名前だけ', itemPrice: 1000 } },
           { Item: { itemCode: 'shop:2', itemName: '', itemPrice: 1000 } },
-          { Item: { itemCode: 'shop:3', itemName: '正常', itemPrice: -50, mediumImageUrls: [], itemUrl: 'https://item.rakuten.co.jp/shop/3/' } },
+          { Item: { itemCode: 'shop:3', itemName: '正常', itemPrice: 1500, mediumImageUrls: [], itemUrl: 'https://item.rakuten.co.jp/shop/3/' } },
         ],
       }),
     );
@@ -270,7 +270,7 @@ describe('functions/api/rakuten onRequest', () => {
     const body = await readJson(res);
     expect(body.items).toHaveLength(1);
     expect(body.items[0].itemCode).toBe('shop:3');
-    expect(body.items[0].itemPrice).toBe(0);
+    expect(body.items[0].itemPrice).toBe(1500);
   });
 
   it('https の商品URLが無い壊れた商品はレスポンスから除外する', async () => {
@@ -345,5 +345,79 @@ describe('functions/api/rakuten onRequest', () => {
     const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5', appId: 'super-secret-app-id' }));
     const text = await res.clone().text();
     expect(text).not.toContain('super-secret-app-id');
+  });
+
+  it('不正価格の商品だけ除外し、正常商品は残して ¥0 へ変換しない', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      upstreamJsonResponse({
+        Items: [
+          {
+            Item: {
+              itemCode: 'shop:ok1',
+              itemName: '正常1',
+              itemPrice: 79800,
+              itemUrl: 'https://item.rakuten.co.jp/shop/ok1/',
+            },
+          },
+          {
+            Item: {
+              itemCode: 'shop:undef',
+              itemName: '価格なし',
+              itemUrl: 'https://item.rakuten.co.jp/shop/undef/',
+            },
+          },
+          {
+            Item: {
+              itemCode: 'shop:abc',
+              itemName: '文字価格',
+              itemPrice: 'abc',
+              itemUrl: 'https://item.rakuten.co.jp/shop/abc/',
+            },
+          },
+          {
+            Item: {
+              itemCode: 'shop:nan',
+              itemName: 'NaN価格',
+              itemPrice: Number.NaN,
+              itemUrl: 'https://item.rakuten.co.jp/shop/nan/',
+            },
+          },
+          {
+            Item: {
+              itemCode: 'shop:ok2',
+              itemName: '正常2',
+              itemPrice: 1200,
+              itemUrl: 'https://item.rakuten.co.jp/shop/ok2/',
+            },
+          },
+        ],
+      }),
+    );
+    const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5', appId: 'key' }));
+    const body = await readJson(res);
+    expect(res.status).toBe(200);
+    expect(body.items.map((item: { itemCode: string }) => item.itemCode)).toEqual(['shop:ok1', 'shop:ok2']);
+    expect(body.items.every((item: { itemPrice: number }) => item.itemPrice !== 0)).toBe(true);
+  });
+
+  it('正当な 0 円商品は残す', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      upstreamJsonResponse({
+        Items: [
+          {
+            Item: {
+              itemCode: 'shop:zero',
+              itemName: '無料サンプル',
+              itemPrice: 0,
+              itemUrl: 'https://item.rakuten.co.jp/shop/zero/',
+            },
+          },
+        ],
+      }),
+    );
+    const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5', appId: 'key' }));
+    const body = await readJson(res);
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0].itemPrice).toBe(0);
   });
 });

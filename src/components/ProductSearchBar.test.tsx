@@ -28,8 +28,10 @@ describe('ProductSearchBar', () => {
       resultCards: [],
       comparedCards: [],
       isSearching: false,
+      searchRequestId: 0,
       searchStatus: null,
       searchWarnings: [],
+      lastSearchedAt: null,
       dataSourceMode: 'sample',
       profitSettings: {
         buyPrice: 0,
@@ -181,5 +183,70 @@ describe('ProductSearchBar', () => {
     expect(useResearchStore.getState().query).toBe('');
     expect(useResearchStore.getState().comparedCards).toHaveLength(1);
     expect(useResearchStore.getState().profitSettings.buyPrice).toBe(1234);
+  });
+
+  it('ケースA: 同一クエリでも clear 後の新しい検索結果を古い応答で上書きしない', async () => {
+    const deferredA = deferredSearch();
+    const deferredB = deferredSearch();
+    let call = 0;
+    vi.spyOn(marketSearchService, 'runMarketSearch').mockImplementation(() => {
+      call += 1;
+      return (call === 1 ? deferredA.promise : deferredB.promise) as ReturnType<
+        typeof marketSearchService.runMarketSearch
+      >;
+    });
+    const onSearch = vi.fn();
+    const card = (id: string) => ({
+      id,
+      title: id,
+      siteName: 'sample',
+      sourceType: 'manual' as const,
+      pageUrl: `https://example.com/${id}`,
+      confidence: 'high' as const,
+      createdAt: '2026-07-22T00:00:00.000Z',
+    });
+
+    render(<ProductSearchBar onSearch={onSearch} />);
+    await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), 'PS5');
+    await userEvent.click(screen.getByRole('button', { name: 'まとめて探す' }));
+
+    await userEvent.click(screen.getByRole('button', { name: '検索内容をクリア' }));
+    await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), 'PS5');
+    await userEvent.click(screen.getByRole('button', { name: 'まとめて探す' }));
+
+    deferredB.resolveSearch({ ...emptyResponse, cards: [card('from-b')] });
+    await waitFor(() => expect(useResearchStore.getState().resultCards[0]?.id).toBe('from-b'));
+
+    deferredA.resolveSearch({ ...emptyResponse, cards: [card('from-a')] });
+    await waitFor(() => expect(useResearchStore.getState().isSearching).toBe(false));
+    expect(useResearchStore.getState().resultCards.map((c) => c.id)).toEqual(['from-b']);
+    expect(onSearch).toHaveBeenCalledTimes(1);
+  });
+
+  it('検索中の finally が新しいリクエストの isSearching=false を上書きしない', async () => {
+    const deferredA = deferredSearch();
+    const deferredB = deferredSearch();
+    let call = 0;
+    vi.spyOn(marketSearchService, 'runMarketSearch').mockImplementation(() => {
+      call += 1;
+      return (call === 1 ? deferredA.promise : deferredB.promise) as ReturnType<
+        typeof marketSearchService.runMarketSearch
+      >;
+    });
+
+    render(<ProductSearchBar onSearch={() => {}} />);
+    await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), 'PS5');
+    await userEvent.click(screen.getByRole('button', { name: 'まとめて探す' }));
+    await userEvent.click(screen.getByRole('button', { name: '検索内容をクリア' }));
+    await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), 'PS5');
+    await userEvent.click(screen.getByRole('button', { name: 'まとめて探す' }));
+
+    expect(useResearchStore.getState().isSearching).toBe(true);
+    deferredA.resolveSearch(emptyResponse);
+    await waitFor(() => expect(useResearchStore.getState().searchRequestId).toBeGreaterThan(1));
+    expect(useResearchStore.getState().isSearching).toBe(true);
+
+    deferredB.resolveSearch(emptyResponse);
+    await waitFor(() => expect(useResearchStore.getState().isSearching).toBe(false));
   });
 });

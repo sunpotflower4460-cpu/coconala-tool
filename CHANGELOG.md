@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v0.9.0-rc.10 — 販売前の履歴・API・検索競合ハードニング
+
+新機能は追加せず、販売後に起きやすいデータ消失・誤表示・競合だけを塞いだ。
+
+- 履歴 persist に version 0 → 1 の明示 migrate を追加。旧ユーザーの履歴を hydrate 時に落とさない
+- 履歴保存の永続化失敗時は、上限超過後の「新件だけ削除」ではなく保存前配列へ完全 rollback する
+- hydrate 時に searchStatus / searchWarnings / lastSearchedAt を検証して保持する（不正値だけ null）
+- 楽天商品の不正価格を ¥0 に変換せず、その商品だけ除外する。正当な 0 円は残す
+- 同一検索語でもリクエスト世代で古い応答を捨て、clear 後の再検索を上書きしない
+- JSON の null / プリミティブ / 配列応答を通信失敗ではなく上流契約不整合として分類する
+- Cloudflare Workers Builds 向けに `wrangler.jsonc`・Worker エントリ・`@cloudflare/vite-plugin` を追加（Worker 名 `coconala-tool`。既存 Pages Function と同じ `/api/rakuten` ハンドラ。E2E の `preview` は `vite preview` のまま）
+
 ## v0.9.0-rc.9 — 本番故障リスクの残バグ修正
 
 開発AIが見落としていた本番故障経路を、QA観点で再現テスト付きで塞いだ。

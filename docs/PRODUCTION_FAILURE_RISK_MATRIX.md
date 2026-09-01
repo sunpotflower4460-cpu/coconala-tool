@@ -2,7 +2,7 @@
 
 最終更新: 2026-08-31
 
-対象: 相場カード比較ボード (`coconala-tool`)
+対象: 相場カード比較ボード (`coconala-tool`) v0.9.0-rc.10
 
 目的: 本番運用で起こり得る故障を、API / 認証・秘密情報 / 通信 / 同時実行 / データ不整合 / ユーザー操作 / 外部サービス障害 / セキュリティの観点から洗い出し、**各リスクに再現手順と期待結果を持たせる**。
 
@@ -68,25 +68,29 @@
   - 上流本文はクライアントへ透過しない
 - 自動テスト: `functions/api/rakuten.test.ts`, `src/services/marketAdapters/rakutenAdapter.test.ts`
 
-## API-05 200だがJSON破損 / `items`契約違反
+## API-05 200だがJSON破損 / `items`契約違反 / null・プリミティブ応答
 
 - 重大度: P0
-- 状態: Protected（本PRでフロント契約検査を強化）
-- 故障: API仕様変更やEdge誤配信を「検索結果0件」と誤認し、利用者に間違った判断をさせる
+- 状態: Protected（本PRで null/primitive/array を契約不整合へ分類）
+- 故障: API仕様変更やEdge誤配信を「検索結果0件」または「通信失敗」と誤認し、利用者に間違った判断をさせる
 - 再現:
   1. Content-TypeはJSONだが `json()` がSyntaxError
   2. HTTP 200で `{ status: 'ok' }` のみ返す
-- 期待結果: `mock_upstream_error` へフォールバックし、「0件」とは表示しない
+  3. HTTP 200 JSON が `null` / `"hello"` / `123` / `[]` / `{}`
+  4. HTTP 200 JSON が `{ items: [] }`
+- 期待結果:
+  - 1〜3: `mock_upstream_error`（`mock_network` ではない）。「0件」とは表示しない
+  - 4: 正常な empty 検索
 - 自動テスト: `src/services/marketAdapters/rakutenAdapter.test.ts`
 
-## API-06 楽天商品データの必須フィールド欠落 / 不正URL / 負価格
+## API-06 楽天商品データの必須フィールド欠落 / 不正URL / 不正価格
 
-- 重大度: P1
-- 状態: Protected
-- 故障: 壊れたカード、危険なURL、異常な利益計算
-- 再現: itemCodeなし、itemNameなし、HTTP画像/商品URL、負価格を含むItems
-- 期待結果: 必須フィールド欠落カードは除外。URLはHTTPSのみ。負価格は0へ正規化
-- 自動テスト: `functions/api/rakuten.test.ts`
+- 重大度: P0
+- 状態: Protected（本PRで不正価格の ¥0 変換を廃止）
+- 故障: 壊れたカード、危険なURL、`楽天市場公式API ¥0` による誤った利益計算
+- 再現: itemCodeなし、itemNameなし、HTTP画像/商品URL、undefined / `"abc"` / NaN / Infinity / 負価格を含むItems
+- 期待結果: 必須フィールド欠落・不正価格のカードは除外。URLはHTTPSのみ。不正値を 0 へ変換しない。正当な 0 円は残す。検索全体は成功
+- 自動テスト: `functions/api/rakuten.test.ts`, `src/services/marketAdapters/rakutenMapper.test.ts`
 
 ## API-07 巨大な上流レスポンス
 
@@ -202,13 +206,13 @@
 - 状態: Protected
 - 故障: 同じAPIを二重送信し、レート枠消費・状態競合
 - 再現: 検索開始直後にボタンを再クリック
-- 期待結果: `isSearching`中は2回目を送らない
-- 自動テスト: `ProductSearchBar.test.tsx`
+- 期待結果: `isSearching`中は2回目を送らない（`beginSearch` が null）
+- 自動テスト: `ProductSearchBar.test.tsx`, `researchStore.test.ts`
 
 ## CONC-02 検索中に検索語を変更
 
 - 重大度: P0
-- 状態: Protected（本PR追加）
+- 状態: Protected
 - 故障: 画面の検索語はNintendoなのに、遅れて返ったPS5カードが表示される
 - 再現: PS5検索開始 -> 応答前に入力をNintendoへ変更 -> PS5応答をresolve
 - 期待結果: 旧応答は破棄。現在クエリと結果を混在させない
@@ -217,7 +221,7 @@
 ## CONC-03 検索中にデータソース切替
 
 - 重大度: P0
-- 状態: Protected（本PR追加）
+- 状態: Protected
 - 故障: 「楽天市場」表示なのにサンプル検索結果が後着して表示される
 - 再現: sample検索開始 -> 応答前にrakutenへ切替 -> sample応答をresolve
 - 期待結果: 旧モード応答は破棄
@@ -226,11 +230,20 @@
 ## CONC-04 検索中にクリア/リセット
 
 - 重大度: P1
-- 状態: Protected（CONC-02の同じガードで防御）
+- 状態: Protected（リクエスト世代で無効化）
 - 故障: ユーザーが消した直後に結果が復活
 - 再現: 検索開始 -> Xでクリア -> 応答到着
-- 期待結果: 結果を復活させない
-- 自動テスト: CONC-02と同じ状態不一致ガード。専用E2E追加は任意
+- 期待結果: 結果を復活させない。進行中リクエストの `setIsSearching(false)` も新しい検索を上書きしない
+- 自動テスト: `ProductSearchBar.test.tsx`
+
+## CONC-04b 同一クエリでの古いレスポンス競合
+
+- 重大度: P0
+- 状態: Protected（本PRでリクエスト世代を追加）
+- 故障: PS5検索A → クリア → 再びPS5検索B。Bが先に返りAが後から上書きする
+- 再現: 同一クエリの deferred を2本立て、Bを先に resolve してから A を resolve
+- 期待結果: Bの結果が残る。Aは無視。`isSearching` も B 基準
+- 自動テスト: `ProductSearchBar.test.tsx`
 
 ## CONC-05 同じアプリを複数タブで開き、両方から履歴保存/削除
 
@@ -247,11 +260,11 @@
 
 ## DATA-01 localStorage容量超過
 
-- 重大度: P1
-- 状態: Protected
-- 故障: 保存ボタンを押したのに再読込後に履歴が消える
-- 再現: `localStorage.setItem`をQuotaExceededErrorにする
-- 期待結果: 「保存に失敗」と表示し、成功扱いしない。メモリ上の一覧からも当該セッションを取り除く
+- 重大度: P0
+- 状態: Protected（本PRで保存前配列へ完全 rollback）
+- 故障: 20件上限で新規保存に失敗すると、最古1件が戻らず履歴が19件になる
+- 再現: 既存20件 → 21件目保存 → `localStorage.setItem` を QuotaExceededError にする
+- 期待結果: 「保存に失敗」と表示し、成功扱いしない。保存前の20件が完全に残る。新規履歴だけ存在しない
 - 自動テスト: `historyStore.test.ts`
 
 ## DATA-02 ブラウザでStorage利用が禁止
@@ -272,14 +285,20 @@
 - 期待結果: 既定値へフォールバックし、画面をクラッシュさせない。javascript: URLは除去。利益設定はクランプ
 - 自動テスト: `src/lib/persistSanitize.test.ts`, `researchStore.test.ts`, `e2e/core-flows.spec.ts`
 
-## DATA-04 将来バージョンで保存形式を変更
+## DATA-04 将来バージョンで保存形式を変更 / version 0 履歴
 
-- 重大度: P1
-- 状態: Protected
-- 故障: アップデート後に旧履歴が読めない
-- 再現: 現行localStorageスナップショットを保存 -> schema変更版で起動
-- 期待結果: persist version と merge 時サニタイズで未知フィールドを無視し、壊れた値は既定へ戻す
-- 自動テスト: `src/lib/persistSanitize.test.ts`
+- 重大度: P0
+- 状態: Protected（本PRで persist migrate 0→1 を追加）
+- 故障: version 未指定で保存された履歴が version 1 の hydrate で全消失する。検索メタデータが reload で消える
+- 再現:
+  1. `{ state: { sessions: [正常] }, version: 0 }` を localStorage に入れて起動
+  2. sessions 内に壊れた1件を混ぜる
+  3. 完全に壊れた JSON
+- 期待結果:
+  1. version 1 へ migrate。件数・名前・検索語・カード・利益設定・searchStatus 等を保持
+  2. 壊れた1件だけ除外
+  3. 空履歴へフォールバックし白画面にしない
+- 自動テスト: `src/lib/persistSanitize.test.ts`, `src/features/history/historyStore.test.ts`, `e2e/core-flows.spec.ts`
 
 ## DATA-05 利益設定にNaN/Infinity/負数/100%超手数料
 

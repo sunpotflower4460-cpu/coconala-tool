@@ -48,6 +48,8 @@ const SOURCE_ALLOWLIST = [
   'README.md',
   'TERMS.md',
   'CHANGELOG.md',
+  'wrangler.jsonc',
+  'worker.ts',
 ];
 
 /** `docs/` のうち、開発AI向け・出品者/社内向けの内部資料として除外するファイル名。 */

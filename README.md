@@ -2,7 +2,7 @@
 
 物販・せどり向けの相場リサーチ補助ツールです。楽天市場 公式APIの価格候補、他サイトへの検索リンク、手動追加した商品を一つのボードで比較し、利益見込み・履歴・CSV出力までまとめて管理できます。
 
-現在のバージョン: **v0.9.0-rc.9**（正式販売前の候補版）
+現在のバージョン: **v0.9.0-rc.10**（正式販売前の候補版）
 
 ---
 
@@ -48,7 +48,7 @@ npm run e2e     # Playwright E2E（初回のみ `npx playwright install --with-d
 ```
 
 - デプロイ用ビルドコマンド: `npm run build`
-- 出力ディレクトリ: `dist`
+- 出力ディレクトリ: `dist/client`（Workers 成果物は `dist/coconala_tool`）
 - デプロイ後の確認: [`docs/post-deploy-qa.md`](docs/post-deploy-qa.md)
 - CI（`.github/workflows/ci.yml`）は上記に加え `npm audit --audit-level=high` を実行します
 

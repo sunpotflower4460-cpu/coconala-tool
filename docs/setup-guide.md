@@ -32,8 +32,8 @@ npm run test   # profitCalculator / csvExport の回帰テスト（Vitest）
 
 ## 楽天 商品検索API（実データ）を試す
 
-App ID は **絶対にフロントエンド（`VITE_`）に置きません**。Cloudflare Pages Functions
-（`functions/api/rakuten.ts`）でサーバー側プロキシを立て、そこから楽天APIを呼びます。
+App ID は **絶対にフロントエンド（`VITE_`）に置きません**。サーバー側プロキシ
+（`functions/api/rakuten.ts` を `worker.ts` から呼ぶ）から楽天APIを呼びます。
 
 1. 楽天ウェブサービスで Application ID を取得します。
 2. ローカルでは `.dev.vars`（Cloudflare 用）に設定します。
@@ -42,16 +42,7 @@ App ID は **絶対にフロントエンド（`VITE_`）に置きません**。C
    SERVER_RAKUTEN_APP_ID=あなたのアプリID
    ```
 
-3. Functions を起動し、フロントを同時に動かします。
-
-   ```bash
-   npm run build
-   npx wrangler pages dev dist --port 8788
-   # 別ターミナルで
-   npm run dev
-   ```
-
-   `npm run dev`（Vite）は `/api/*` を `http://127.0.0.1:8788`（Functions）へプロキシします。
+3. `npm run dev` を起動します。Vite の Cloudflare プラグインが Worker を同じ開発サーバー上で動かすため、別プロセスの `wrangler pages dev` は不要です。
 
 4. データソースを「楽天市場」に切り替えて検索すると、キー設定時は `公式API取得`
    ラベルの実データが表示されます。
