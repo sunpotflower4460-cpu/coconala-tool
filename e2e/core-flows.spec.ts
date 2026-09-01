@@ -180,9 +180,13 @@ test('version 0 の履歴は hydrate 後も名前と検索語が残る', async (
   });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '相場カード比較ボード' })).toBeVisible();
+  // 履歴パネルは検索後のサイドバーに出る（既存レイアウト）。hydrate 自体は起動時に済んでいる。
+  await page.getByLabel('商品名・型番・JAN・URL').fill('PS5');
+  await page.getByRole('button', { name: 'まとめて探す' }).click();
+  await expect(page.getByText(/検索結果 \(\d+件\)/)).toBeVisible();
   await expect(page.getByText('旧形式の履歴')).toBeVisible();
   await expect(page.getByText('壊れた履歴')).toHaveCount(0);
-  await expect(page.getByText(/クエリなし|PS5/)).toBeVisible();
+  await expect(page.getByText('PS5 / 比較 0 件')).toBeVisible();
 });
 
 test('履歴削除は確認ダイアログ後に消える', async ({ page }) => {
