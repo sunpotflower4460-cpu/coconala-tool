@@ -1,15 +1,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { onRequest } from './rakuten';
+import { onRequest, resolveRakutenEndpoint, RAKUTEN_ENDPOINT } from './rakuten';
 
 type MockInit = { status?: number; contentType?: string };
 
 function upstreamJsonResponse(body: unknown, init: MockInit = {}): Response {
-  const status = init.status ?? 200;
-  return {
-    ok: status < 400,
-    status,
-    json: async () => body,
-  } as unknown as Response;
+  return new Response(JSON.stringify(body), {
+    status: init.status ?? 200,
+    headers: { 'content-type': init.contentType ?? 'application/json' },
+  });
 }
 
 function makeContext(overrides: {
@@ -18,13 +16,22 @@ function makeContext(overrides: {
   origin?: string;
   secFetchSite?: string;
   appId?: string;
+  accessKey?: string;
+  env?: Record<string, string>;
 }) {
   const url = `https://example.pages.dev/api/rakuten${overrides.search ?? ''}`;
   const headers = new Headers();
   if (overrides.origin !== undefined) headers.set('origin', overrides.origin);
   if (overrides.secFetchSite !== undefined) headers.set('sec-fetch-site', overrides.secFetchSite);
   const request = new Request(url, { method: overrides.method ?? 'GET', headers });
-  return { request, env: { SERVER_RAKUTEN_APP_ID: overrides.appId } };
+  return {
+    request,
+    env: {
+      SERVER_RAKUTEN_APP_ID: overrides.appId,
+      SERVER_RAKUTEN_ACCESS_KEY: overrides.accessKey ?? (overrides.appId ? 'test-access-key' : undefined),
+      ...overrides.env,
+    },
+  };
 }
 
 async function readJson(res: Response) {
@@ -156,14 +163,43 @@ describe('functions/api/rakuten onRequest', () => {
     expect(body.error).toBe('rate_limited');
   });
 
-  it('上流が4xxの場合は502 upstream_client_errorで詳細本文は透過しない', async () => {
-    globalThis.fetch = vi.fn().mockResolvedValue(upstreamJsonResponse({ secret: 'upstream detail' }, { status: 401 }));
+  it('上流が401/403の場合は502 upstream_auth（キー・許可サイト設定の問題）で詳細本文は透過しない', async () => {
+    for (const status of [401, 403]) {
+      globalThis.fetch = vi.fn().mockResolvedValue(upstreamJsonResponse({ secret: 'upstream detail' }, { status }));
+      const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5', appId: 'key' }));
+      expect(res.status).toBe(502);
+      const body = await readJson(res);
+      expect(body.error).toBe('upstream_auth');
+      expect(body.upstreamStatus).toBe(status);
+      expect(JSON.stringify(body)).not.toContain('upstream detail');
+    }
+  });
+
+  it('上流400でアプリID/アクセスキー起因なら upstream_auth、検索語起因なら 400 invalid_query、それ以外は upstream_client_error', async () => {
+    const cases: Array<[unknown, number, string]> = [
+      [{ error: 'wrong_parameter', error_description: 'specify valid applicationId' }, 502, 'upstream_auth'],
+      [{ error: 'wrong_parameter', error_description: 'accessKey is not valid' }, 502, 'upstream_auth'],
+      [{ error: 'wrong_parameter', error_description: 'keyword parameter is not valid' }, 400, 'invalid_query'],
+      [{ error: 'wrong_parameter', error_description: 'hits is not valid' }, 502, 'upstream_client_error'],
+      ['not-json', 502, 'upstream_client_error'],
+    ];
+    for (const [body, status, code] of cases) {
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        typeof body === 'string' ? new Response(body, { status: 400 }) : upstreamJsonResponse(body, { status: 400 }),
+      );
+      const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5', appId: 'key' }));
+      expect(res.status).toBe(status);
+      const json = await readJson(res);
+      expect(json.error).toBe(code);
+      expect(JSON.stringify(json)).not.toContain('is not valid');
+    }
+  });
+
+  it('上流404（該当なし）は通信失敗ではなく0件の正常応答', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(upstreamJsonResponse({ error: 'not_found' }, { status: 404 }));
     const res = await onRequest(makeContext({ method: 'GET', search: '?q=PS5', appId: 'key' }));
-    expect(res.status).toBe(502);
-    const body = await readJson(res);
-    expect(body.error).toBe('upstream_client_error');
-    expect(body.upstreamStatus).toBe(401);
-    expect(JSON.stringify(body)).not.toContain('upstream detail');
+    expect(res.status).toBe(200);
+    expect(await readJson(res)).toMatchObject({ status: 'ok', items: [] });
   });
 
   it('上流が5xxの場合は502 upstream_error', async () => {
@@ -441,7 +477,7 @@ describe('functions/api/rakuten onRequest', () => {
       capturedUrl = url;
       return Promise.resolve(upstreamJsonResponse({ Items: [] }));
     });
-    const injected = 'PS5&applicationId=attacker-key&hits=1';
+    const injected = 'PS5&applicationId=attacker-test-key&hits=1';
     await onRequest(
       makeContext({ method: 'GET', search: `?q=${encodeURIComponent(injected)}`, appId: 'real-app-id' }),
     );
@@ -565,5 +601,140 @@ describe('functions/api/rakuten onRequest', () => {
     const body = await readJson(res);
     expect(body.items).toHaveLength(1);
     expect(body.items[0].itemPrice).toBe(0);
+  });
+
+  describe('楽天 新API（2026〜）への準拠', () => {
+    function captureFetch(body: unknown = { Items: [] }, init: MockInit = {}) {
+      const calls: Array<{ url: URL; headers: Headers }> = [];
+      globalThis.fetch = vi.fn().mockImplementation((url: string, options: RequestInit = {}) => {
+        calls.push({ url: new URL(url), headers: new Headers(options.headers) });
+        return Promise.resolve(upstreamJsonResponse(body, init));
+      });
+      return calls;
+    }
+
+    it('新ドメイン openapi.rakuten.co.jp に applicationId と accessKey の両方を送る', async () => {
+      const calls = captureFetch();
+      const res = await onRequest(makeContext({ search: '?q=PS5', appId: 'app-123', accessKey: 'access-456' }));
+      expect(res.status).toBe(200);
+      expect(calls).toHaveLength(1);
+      expect(calls[0].url.origin).toBe('https://openapi.rakuten.co.jp');
+      expect(calls[0].url.pathname).toBe('/ichibams/api/IchibaItem/Search/20260701');
+      expect(calls[0].url.searchParams.get('applicationId')).toBe('app-123');
+      expect(calls[0].url.searchParams.get('accessKey')).toBe('access-456');
+      const text = await res.text();
+      expect(text).not.toContain('app-123');
+      expect(text).not.toContain('access-456');
+    });
+
+    it('accessKey が未設定なら上流へ送らず 503 no_key（旧APIのアプリIDだけでは動かない）', async () => {
+      const calls = captureFetch();
+      const res = await onRequest({
+        request: new Request('https://example.pages.dev/api/rakuten?q=PS5'),
+        env: { SERVER_RAKUTEN_APP_ID: 'test-app-only' },
+      });
+      expect(res.status).toBe(503);
+      expect((await readJson(res)).error).toBe('no_key');
+      expect(calls).toHaveLength(0);
+    });
+
+    it('上流には楽天の「許可されたWebサイト」と照合される Origin / Referer を付ける', async () => {
+      const calls = captureFetch();
+      await onRequest(makeContext({ search: '?q=PS5', appId: 'key' }));
+      expect(calls[0].headers.get('origin')).toBe('https://example.pages.dev');
+      expect(calls[0].headers.get('referer')).toBe('https://example.pages.dev/');
+
+      const calls2 = captureFetch();
+      await onRequest(makeContext({ search: '?q=PS5', appId: 'key', env: { SERVER_RAKUTEN_ALLOWED_ORIGIN: 'https://shop.example.com/path' } }));
+      expect(calls2[0].headers.get('origin')).toBe('https://shop.example.com');
+
+      const calls3 = captureFetch();
+      await onRequest(makeContext({ search: '?q=PS5', appId: 'key', env: { SERVER_RAKUTEN_ALLOWED_ORIGIN: 'not a url' } }));
+      expect(calls3[0].headers.get('origin')).toBe('https://example.pages.dev');
+    });
+
+    it('新ドキュメント表記の小文字 items 配列も受け付ける', async () => {
+      captureFetch({
+        items: [{ itemCode: 'shop:1', itemName: '商品', itemPrice: 1200, itemUrl: 'https://item.rakuten.co.jp/shop/1/' }],
+      });
+      const res = await onRequest(makeContext({ search: '?q=PS5', appId: 'key' }));
+      expect(res.status).toBe(200);
+      expect((await readJson(res)).items).toHaveLength(1);
+    });
+
+    it('全語が短すぎる検索語（半角1文字・かな1文字）は上流へ送らず 400 invalid_query', async () => {
+      for (const q of ['a', 'あ', 'a b', '%E3%80%80x%E3%80%80']) {
+        const calls = captureFetch();
+        const res = await onRequest(makeContext({ search: `?q=${q}`, appId: 'key' }));
+        expect(res.status).toBe(400);
+        expect((await readJson(res)).error).toBe('invalid_query');
+        expect(calls).toHaveLength(0);
+      }
+      const ok = captureFetch();
+      const res = await onRequest(makeContext({ search: '?q=Switch%202', appId: 'key' }));
+      expect(res.status).toBe(200);
+      expect(ok[0].url.searchParams.get('keyword')).toBe('Switch 2');
+    });
+
+    it('本文が上限を超える応答は読み切らずに 502 upstream_error', async () => {
+      const huge = 'x'.repeat(2_100_000);
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(`{"Items":[],"pad":"${huge}"}`, { status: 200 }));
+      const res = await onRequest(makeContext({ search: '?q=PS5', appId: 'key' }));
+      expect(res.status).toBe(502);
+      expect((await readJson(res)).error).toBe('upstream_error');
+    });
+
+    it('ヘッダー受信後、本文の読み取り中にタイムアウトしても timeout（invalid_json ではない）', async () => {
+      vi.useFakeTimers();
+      globalThis.fetch = vi.fn().mockImplementation((_url: string, options: { signal: AbortSignal }) => {
+        const body = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('{"Items":['));
+            options.signal.addEventListener('abort', () => controller.error(new DOMException('aborted', 'AbortError')));
+          },
+        });
+        return Promise.resolve(new Response(body, { status: 200 }));
+      });
+      const promise = onRequest(makeContext({ search: '?q=PS5', appId: 'key' }));
+      await vi.advanceTimersByTimeAsync(8_000);
+      const res = await promise;
+      expect(res.status).toBe(504);
+      expect((await readJson(res)).error).toBe('timeout');
+    });
+
+    it('4xx の本文読み取り中にタイムアウトしても timeout として返す', async () => {
+      vi.useFakeTimers();
+      globalThis.fetch = vi.fn().mockImplementation((_url: string, options: { signal: AbortSignal }) => {
+        const body = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('{"error":'));
+            options.signal.addEventListener('abort', () => controller.error(new DOMException('aborted', 'AbortError')));
+          },
+        });
+        return Promise.resolve(new Response(body, { status: 400 }));
+      });
+      const promise = onRequest(makeContext({ search: '?q=PS5', appId: 'key' }));
+      await vi.advanceTimersByTimeAsync(8_000);
+      const res = await promise;
+      expect(res.status).toBe(504);
+      expect((await readJson(res)).error).toBe('timeout');
+    });
+
+    it('上流の差し替え（E2E用）はフラグ＋ループバックURLのときだけ効き、本番値では常に楽天へ送る', () => {
+      const fake = 'http://127.0.0.1:43174/ichibams/api/IchibaItem/Search/20260701';
+      expect(resolveRakutenEndpoint({ E2E_FAKE_UPSTREAM: '1', RAKUTEN_API_BASE_OVERRIDE: fake })).toBe(fake);
+      expect(resolveRakutenEndpoint({ RAKUTEN_API_BASE_OVERRIDE: fake })).toBe(RAKUTEN_ENDPOINT);
+      expect(resolveRakutenEndpoint({ E2E_FAKE_UPSTREAM: 'true', RAKUTEN_API_BASE_OVERRIDE: fake })).toBe(RAKUTEN_ENDPOINT);
+      for (const evil of ['https://evil.example/steal', 'http://evil.example/', 'http://127.0.0.1.evil.example/', 'file:///etc/passwd']) {
+        expect(resolveRakutenEndpoint({ E2E_FAKE_UPSTREAM: '1', RAKUTEN_API_BASE_OVERRIDE: evil })).toBe(RAKUTEN_ENDPOINT);
+      }
+    });
+
+    it('API レスポンスにクリックジャッキング・MIME sniff 対策ヘッダーを付ける', async () => {
+      const res = await onRequest(makeContext({ search: '?q=PS5' }));
+      expect(res.headers.get('x-frame-options')).toBe('DENY');
+      expect(res.headers.get('content-security-policy')).toContain("frame-ancestors 'none'");
+      expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+    });
   });
 });

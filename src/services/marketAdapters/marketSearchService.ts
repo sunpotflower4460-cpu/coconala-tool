@@ -1,23 +1,15 @@
 import { sampleMarketCards } from '../../data/sampleMarketCards';
 import type { DataSourceMode, MarketSearchResponse } from '../../types/market';
 import { rakutenAdapter } from './rakutenAdapter';
+import { matchesAllKeywords } from '../../lib/keywordMatch';
 
 const SAMPLE_WARNING =
   'サンプルデータ（UI確認用の固定カード）を表示しています。リアルタイム取得ではありません。';
 const SAMPLE_EMPTY_WARNING =
-  '該当するサンプルカードが見つかりませんでした。検索語を変えるか、手動追加をご利用ください。';
-
-function normalize(value: string): string {
-  return value.trim().toLowerCase();
-}
+  '該当するサンプルカードが見つかりませんでした。サンプルには「PS5」関連の商品が入っています。検索語を変えるか、「手動で追加」をご利用ください。';
 
 function searchSampleCards(query: string): MarketSearchResponse {
-  const normalizedQuery = normalize(query);
-  const matched = normalizedQuery
-    ? sampleMarketCards.filter(
-        (card) => normalize(card.title).includes(normalizedQuery) || normalize(card.siteName).includes(normalizedQuery),
-      )
-    : sampleMarketCards;
+  const matched = sampleMarketCards.filter((card) => matchesAllKeywords(query, [card.title, card.siteName]));
 
   const warnings = matched.length ? [SAMPLE_WARNING] : [SAMPLE_WARNING, SAMPLE_EMPTY_WARNING];
 

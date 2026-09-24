@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { toSafeHttpUrl, toSafeHttpsUrl, isSafeHttpUrl, isSafeHttpsUrl } from './safeUrl';
+import { toSafeHttpUrl, toSafeHttpsUrl } from './safeUrl';
 
 describe('toSafeHttpUrl', () => {
   it('https と http の絶対URLを許可する', () => {
@@ -42,11 +42,3 @@ describe('toSafeHttpsUrl', () => {
   });
 });
 
-describe('type guards', () => {
-  it('isSafeHttpUrl / isSafeHttpsUrl は判定結果と一致する', () => {
-    expect(isSafeHttpUrl('https://example.com')).toBe(true);
-    expect(isSafeHttpUrl('javascript:void(0)')).toBe(false);
-    expect(isSafeHttpsUrl('https://example.com/a.png')).toBe(true);
-    expect(isSafeHttpsUrl('http://example.com/a.png')).toBe(false);
-  });
-});

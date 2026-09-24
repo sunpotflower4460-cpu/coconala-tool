@@ -13,13 +13,39 @@ import {
 
 let counter = 0;
 
-/** 先頭の数値らしき部分（カンマ区切り可）だけを抽出する。負号は拾わない＝負の価格は生成されない。 */
-function parsePriceValue(priceText: string): number | undefined {
-  const normalized = priceText.replace(/[，,]/g, '').trim();
-  const match = normalized.match(/\d+(\.\d+)?/);
-  if (!match) return undefined;
-  const value = Number(match[0]);
-  return Number.isFinite(value) ? clampAmount(value) : undefined;
+/**
+ * 価格表記から数値を読む。全角数字・カンマ・「1.5万円」「2万5000円」「3千円」に対応する。
+ * 数値が複数あって意味が決められない表記（「12,800〜15,000円」「3点 12800円」）は読まずに undefined を返し、
+ * 誤った価格で利益計算しないようにする。負号は拾わない＝負の価格は生成されない。
+ */
+export function parsePriceValue(priceText: string): number | undefined {
+  const normalized = priceText.normalize('NFKC').replace(/,/g, '').replace(/\s+/g, '');
+  const unitPattern = /^(\d+(?:\.\d+)?)万(?:(\d+)千|(\d+))?/;
+  const numbers = normalized.match(/\d+(?:\.\d+)?/g) ?? [];
+  if (numbers.length === 0) return undefined;
+
+  const start = normalized.search(/\d/);
+  const rest = normalized.slice(start);
+  const man = rest.match(unitPattern);
+  let value: number;
+  let consumed: number;
+  if (man) {
+    value = Number(man[1]) * 10_000 + (man[2] ? Number(man[2]) * 1_000 : 0) + (man[3] ? Number(man[3]) : 0);
+    consumed = man[0].length;
+  } else {
+    const sen = rest.match(/^(\d+(?:\.\d+)?)千/);
+    if (sen) {
+      value = Number(sen[1]) * 1_000;
+      consumed = sen[0].length;
+    } else {
+      const plain = rest.match(/^\d+(?:\.\d+)?/)!;
+      value = Number(plain[0]);
+      consumed = plain[0].length;
+    }
+  }
+  // 読み取った部分より後ろに別の数値があれば曖昧とみなす。
+  if (/\d/.test(rest.slice(consumed))) return undefined;
+  return Number.isFinite(value) ? clampAmount(Math.round(value * 100) / 100) : undefined;
 }
 
 export function createManualCard(params: {

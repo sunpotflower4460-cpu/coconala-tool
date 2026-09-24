@@ -4,16 +4,16 @@ const demoModeItems = [
   {
     title: 'サンプルデータ',
     description:
-      'UI確認・比較・CSV出力・履歴保存などの基本フローを体験するための固定データです。検索語で絞り込めます。',
+      '検索・比較・CSV出力・履歴保存の流れを試すための固定データです（PS5関連）。検索語で絞り込めます。',
   },
   {
     title: '楽天市場',
     description:
-      'キー未設定時は擬似データ（モック）、サーバーに楽天APIキーを設定すると楽天市場 公式APIの実データに自動で切り替わります。',
+      '楽天のアプリIDとアクセスキーをサーバーに設定すると、楽天市場の実データを表示します。未設定のときは見本データ（実在しない商品）を表示します。',
   },
   {
     title: 'メルカリ / ヤフオク / eBay / Yahoo!ショッピング',
-    description: 'まずは検索リンクを開いて手動確認する前提です。高頻度スクレイピングは行いません。',
+    description: '検索リンクから各サイトを開いて確認し、気になる商品は「手動で追加」で比較に入れます。自動での大量取得はしません。',
   },
   {
     title: '楽天以外の公式API',
@@ -32,10 +32,10 @@ export function DemoModeNotice() {
         aria-expanded={isOpen}
         aria-controls={panelId}
         onClick={() => setIsOpen((open) => !open)}
-        className="flex w-full items-center justify-between gap-3 text-left font-semibold text-sky-100"
+        className="flex min-h-11 w-full items-center justify-between gap-3 text-left font-semibold text-sky-100"
       >
-        デモモードの見かた
-        <span className="text-[11px] text-sky-100/70">{isOpen ? '閉じる' : '開く'}</span>
+        データの種類の見かた
+        <span className="text-[11px] text-sky-100/80">{isOpen ? '閉じる' : '開く'}</span>
       </button>
       {isOpen && (
         <div id={panelId} className="mt-3 grid gap-2 sm:grid-cols-2">

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useLayoutEffect } from 'react';
 import { AppShell } from './components/AppShell';
 import { useResearchStore } from './store/researchStore';
 
@@ -10,9 +10,9 @@ const themeClasses: Record<string, string> = {
 };
 
 function App() {
-  const { theme } = useResearchStore();
+  const theme = useResearchStore((s) => s.theme);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const body = document.body;
     Object.values(themeClasses).forEach((cls) => body.classList.remove(cls));
     body.classList.add(themeClasses[theme] ?? 'theme-simple-pro');

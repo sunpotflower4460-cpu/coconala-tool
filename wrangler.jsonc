@@ -10,5 +10,34 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
-  "compatibility_flags": ["nodejs_compat"]
+  // /api/rakuten の濫用対策。1利用者（IP）あたり 60 秒に 30 回まで。超えると 429。
+  // namespace_id はアカウント内で一意な正の整数（他の Worker と重ならなければ変更不要）。
+  "ratelimits": [
+    {
+      "name": "RAKUTEN_RATE_LIMITER",
+      "namespace_id": "43173",
+      "simple": { "limit": 30, "period": 60 }
+    }
+  ],
+  // 楽天のキーは vars ではなく Secret で設定する（docs/deployment-guide.md 参照）:
+  //   npx wrangler secret put SERVER_RAKUTEN_APP_ID
+  //   npx wrangler secret put SERVER_RAKUTEN_ACCESS_KEY
+  "env": {
+    // 自動テスト専用（`npm run e2e`）。ローカルの偽楽天サーバーへ向ける。本番デプロイでは使われない。
+    "e2e": {
+      "ratelimits": [
+        {
+          "name": "RAKUTEN_RATE_LIMITER",
+          "namespace_id": "43174",
+          "simple": { "limit": 1000, "period": 60 }
+        }
+      ],
+      "vars": {
+        "SERVER_RAKUTEN_APP_ID": "e2e-dummy-app-id",
+        "SERVER_RAKUTEN_ACCESS_KEY": "e2e-dummy-access-key",
+        "E2E_FAKE_UPSTREAM": "1",
+        "RAKUTEN_API_BASE_OVERRIDE": "http://127.0.0.1:43174/ichibams/api/IchibaItem/Search/20260701"
+      }
+    }
+  }
 }

@@ -51,8 +51,8 @@ export function mapRakutenItemToMarketCard(item: RakutenMockItem): MarketCard | 
       currency: 'JPY',
       imageUrl,
       pageUrl,
-      shippingText: Number(item.postageFlag) === 0 ? '送料無料' : '送料別途',
-      conditionText: '新品',
+      // 楽天の postageFlag: 0 = 送料込み（価格に含む）、1 = 送料別。
+      shippingText: Number(item.postageFlag) === 0 ? '送料込み' : '送料別',
       confidence: 'high',
       note: '楽天市場 公式API取得',
       createdAt: new Date().toISOString(),

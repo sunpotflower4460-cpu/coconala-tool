@@ -16,7 +16,14 @@ export function buildRuleBasedInsights(cards: MarketCard[], profitSettings: Prof
   );
   const margin = calcMargin(profit, profitSettings.sellPrice);
 
-  if (profit <= 0 || margin < 10) {
+  // 価格が未入力（0）の段階では「利益が薄い」と決めつけない。
+  const hasPrices = profitSettings.sellPrice > 0;
+  if (hasPrices && profit <= 0) {
+    memos.push({
+      id: 'loss',
+      text: '赤字の見込みです。販売価格・仕入れ価格・送料・手数料を見直してください。',
+    });
+  } else if (hasPrices && margin < 10) {
     memos.push({
       id: 'thin-profit',
       text: '利益が薄い可能性があります。販売価格・仕入れ価格・送料を再確認してください。',

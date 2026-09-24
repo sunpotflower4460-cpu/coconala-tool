@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import worker from './worker';
 
 function makeRequest(path: string, method = 'GET') {
-  return new Request(`https://example.pages.dev${path}`, { method });
+  return new Request(`https://coconala-tool.example.workers.dev${path}`, { method });
 }
 
 describe('Cloudflare Worker entry', () => {
@@ -13,7 +13,7 @@ describe('Cloudflare Worker entry', () => {
     vi.restoreAllMocks();
   });
 
-  it('GET /api/rakuten を既存 Pages Function に渡し、キー未設定なら no_key を返す', async () => {
+  it('GET /api/rakuten を楽天プロキシに渡し、キー未設定なら no_key を返す', async () => {
     const res = await worker.fetch(makeRequest('/api/rakuten?q=PS5'), {});
     expect(res.status).toBe(503);
     expect(await res.json()).toMatchObject({ error: 'no_key' });
@@ -35,23 +35,56 @@ describe('Cloudflare Worker entry', () => {
     expect(res.status).toBe(404);
   });
 
-  it('SERVER_RAKUTEN_APP_ID を env 経由で渡し、レスポンスにキーを含めない', async () => {
+  it('アプリID・アクセスキーを env 経由で渡し、レスポンスにキーを含めない', async () => {
     let capturedUrl = '';
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
       capturedUrl = url;
-      return Promise.resolve({
-        ok: true,
-        status: 200,
-        json: async () => ({ Items: [] }),
-      } as Response);
+      return Promise.resolve(new Response(JSON.stringify({ Items: [] }), { status: 200 }));
     });
     const res = await worker.fetch(makeRequest('/api/rakuten?q=PS5'), {
       SERVER_RAKUTEN_APP_ID: 'super-secret-app-id',
+      SERVER_RAKUTEN_ACCESS_KEY: 'super-secret-access-key',
     });
     expect(res.status).toBe(200);
     const text = await res.text();
     expect(text).not.toContain('super-secret-app-id');
+    expect(text).not.toContain('super-secret-access-key');
+    expect(new URL(capturedUrl).searchParams.get('accessKey')).toBe('super-secret-access-key');
     expect(JSON.parse(text)).toMatchObject({ status: 'ok', items: [] });
     expect(new URL(capturedUrl).searchParams.get('applicationId')).toBe('super-secret-app-id');
+  });
+
+  it('レート制限を超えたら楽天へ送らず 429 rate_limited（キーは接続元IP）', async () => {
+    const fetchSpy = vi.fn();
+    globalThis.fetch = fetchSpy;
+    const keys: string[] = [];
+    const limiter = {
+      limit: vi.fn(async ({ key }: { key: string }) => {
+        keys.push(key);
+        return { success: false };
+      }),
+    };
+    const request = new Request('https://coconala-tool.example.workers.dev/api/rakuten?q=PS5', {
+      headers: { 'cf-connecting-ip': '203.0.113.9' },
+    });
+    const res = await worker.fetch(request, { RAKUTEN_RATE_LIMITER: limiter, SERVER_RAKUTEN_APP_ID: 'a', SERVER_RAKUTEN_ACCESS_KEY: 'b' });
+    expect(res.status).toBe(429);
+    expect(await res.json()).toMatchObject({ error: 'rate_limited' });
+    expect(keys).toEqual(['203.0.113.9']);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('レート制限内なら通常どおり処理し、制限サービス自体の障害でも検索を止めない', async () => {
+    const ok = { limit: vi.fn(async () => ({ success: true })) };
+    expect((await worker.fetch(makeRequest('/api/rakuten?q=PS5'), { RAKUTEN_RATE_LIMITER: ok })).status).toBe(503);
+    const broken = { limit: vi.fn(async () => { throw new Error('binding down'); }) };
+    expect((await worker.fetch(makeRequest('/api/rakuten?q=PS5'), { RAKUTEN_RATE_LIMITER: broken })).status).toBe(503);
+  });
+
+  it('API 以外（静的アセットに無いパス）はレート制限を消費しない', async () => {
+    const limiter = { limit: vi.fn(async () => ({ success: false })) };
+    const res = await worker.fetch(makeRequest('/api/other'), { RAKUTEN_RATE_LIMITER: limiter });
+    expect(res.status).toBe(404);
+    expect(limiter.limit).not.toHaveBeenCalled();
   });
 });

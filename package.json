@@ -1,8 +1,8 @@
 {
   "name": "coconala-tool",
   "private": true,
-  "version": "0.9.0-rc.10",
-    "type": "module",
+  "version": "0.9.0-rc.11",
+  "type": "module",
   "engines": {
     "node": ">=22"
   },
@@ -10,13 +10,20 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:e2e": "vite build --mode e2e --outDir dist-e2e",
+    "build:static": "vite build --mode static --outDir dist-static",
     "preview": "vite preview",
     "lint": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:postdeploy": "playwright test --grep @postdeploy --project desktop-chromium",
     "delivery:package": "node scripts/create-delivery-package.mjs",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "delivery:verify": "node scripts/verify-delivery.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
+    "verify:all": "node scripts/verify-all.mjs",
+    "marketing:capture": "playwright test --config scripts/playwright.marketing.config.ts"
   },
   "dependencies": {
     "lucide-react": "^1.14.0",
@@ -25,7 +32,8 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.54.2",
+    "@axe-core/playwright": "^4.13.0",
+    "@cloudflare/vite-plugin": "^1.59.0",
     "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -41,7 +49,7 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^6.0.3",
     "vite": "^8.0.12",
-    "vitest": "^4.0.18",
-    "wrangler": "^4.113.0"
+    "vitest": "^4.1.11",
+    "wrangler": "^4.138.0"
   }
 }

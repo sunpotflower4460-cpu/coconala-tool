@@ -29,7 +29,7 @@ describe('ResultCard', () => {
   it('shows no demo-origin badge for a real (non-demo) card', () => {
     render(<ResultCard card={makeCard()} />);
     expect(screen.queryByText('サンプルデータ')).not.toBeInTheDocument();
-    expect(screen.queryByText('モック（楽天API想定）')).not.toBeInTheDocument();
+    expect(screen.queryByText('見本データ（実在しない商品）')).not.toBeInTheDocument();
     expect(screen.getByText('公式API取得')).toBeInTheDocument();
   });
 
@@ -38,9 +38,9 @@ describe('ResultCard', () => {
     expect(screen.getByText('サンプルデータ')).toBeInTheDocument();
   });
 
-  it('shows the モック（楽天API想定） badge for demoOrigin=mock', () => {
+  it('shows the 見本データ（実在しない商品） badge for demoOrigin=mock', () => {
     render(<ResultCard card={makeCard({ demoOrigin: 'mock', note: '楽天市場 公式API想定モック' })} />);
-    expect(screen.getByText('モック（楽天API想定）')).toBeInTheDocument();
+    expect(screen.getByText('見本データ（実在しない商品）')).toBeInTheDocument();
   });
 
   it('shows 価格不明 when there is no priceText', () => {
@@ -55,6 +55,14 @@ describe('ResultCard', () => {
     expect(screen.getByText('検索リンク')).toBeInTheDocument();
     rerender(<ResultCard card={makeCard({ sourceType: 'manual' })} />);
     expect(screen.getByText('手動追加')).toBeInTheDocument();
+  });
+
+  it('比較トグルは aria-pressed で状態を伝える', async () => {
+    render(<ResultCard card={makeCard()} />);
+    const button = screen.getByRole('button', { name: '比較に追加' });
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(button);
+    expect(screen.getByRole('button', { name: '比較中' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('toggles between 比較に追加 and 比較中 when clicked', async () => {

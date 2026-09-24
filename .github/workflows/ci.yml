@@ -6,9 +6,17 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -16,55 +24,48 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
+          cache: npm
 
       - name: Install
         run: npm ci
 
-      - name: Typecheck
-        run: npm run lint
+      - name: Install Playwright browsers (Chromium / WebKit)
+        run: npx playwright install --with-deps chromium webkit
 
-      - name: Unit / component tests
-        run: npm run test
+      # 型・単体・ビルド・E2E（偽楽天API＋実Worker、PC/タブレット/スマホ/iPhone、a11y、故障注入）・
+      # 整合チェック・納品ZIP生成・ZIP展開後の再ビルドと静的版の動作確認を一括で実行する。
+      - name: Verify all (quality gate + delivery package)
+        run: npm run verify:all
 
-      - name: Build
-        run: npm run build
+      - name: Upload verification report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-report
+          path: |
+            dist-delivery/VERIFICATION_REPORT.md
+            dist-delivery/QUALITY_REPORT.md
+            dist-delivery/release-check.json
+            dist-delivery/delivery-verify.json
+          if-no-files-found: ignore
+          retention-days: 14
 
-      - name: npm audit (high severity)
-        run: npm audit --audit-level=high
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-
-      - name: E2E tests
-        run: npm run e2e
+      - name: Upload delivery package
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: delivery-package
+          path: dist-delivery/*.zip
+          retention-days: 14
 
       - name: Upload Playwright report
-        if: always()
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: playwright-report/
-          retention-days: 7
-          if-no-files-found: ignore
-
-      - name: Lighthouse (accessibility / best-practices — informational only)
-        if: always()
-        continue-on-error: true
-        run: |
-          npm run preview -- --port 4173 --host 0.0.0.0 &
-          npx --yes wait-on http://127.0.0.1:4173 --timeout 30000
-          npx --yes lighthouse http://127.0.0.1:4173 \
-            --output=json --output-path=./lighthouse-report.json \
-            --chrome-flags="--headless --no-sandbox" \
-            --only-categories=accessibility,best-practices \
-            --quiet
-
-      - name: Upload Lighthouse report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lighthouse-report
-          path: lighthouse-report.json
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 7
           if-no-files-found: ignore

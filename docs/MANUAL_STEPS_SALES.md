@@ -1,43 +1,47 @@
-# 販売開始までに人間が行う作業
+# 販売開始までに人が行う作業
 
-このドキュメントは、Claude Code（開発AI）が自動化・完了扱いしない作業を一箇所にまとめたものです。
-自動化できるコード・テスト・ドキュメント整備が終わっていても、以下が完了するまで正式販売は開始しないでください。
+コード・テスト・文書・納品ZIPの作成と検証は `npm run verify:all` で自動化されています（結果: `dist-delivery/VERIFICATION_REPORT.md`）。
+ここに残っているのは、アカウント・実キー・実機・お金と規約の判断など、**人にしかできない作業だけ**です。
 
-## アカウント・環境準備
+## 1. 自動チェックを実行する（10分程度・放置でよい）
 
-- [ ] 楽天ウェブサービスで楽天 Application ID を取得する（https://webservice.rakuten.co.jp/）
-- [ ] Cloudflare アカウントを作成する（支払い方法の登録判断を含む）
-- [ ] Cloudflare Pages プロジェクトの本番環境変数に `SERVER_RAKUTEN_APP_ID` を登録する
-- [ ] 本番ドメイン（カスタムドメインを使う場合）を設定する
-- [ ] リポジトリを private 化するかどうかを判断し、必要なら設定する
+```bash
+npm ci
+npx playwright install chromium webkit   # 初回のみ
+npm run marketing:capture                 # 出品用の画面写真・操作動画の下書き
+npm run verify:all                        # すべての自動チェック＋納品ZIP生成＋ZIP検証
+```
 
-## 動作確認（実環境・実機）
+- [ ] `dist-delivery/VERIFICATION_REPORT.md` の結果がすべて PASS
 
-- [ ] Cloudflare Pages の本番/プレビュー環境で実際に開いて動作確認する（`docs/post-deploy-qa.md` 準拠）
-- [ ] 実楽天APIキー設定後、実際の検索結果を目視確認する（`docs/qa-checklist.md` の「`/api/rakuten` プロキシ」節・実データ節を参照）
-- [ ] スマートフォン実機（iOS/Androidの実機、シミュレータではなく）で表示・操作を確認する
+## 2. デモ環境を公開して実データで1回確認する（アカウント・実キーが必要）
 
-## 販売物の作成
+- [ ] 楽天ウェブサービスで新しいアプリを登録し、アプリIDとアクセスキーを取得（許可されたWebサイト＝デモの公開URL）
+- [ ] `npx wrangler login` → `npm run deploy` → `npx wrangler secret put SERVER_RAKUTEN_APP_ID` / `SERVER_RAKUTEN_ACCESS_KEY`
+- [ ] `E2E_BASE_URL=<デモURL> npm run e2e:postdeploy` がすべて passed
+- [ ] デモURLで楽天市場モードにして1回検索し、緑の「実データ表示中」と実際の商品が出る（[`post-deploy-qa.md`](post-deploy-qa.md)）
+- [ ] 手持ちのスマホでデモURLを開き、検索と「比較に追加」ができる
 
-- [ ] 操作動画を収録する（検索→比較→利益計算→CSV出力の一連の流れ）
-- [ ] 商品画像（PC画面・スマホ画面のスクリーンショット、5〜10枚目安）を作成する
-- [ ] `docs/coconala-listing-copy.md` の内容を最終レビューし、ココナラの出品フォームへ転記する
-- [ ] デモURL（実際にCloudflare Pagesへデプロイしたもの）を確定する
+## 3. 出品物を仕上げる
 
-## ビジネス上の意思決定
+- [ ] `dist-delivery/marketing/` の画面写真から出品画像を選ぶ（必要なら文字入れ）
+- [ ] `dist-delivery/marketing/` の操作動画（下書き）を確認し、必要ならナレーション・編集
+- [ ] [`coconala-listing-copy.md`](coconala-listing-copy.md) を最終確認し、ココナラの出品フォームへ転記。デモURLを記載
 
-- [ ] 各プランの販売価格を決定する（`docs/coconala-listing-copy.md` の目安を参照しつつ最終判断）
-- [ ] 返金・キャンセル方針を確定する
-- [ ] `TERMS.md` を最終確認する（プレースホルダーが残っていないか、出品者情報が必要な場合は追記されているか）
-- [ ] ココナラの出品者プロフィール・本人確認等の情報を確定する
+## 4. ビジネス上の判断
 
-## 最終判断
+- [ ] 各プランの価格を決める
+- [ ] 返金・キャンセル方針を決め、出品ページに記載する
+- [ ] [`TERMS.md`](../TERMS.md) を最終確認する（出品者情報の追記が必要か含む）
+- [ ] ココナラの出品者プロフィール・本人確認を済ませる
+- [ ] リポジトリを private にするか決める
 
-- [ ] `docs/release-v1-checklist.md` の全項目が満たされていることを確認する
+## 5. 販売開始
+
+- [ ] `package.json` のバージョンを `1.0.0` にし、README・CHANGELOG・販売文・リスク表の表記をそろえて `npm run verify:all`
 - [ ] `v1.0.0` タグを付ける
-- [ ] `scripts/create-delivery-package.mjs` で納品ZIPを生成し、内容を目視確認する
-- [ ] 正式販売を開始する
+- [ ] 納品時は `dist-delivery/相場カード比較ボード-v1.0.0.zip` を渡す（中身の目視確認は不要。`delivery:verify` が展開・再ビルドまで確認済み）
 
 ---
 
-このファイル自体は購入者向け納品物には含まれません（`scripts/create-delivery-package.mjs` の除外対象）。
+このファイルは購入者向け納品物には含まれません。

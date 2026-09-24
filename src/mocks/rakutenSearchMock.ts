@@ -1,3 +1,5 @@
+import { matchesAllKeywords } from '../lib/keywordMatch';
+
 export type RakutenMockImage = {
   imageUrl: string;
 };
@@ -49,8 +51,7 @@ const rakutenItems: RakutenMockItem[] = [
 ];
 
 export function searchRakutenMockItems(keyword: string, limit = 8): RakutenSearchMockResponse {
-  const normalized = keyword.trim().toLowerCase();
-  const matched = rakutenItems.filter((item) => item.itemName.toLowerCase().includes(normalized));
+  const matched = rakutenItems.filter((item) => matchesAllKeywords(keyword, [item.itemName, item.itemCode, item.shopName]));
   const items = matched.slice(0, limit);
 
   return {

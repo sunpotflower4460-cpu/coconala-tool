@@ -38,6 +38,9 @@ body.theme-simple-pro {
   --color-text: #f1f5f9;
   --color-accent: 99 102 241;
   --color-accent-hover: 79 70 229;
+  /* ボタン背景とその上の文字色。WCAG AA（4.5:1 以上）を満たす組み合わせ。 */
+  --color-accent-strong: 79 70 229;
+  --color-on-accent: #ffffff;
 }
 
 /* Soft Market (warm violet) */
@@ -48,6 +51,9 @@ body.theme-soft-market {
   --color-text: #ede9fe;
   --color-accent: 244 114 182;
   --color-accent-hover: 236 72 153;
+  /* ボタン背景とその上の文字色。WCAG AA（4.5:1 以上）を満たす組み合わせ。 */
+  --color-accent-strong: 244 114 182;
+  --color-on-accent: #2a0a1c;
 }
 
 /* Dark Trader (pitch dark) */
@@ -58,6 +64,9 @@ body.theme-dark-trader {
   --color-text: #e4e4e7;
   --color-accent: 34 211 238;
   --color-accent-hover: 6 182 212;
+  /* ボタン背景とその上の文字色。WCAG AA（4.5:1 以上）を満たす組み合わせ。 */
+  --color-accent-strong: 34 211 238;
+  --color-on-accent: #042f37;
 }
 
 /* Natural Board (deep forest green) */
@@ -68,6 +77,9 @@ body.theme-natural-board {
   --color-text: #e7f7ea;
   --color-accent: 101 163 13;
   --color-accent-hover: 77 124 15;
+  /* ボタン背景とその上の文字色。WCAG AA（4.5:1 以上）を満たす組み合わせ。 */
+  --color-accent-strong: 101 163 13;
+  --color-on-accent: #0f1a05;
 }
 
 /* Fallback if no class applied */
@@ -78,6 +90,9 @@ body:not([class*="theme-"]) {
   --color-text: #f1f5f9;
   --color-accent: 99 102 241;
   --color-accent-hover: 79 70 229;
+  /* ボタン背景とその上の文字色。WCAG AA（4.5:1 以上）を満たす組み合わせ。 */
+  --color-accent-strong: 79 70 229;
+  --color-on-accent: #ffffff;
 }
 
 body {
@@ -212,7 +227,7 @@ body {
 
   @supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
     .glass-header {
-      background-color: color-mix(in srgb, var(--color-bg-card-solid) 82%, transparent);
+      background-color: color-mix(in srgb, var(--color-bg-card-solid) 94%, transparent);
       backdrop-filter: blur(20px) saturate(140%);
       -webkit-backdrop-filter: blur(20px) saturate(140%);
     }

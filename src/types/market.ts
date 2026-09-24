@@ -9,6 +9,8 @@ export type MarketSearchStatus =
   | 'mock_network'
   | 'mock_rate_limited'
   | 'mock_upstream_error'
+  | 'mock_setup_error'
+  | 'invalid_query'
   | 'empty';
 
 export type MarketSearchResponse = {
@@ -31,15 +33,22 @@ export const DATA_SOURCE_MODE_LABELS: Record<DataSourceMode, string> = {
 };
 
 export const SEARCH_STATUS_LABELS: Record<MarketSearchStatus, string> = {
-  official_api: '公式API取得（実データ）',
-  empty: '公式API取得（0件）',
+  official_api: '楽天市場の実データ',
+  empty: '楽天市場の実データ（0件）',
   sample: 'サンプルデータ',
-  mock_no_key: 'モック（キー未設定）',
-  mock_timeout: 'モック（タイムアウト）',
-  mock_network: 'モック（通信失敗）',
-  mock_rate_limited: 'モック（レート超過）',
-  mock_upstream_error: 'モック（上流エラー）',
+  mock_no_key: '見本データ（楽天連携の設定前）',
+  mock_setup_error: '見本データ（楽天連携の設定を確認）',
+  mock_timeout: '見本データ（楽天の応答待ちが長すぎた）',
+  mock_network: '見本データ（通信できなかった）',
+  mock_rate_limited: '見本データ（アクセス集中）',
+  mock_upstream_error: '見本データ（楽天側の一時的な不具合）',
+  invalid_query: '検索語を確認してください',
 };
+
+/** 実データではない（サンプル・見本データ）検索状態。デモ表示の判定に使う。 */
+export function isDemoSearchStatus(status: MarketSearchStatus | null): boolean {
+  return status === 'sample' || (status !== null && status.startsWith('mock_'));
+}
 
 export type MarketCard = {
   id: string;
@@ -61,15 +70,6 @@ export type MarketCard = {
    * 'sample' = UI確認用の固定サンプル、'mock' = 楽天API想定の擬似データ。
    */
   demoOrigin?: 'sample' | 'mock';
-};
-
-export type ResearchSession = {
-  id: string;
-  query: string;
-  cards: MarketCard[];
-  comparedCardIds: string[];
-  createdAt: string;
-  updatedAt: string;
 };
 
 export type SavedResearchSession = {

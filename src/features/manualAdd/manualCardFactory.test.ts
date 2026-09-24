@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { createManualCard } from './manualCardFactory';
+import { parsePriceValue } from './manualCardFactory';
 import { MAX_AMOUNT } from '../profit/profitCalculator';
 
 function baseParams(overrides: Partial<Parameters<typeof createManualCard>[0]> = {}) {
@@ -74,5 +75,25 @@ describe('createManualCard', () => {
   it('falls back to a generic title when the URL cannot be parsed and no site name is given', () => {
     const card = createManualCard(baseParams({ pageUrl: 'not-a-valid-url' }));
     expect(card.title).toBe('手動追加カード');
+  });
+
+  it('全角数字・万/千の単位つき価格を読み、意味が決められない表記は読まない', () => {
+    const cases: Array<[string, number | undefined]> = [
+      ['¥12,800', 12800],
+      ['１２，８００円', 12800],
+      ['1.5万円', 15000],
+      ['2万5000円', 25000],
+      ['2万5千円', 25000],
+      ['3千円', 3000],
+      ['10万', 100000],
+      ['$499.99', 499.99],
+      ['送料込み 9,800円', 9800],
+      ['12,800〜15,000円', undefined],
+      ['3点 12800円', undefined],
+      ['価格未定', undefined],
+    ];
+    for (const [text, expected] of cases) {
+      expect([text, parsePriceValue(text)]).toEqual([text, expected]);
+    }
   });
 });

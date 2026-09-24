@@ -39,7 +39,7 @@ describe('buildResearchCsv', () => {
     const csv = buildResearchCsv([makeCard({})], profitSettings, '2026-06-24T00:00:00.000Z');
     const firstLine = csv.split('\n')[0];
     expect(firstLine).toBe(
-      '商品名,サイト名,データ種別,ソース区分,価格表示,価格,通貨,送料,状態,信頼度,元URL,メモ,取得日時',
+      '商品名,サイト名,データ種別,ソース区分,価格表示,価格,通貨,送料,状態,信頼度,元URL,メモ,取得日時（日本時間）',
     );
   });
 
@@ -51,7 +51,7 @@ describe('buildResearchCsv', () => {
     expect(sampleCsv.split('\n')[1]).toContain('サンプルデータ');
 
     const mockCsv = buildResearchCsv([makeCard({ demoOrigin: 'mock' })], profitSettings, '2026-06-24T00:00:00.000Z');
-    expect(mockCsv.split('\n')[1]).toContain('モック（楽天API想定）');
+    expect(mockCsv.split('\n')[1]).toContain('見本データ（実在しない商品）');
   });
 
   it('translates sourceType into the Japanese ソース区分 label', () => {
@@ -121,8 +121,8 @@ describe('buildResearchCsv', () => {
   it('includes search metadata (data source / status / warnings / searched-at) when provided', () => {
     const csv = buildResearchCsv([makeCard({})], profitSettings, '2026-06-24T00:00:00.000Z', searchMeta);
     expect(csv).toContain('データソース,楽天市場');
-    expect(csv).toContain('モック（キー未設定）');
-    expect(csv).toContain('検索日時,2026-07-22T00:00:00.000Z');
+    expect(csv).toContain('見本データ（楽天連携の設定前）');
+    expect(csv).toContain('検索日時（日本時間）,2026/07/22 09:00:00');
     expect(csv).toContain('楽天APIキーが未設定のため');
   });
 
@@ -137,5 +137,32 @@ describe('buildCsvFileContent', () => {
     const content = buildCsvFileContent([makeCard({})], profitSettings, '2026-06-24T00:00:00.000Z');
     expect(content.startsWith('﻿')).toBe(true);
     expect(content.slice(1).split('\n')[0]).toContain('商品名,サイト名');
+  });
+
+  it('負の利益は数値のまま出力し、文字列扱いの先頭アポストロフィを付けない', () => {
+    const csv = buildResearchCsv([], { buyPrice: 10000, sellPrice: 5000, shippingCost: 0, feeRate: 10, exchangeRate: 155 }, '2026-07-22T00:00:00.000Z');
+    expect(csv).toContain('利益見込み,-5500');
+    expect(csv).not.toContain("'-5500");
+  });
+
+  it('信頼度は日本語、日時は日本時間で出力する', () => {
+    const csv = buildResearchCsv(
+      [{ id: 'a', title: 't', siteName: 's', sourceType: 'manual', pageUrl: 'https://e.x/', confidence: 'medium', createdAt: '2026-07-22T15:30:00.000Z' }],
+      { buyPrice: 0, sellPrice: 0, shippingCost: 0, feeRate: 10, exchangeRate: 155 },
+      '2026-07-22T00:00:00.000Z',
+    );
+    const row = csv.split('\n')[1];
+    expect(row).toContain(',中,');
+    expect(row).toContain('2026/07/23 00:30:00');
+    expect(csv).toContain('生成日時（日本時間）,2026/07/22 09:00:00');
+  });
+
+  it('CR を含む文字列セルは引用符で囲み、行が崩れない', () => {
+    const csv = buildResearchCsv(
+      [{ id: 'a', title: '改行\rあり', siteName: 's', sourceType: 'manual', pageUrl: 'https://e.x/', confidence: 'high', createdAt: '' }],
+      { buyPrice: 0, sellPrice: 0, shippingCost: 0, feeRate: 10, exchangeRate: 155 },
+      '2026-07-22T00:00:00.000Z',
+    );
+    expect(csv.split('\n')[1].startsWith('"改行\rあり"')).toBe(true);
   });
 });

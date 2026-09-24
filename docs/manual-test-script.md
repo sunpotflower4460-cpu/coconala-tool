@@ -1,5 +1,7 @@
 # 手動テスト手順書
 
+> **自動化済み**: この文書の確認項目は `npm run verify:all`（E2E: `e2e/*.spec.ts`、整合: `scripts/verify-release.mjs`、納品物: `scripts/verify-delivery.mjs`）で自動実行されます。人が行う残作業は [`MANUAL_STEPS_SALES.md`](MANUAL_STEPS_SALES.md) だけです。この文書は、自動テストが何を確認しているかの参照用に残しています。
+
 初めての方でもわかるよう、クリックごとに手順を記載しています。
 
 ---
