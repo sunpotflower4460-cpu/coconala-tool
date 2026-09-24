@@ -1,76 +1,27 @@
 # 正式販売リリースチェックリスト（v1.0.0 に向けて）
 
-現在のバージョン（`package.json` / README 参照）は正式販売前の候補版（`0.9.0-rc.x`）です。このチェックリストをすべて満たしてから `v1.0.0` タグ付けと正式販売を行ってください。
+現在のバージョンは候補版（`0.9.0-rc.x`）です。以下がすべて満たされたら `v1.0.0` として販売を開始します。
 
-## 現在の対応範囲（誇張なし）
+## 自動で確認されるもの（`npm run verify:all` がすべて PASS なら完了）
 
-- [ ] 楽天市場 商品検索APIのみ公式API対応（Cloudflare Pages Functions、`SERVER_RAKUTEN_APP_ID` 設定時）
-- [ ] メルカリ・ヤフオク・eBay・Yahoo!ショッピング等は検索リンク＋手動追加のみ（自動取得は行わない）
-- [ ] サンプルデータ・モック（楽天API想定）はデモ用であることが画面上で常に分かる
-- [ ] APIキー未設定・通信失敗・上流エラー・タイムアウト時に、理由が画面へ表示される（モックへフォールバックした事実を隠さない）
-- [ ] デプロイ先ごとの対応範囲（Cloudflare Pages=正式対応 / Vercel=静的UIのみ / GitHub Pages=静的デモのみ）がREADME・デプロイガイドで一致している
+`dist-delivery/VERIFICATION_REPORT.md` に項目ごとの結果が出ます。
 
-## 表現の整合性
+- 型チェック / 単体・画面部品テスト / 本番ビルド / 依存パッケージの高深刻度脆弱性なし
+- E2E: 主要フロー（検索・比較・利益計算・手動追加・CSV の中身・履歴・テーマ・IME）
+- E2E: 楽天の実データ表示と全障害パターン（偽楽天API＋本番同等の Worker）
+- E2E: PC / タブレット / スマホ（Chromium）/ iPhone（WebKit）の表示崩れ・タップ領域
+- E2E: WCAG 2.1 AA アクセシビリティ（4テーマ）、キーボード操作、動き・透明度を減らす設定
+- E2E: 故障注入（保存禁止・容量超過・画像403・フォント不通・オフライン・Worker 不在）
+- E2E: セキュリティヘッダー・CSP 違反なし・API の防御（405 / 403 / 404）
+- 整合: バージョン表記、リンク切れなし、誇張表現・下書き記号・画面の専門用語なし、秘密情報なし、
+  スクレイピングなし、楽天の新API使用、レート制限・セキュリティヘッダー・楽天クレジット表記あり、未対策の P0 なし
+- 納品物: ZIP の中身・checksums・リンク・秘密情報、展開後の `npm ci` → lint → test → build → Worker 設定、静的版のブラウザ動作
 
-- [ ] README・販売文・既知の制限・画面表示のあいだに矛盾がない
-- [ ] バージョン番号がアプリ（`package.json`）・README・CHANGELOG・販売文で一致する
-- [ ] 「全サイト完全自動取得」「自動最安値」「完全自動」等の誇張表現がどこにもない
-- [ ] 未実装の eBay / Yahoo!ショッピング API が、プラン表・納品物スコープに含まれていない（将来計画または追加見積りとしてのみ記載）
-- [ ] `docs/coconala-listing-copy.md` の価格・プラン内容が実装と一致している
+## 人が行うもの
 
-## 安全性
+[`MANUAL_STEPS_SALES.md`](MANUAL_STEPS_SALES.md) を上から実施します（実キーでの1回の確認、スマホ実機、出品物、価格・規約の判断）。
 
-- [ ] 楽天 Application ID がフロントエンドの成果物に含まれない（`grep -r "SERVER_RAKUTEN" dist/` で何も出ない）
-- [ ] APIキーやシークレットがビルド成果物・リポジトリに含まれない
-- [ ] 高頻度スクレイピングを行うコードが追加されていない
-- [ ] 本番 `/api/rakuten` を公開する場合、Origin検査だけではCLI濫用を防げないことを理解し、Cloudflare Rate Limiting/WAFを設定するか、設定しない理由を記録する
+## 本番故障リスク
 
-## QA
-
-CIで自動実行されるもの（`.github/workflows/ci.yml`）:
-
-- [ ] `npm ci`
-- [ ] `npm run lint`
-- [ ] `npm run test`（ユニット・コンポーネントテスト）
-- [ ] `npm run build`
-- [ ] `npm audit --audit-level=high`
-- [ ] `npm run e2e`（Playwright: サンプル検索・比較追加・利益反映・手動追加・履歴保存/再開・CSV出力・375px横スクロールなし）
-
-人間が実環境で確認するもの:
-
-- [ ] Cloudflare Pages のプレビュー環境で手動QA（`docs/post-deploy-qa.md` に沿って実施）
-- [ ] 幅 375px / 768px / 1280px で崩れがないことを確認（実機・実ブラウザ）
-- [ ] 実楽天APIで複数の検索語を確認（PS5・Nintendo Switch・型番・JANコード・0件になる語 等）
-
-## 本番故障注入ゲート
-
-詳細なリスク・再現手順・期待結果は [`PRODUCTION_FAILURE_RISK_MATRIX.md`](PRODUCTION_FAILURE_RISK_MATRIX.md) を参照する。
-
-- [ ] API / 認証・秘密情報 / 通信 / 同時実行 / データ不整合 / ユーザー操作 / 外部サービス障害 / セキュリティのP0項目を確認した
-- [ ] キー未設定・無効キー・429・5xx・timeout・HTML/不正JSON応答で、アプリが落ちず実データと誤表示しない
-- [ ] 検索中に検索語を変更しても、遅れて返った旧検索結果が現在の検索語へ混入しない
-- [ ] 検索中にデータソースを変更しても、旧モードの結果が混入しない
-- [ ] 別origin / same-siteブラウザアクセスが `/api/rakuten` で403になる
-- [ ] localStorage容量超過時に履歴保存失敗が利用者へ分かる
-- [ ] localStorageを壊れたJSONへ変更して再読込し、白画面にならないことを確認する
-- [ ] CSV Formula Injectionテストが通り、Excel等で式として実行されない
-- [ ] 本番成果物に楽天Application ID・シークレットが含まれない
-
-## 販売物
-
-- [ ] 利用規約・免責・サポート範囲・返金/キャンセルの扱いが確定している（`TERMS.md` / `docs/SUPPORT_POLICY.md`）
-- [ ] 購入者向けクイックスタートがある（`docs/QUICK_START_BUYER.md`）
-- [ ] データの扱いについての説明がある（`docs/PRIVACY_AND_DATA.md`）
-- [ ] `npm run delivery:package` で納品ZIPが生成できる（`docs/DELIVERY_CONTENTS.md` 参照）。事前チェック（バージョン一致・シークレット混入なし等）に失敗しないことを確認する
-- [ ] デモURL、PC/スマホ画面のスクリーンショットがある
-- [ ] 主要フローを見せる短い操作動画がある
-
-## 人間の最終判断
-
-以下は Claude Code が自動で完了扱いしない項目です。詳細は [`docs/MANUAL_STEPS_SALES.md`](MANUAL_STEPS_SALES.md) を参照してください。
-
-- [ ] 実APIによる検索結果の目視確認
-- [ ] スマホ実機確認
-- [ ] 操作動画の収録・商品画像の作成
-- [ ] 価格・返金/キャンセル方針・規約の最終確認
-- [ ] 正式販売開始の判断
+詳細は [`PRODUCTION_FAILURE_RISK_MATRIX.md`](PRODUCTION_FAILURE_RISK_MATRIX.md)。故障注入セットはすべて自動化済みで、
+コードで防げない残リスク（楽天側の仕様変更、レート制限の精度、Cloudflare 自体の障害）は同文書の末尾に記載しています。

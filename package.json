@@ -1,7 +1,7 @@
 {
   "name": "coconala-tool",
   "private": true,
-  "version": "0.9.0-rc.10",
+  "version": "0.9.0-rc.11",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -10,8 +10,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:e2e": "CLOUDFLARE_ENV=e2e vite build --outDir dist-e2e",
-    "build:static": "VITE_DEPLOY_MODE=static vite build --outDir dist-static",
+    "build:e2e": "vite build --mode e2e --outDir dist-e2e",
+    "build:static": "vite build --mode static --outDir dist-static",
     "preview": "vite preview",
     "lint": "tsc -b",
     "test": "vitest run",
@@ -19,7 +19,11 @@
     "e2e": "playwright test",
     "e2e:postdeploy": "playwright test --grep @postdeploy --project desktop-chromium",
     "delivery:package": "node scripts/create-delivery-package.mjs",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "delivery:verify": "node scripts/verify-delivery.mjs",
+    "verify:release": "node scripts/verify-release.mjs",
+    "verify:all": "node scripts/verify-all.mjs",
+    "marketing:capture": "playwright test --config scripts/playwright.marketing.config.ts"
   },
   "dependencies": {
     "lucide-react": "^1.14.0",

@@ -18,3 +18,4 @@ blob-report/
 playwright/.cache/
 dist-e2e/
 .dev.vars*
+dist-static/

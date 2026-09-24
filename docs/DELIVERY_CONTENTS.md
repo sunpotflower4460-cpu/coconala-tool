@@ -1,57 +1,55 @@
 # 納品ZIPの中身
 
-`npm run delivery:package`（内部で `scripts/create-delivery-package.mjs` を実行）で生成する
-`相場カード比較ボード-v{version}.zip`（出力先: `dist-delivery/`）の構成です。
+`npm run verify:all`（または `npm run delivery:package`）で `dist-delivery/相場カード比較ボード-v{version}.zip` を生成します。
 
 ```text
 相場カード比較ボード-v{version}/
-├─ README_FIRST.md      最初に読むファイル（README.md のコピー）
-├─ QUICK_START.md        購入者向けクイックスタート（docs/QUICK_START_BUYER.md のコピー）
-├─ USER_GUIDE.md         操作ガイド（docs/user-guide.md のコピー）
-├─ TERMS.md              利用規約・ライセンス
-├─ SUPPORT_POLICY.md     サポート範囲・期間
+├─ README_FIRST.md      最初に読む案内（docs/README_FIRST.md）
+├─ QUICK_START.md        5分で試す使い方（docs/QUICK_START_BUYER.md）
+├─ USER_GUIDE.md         画面と機能の説明（docs/user-guide.md）
+├─ DEPLOY_GUIDE.md       公開手順・楽天のキー設定（docs/deployment-guide.md）
+├─ SUPPORT_POLICY.md     プラン内容・サポート範囲
+├─ PRIVACY_AND_DATA.md   データの保存先・外部通信
+├─ TERMS.md              利用規約
 ├─ CHANGELOG.md          変更履歴
-├─ source/               ソースコード一式（開発用ファイルを除く）
-├─ sample/                商品画像・操作動画の配置用フォルダ（納品前に手動で追加）
-└─ checksums.txt          各ファイルのSHA-256チェックサム一覧
+├─ QUALITY_REPORT.md     納品前に自動実行した品質チェックの結果
+├─ app-static/           ビルド済みの静的版（楽天連携なし。そのまま公開可能）
+├─ source/               ソースコード一式（Workers 版の公開・改造用）
+├─ sample/               画面の見本画像（npm run marketing:capture の結果）
+└─ checksums.txt         各ファイルの SHA-256
 ```
 
-## `source/` に含まれるもの
+ZIP直下の文書内の相対リンクは、ZIPの構成に合わせて自動で書き換えます（例: `setup-guide.md` → `source/docs/setup-guide.md`）。
 
-- `src/`, `functions/`, `e2e/`, `public/`（存在する場合）
-- `package.json`, `package-lock.json`
-- `index.html`, `vite.config.ts`, `playwright.config.ts`, 各種 `tsconfig*.json`
-- `tailwind.config.js`, `postcss.config.js`
-- `.env.example`, `.nvmrc`
-- `README.md`, `TERMS.md`, `CHANGELOG.md`
-- `docs/`（下記「`source/` から除外するもの」に記載したものを除く）
+## `source/` に含めるもの（許可リスト・Git 管理下のファイルのみ）
 
-## `source/` から除外するもの（自動）
+- `src/`, `functions/`, `e2e/`（偽の楽天APIを含む）, `public/`
+- `package.json`（販売者用の `delivery:*` / `verify:*` / `marketing:*` スクリプトは除去）, `package-lock.json`
+- `index.html`, `vite.config.ts`, `playwright.config.ts`, `vitest.setup.ts`, `tsconfig*.json`, `tailwind.config.js`, `postcss.config.js`
+- `wrangler.jsonc`, `worker.ts`, `worker.test.ts`
+- `.env.example`, `.gitignore`, `.nvmrc`, `.node-version`
+- `README.md`（販売者向けの節を除去）, `TERMS.md`, `CHANGELOG.md`
+- `docs/` の購入者向け文書のみ: README_FIRST, QUICK_START_BUYER, user-guide, deployment-guide, setup-guide, post-deploy-qa,
+  known-limitations, buyer-handoff, SUPPORT_POLICY, PRIVACY_AND_DATA
 
-- `.git/`, `.github/`
-- `node_modules/`, `dist/`, `test-results/`, `playwright-report/`
-- `.env`, `.dev.vars`（実際のシークレット値）
-- 開発AI向けの内部指示書: `AGENTS.md`, `COPILOT_INSTRUCTIONS.md`
-- 開発プロセス向けの内部設計書: `docs/product-brief.md`, `docs/data-source-policy.md`,
-  `docs/ux-principles.md`, `docs/phase-roadmap.md`
-- 出品者向け・社内向けドキュメント: `docs/coconala-listing-copy.md`, `docs/qa-checklist.md`,
-  `docs/release-v1-checklist.md`, `docs/manual-test-script.md`, `docs/MANUAL_STEPS_SALES.md`,
-  `docs/adr/`
-- 過去バージョンの記録: `docs/archive/`
-- このスクリプト自身と納品物生成の一時ファイル: `scripts/`, `dist-delivery/`
+## 含めないもの
 
-## 自動チェック（生成前に失敗したら停止する）
+- `.env*`（`.env.example` を除く）、`.dev.vars*`、`node_modules/`、ビルド成果物、`.git/`、`.github/`
+- 開発AI向け・販売者向けの内部資料（`AGENTS.md`、`COPILOT_INSTRUCTIONS.md`、`docs/MANUAL_STEPS_SALES.md`、
+  `docs/coconala-listing-copy.md`、`docs/PRODUCTION_FAILURE_RISK_MATRIX.md`、`docs/qa-checklist.md` など）、`docs/archive/`、`docs/adr/`
+- `scripts/`（納品物生成・検証用）
 
-- `README.md` のバージョン表記が `package.json` の `version` と一致している
-- `package-lock.json` が存在する
-- `.env.example` が存在する
-- `.env` / `.dev.vars` がステージング対象に含まれていない
-- ステージング済みファイルに既知のシークレットパターン（APIキーらしき値等）が含まれていない
+## 生成時の自動チェック（1つでも失敗したら ZIP を作らない）
 
-いずれかに失敗した場合、ZIPは生成されません（不完全な納品物を誤って作らないため）。
+- README・CHANGELOG のバージョンが `package.json` と一致
+- 文書のリンク切れ・見出しアンカー切れが無い（納品物に無いファイルへのリンクも不可）
+- 秘密情報らしき値（キー代入・既知のトークン形式・URL直書きのキー・手元の `.env` / `.dev.vars` と同じ値）が無い
+- 品質レポート（`QUALITY_REPORT.md`）が同じバージョンで生成済み
 
-## `sample/` フォルダについて
+## 生成後の自動検証（`npm run delivery:verify`）
 
-商品画像・操作動画は Claude Code が自動生成しません（`docs/MANUAL_STEPS_SALES.md` 参照）。
-スクリプトは空の `sample/` フォルダと案内用の `README.md` を生成するので、実際の画像・動画は
-納品前に手動で追加してください。
+ZIP を一時フォルダへ展開し、購入者と同じ立場で次を確認します。
+
+- 必須ファイルがあり、含めてはいけないファイルが無い / checksums.txt と一致 / リンク切れ・秘密情報が無い
+- `source/` だけで `npm ci` → 型チェック → 単体テスト → 本番ビルド → `wrangler deploy --dry-run` が通る
+- `app-static/` をブラウザで開き、検索→比較→利益→CSV が動き、楽天市場は見本データと明示される（PC・iPhone 相当）

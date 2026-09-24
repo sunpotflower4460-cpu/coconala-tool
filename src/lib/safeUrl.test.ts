@@ -42,5 +42,3 @@ describe('toSafeHttpsUrl', () => {
   });
 });
 
-describe('type guards', () => {
-});

@@ -1,200 +1,136 @@
-# デプロイガイド
+# 公開（デプロイ）ガイド
 
-このドキュメントでは、相場カード比較ボードをホスティングサービスへデプロイする方法を説明します。
+相場カード比較ボードをインターネットに公開する手順です。公開方法は2つあります。
 
-APIキーやサーバー設定なしでも、サンプルデータとモック（楽天API想定）で主要フローを確認できます。楽天市場 商品検索APIの実データを使う場合のみ、Cloudflare Pages 側でキー設定が必要です。
+| 公開方法 | 楽天市場の実データ | 必要なもの | 向いている人 |
+|---|---|---|---|
+| **Workers 版（推奨・正式対応）** | ✅ 使える | Cloudflare アカウント、Node.js 22、楽天のアプリID・アクセスキー | 実際のリサーチに使う |
+| **かんたん公開（静的版 `app-static/`）** | ❌ 見本データのみ | Cloudflare などのアカウントだけ | まず試したい・楽天以外で使う |
 
-## デプロイ先ごとの対応範囲
-
-| デプロイ先 | 静的UI | 楽天API連携 |
-|---|---|---|
-| Cloudflare Pages（推奨・正式対応） | ✅ | ✅ Pages Functions（`functions/api/rakuten.ts`）で対応済み |
-| Vercel | ✅ | ❌ 未実装。実データで使うには別途 Serverless/Edge Function の実装が必要 |
-| GitHub Pages | ✅（静的デモのみ） | ❌ サーバーサイド機能をホストできないため非対応 |
-
-実API機能が必要な場合は Cloudflare Pages を選んでください。Vercel / GitHub Pages にデプロイした場合、データソースは「サンプルデータ」「モック（楽天API想定）」のみで動作します。
+どちらでも、サンプルデータ・手動追加・比較・利益計算・CSV・履歴はすべて使えます。
 
 ---
 
-## ビルドコマンドと出力ディレクトリ
+## Workers 版で公開（楽天の実データあり・推奨）
 
-| 項目 | 値 |
-|------|-----|
-| ビルドコマンド | `npm run build` |
-| 出力ディレクトリ | `dist/client`（静的 SPA。Workers 成果物は `dist/coconala_tool`） |
-| 推奨 Node バージョン | 22.x（`.nvmrc` / `.node-version` 参照） |
+Cloudflare Workers に、画面と「楽天へ問い合わせる小さなサーバー（`/api/rakuten`）」を一緒に公開します。
+楽天のキーはこのサーバー側だけに置くので、画面を見た人にキーが漏れることはありません。
 
----
+### 1. 準備
 
-## 環境変数ポリシー
+- [Cloudflare](https://dash.cloudflare.com/sign-up) のアカウント（無料プランで動きます）
+- [Node.js 22](https://nodejs.org/) をパソコンにインストール
+- 納品物の `source/` フォルダでターミナル（コマンドプロンプト）を開き、次を実行します。
 
-- フロントエンドコードに APIキー・シークレットを直接書かない
-- 将来的に公式 API を呼び出す場合は、Cloudflare Workers / Vercel Edge Functions 等のサーバーサイドに環境変数として設定する
-- `VITE_` プレフィックスの環境変数はビルド時にバンドルに含まれるため、シークレットには使用しない
+```bash
+npm ci
+```
 
-現在のデモ版では、環境変数の設定は不要です（`.env.example` を参照）。
-将来の実API接続は別フェーズで行い、Cloudflare Workers / Vercel Edge Functions などのサーバー側に環境変数を置きます。
+### 2. Cloudflare にログインして公開する
 
----
+```bash
+npx wrangler login
+npm run deploy
+```
 
-## Cloudflare Pages へのデプロイ
+ブラウザが開いたら Cloudflare にログインして許可します。完了すると
+`https://coconala-tool.<あなたのサブドメイン>.workers.dev` のような URL が表示されます。これが公開URLです。
 
-### 手順
+- 名前を変えたいときは `wrangler.jsonc` の `"name"` を変えてから `npm run deploy` します。
+- この時点では楽天のキーが無いため、楽天市場モードは「見本データ（楽天連携の設定前）」と表示されます。
 
-1. [Cloudflare Pages](https://pages.cloudflare.com/) にログインします
-2. 「Create a project」→「Connect to Git」で GitHub リポジトリを連携します
-3. ビルド設定を以下の通り入力します：
-   - **Framework preset**: Vite
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist/client`
-   - **Node.js version**: `22`（Workers Builds のビルドイメージは 22/24 を事前インストール。`.nvmrc` も 22。Environment variables に `NODE_VERSION=20` が残っている場合は 22 に更新する）
-4. 「Save and Deploy」をクリックします
-5. デプロイ完了後、発行された `*.pages.dev` URL でアプリが利用できます
+### 3. 楽天のアプリID・アクセスキーを取得する
 
-GitHub 連携で **Workers Builds**（チェック名 `Workers Builds: coconala-tool`）を使う場合は、リポジトリ直下の `wrangler.jsonc` と `@cloudflare/vite-plugin` が必要です。ダッシュボード上の Worker 名は `coconala-tool` と一致させてください。ビルドは `npm run build`（プラグインが `dist/coconala_tool/wrangler.json` を生成）、デプロイは `npx wrangler deploy`（または `npm run deploy`）です。プレビューブランチは `npx wrangler versions upload` です。`/api/rakuten` は `worker.ts` 経由で既存の Pages Function と同じハンドラを呼びます。ローカル E2E 用の `npm run preview` は `vite preview` のままです（`wrangler dev` に変更しません）。
+楽天の仕組みは 2026 年に新しくなり、**アプリID とアクセスキーの両方**が必要です（旧方式のアプリIDだけでは動きません）。
 
-納品物の品質ゲートは GitHub Actions の `build` ジョブです（lint / test / build / e2e / audit）。Workers Builds の GitHub チェックは Cloudflare ダッシュボード側の Git 連携・API トークンで動き、リポジトリの設定が正しくても即失敗することがあります。失敗時のログは GitHub には出ず、ダッシュボードの Build History にだけあります。
+1. [楽天ウェブサービス](https://webservice.rakuten.co.jp/) に楽天会員でログインし、「アプリID発行」から新しいアプリを登録します。
+2. 登録画面の「許可されたWebサイト」（またはアプリのURL）に、手順2で表示された公開URLのドメイン
+   （例: `coconala-tool.xxxx.workers.dev`）を入力します。
+3. 登録後の画面で「アプリケーションID」と「アクセスキー」を控えます。
 
-### Workers Builds が GitHub 上で即失敗する場合
+### 4. キーを Cloudflare に登録する（秘密の値として保存）
 
-GitHub のチェック開始時刻と終了時刻が同じで、注釈もログもないときは、クローンや `npm run build` の前に Cloudflare 側で弾かれています。リポジトリの `wrangler.jsonc` をいじるより、ダッシュボードを直してください。
+```bash
+npx wrangler secret put SERVER_RAKUTEN_APP_ID
+npx wrangler secret put SERVER_RAKUTEN_ACCESS_KEY
+```
 
-1. [Workers Builds のトラブルシュート](https://developers.cloudflare.com/workers/ci-cd/builds/troubleshoot/) のとおり、**Build Configuration の API トークンが削除・再発行済み（stale）でないか**を確認する。該当する場合は新しいトークンを作って選び直し、Retry build する。
-2. Worker 名が `wrangler.jsonc` の `name`（`coconala-tool`）と一致しているか確認する。
-3. Build command を `npm run build`、Deploy command を `npx wrangler deploy`、非本番ブランチを `npx wrangler versions upload` にする。
-4. Git 連携そのものが壊れているときは、Settings → Builds から Git 連携を外して入れ直す。
-5. ダッシュボードの Build Variables に `NODE_VERSION=20` が残っている場合は削除するか `22` にする。Node 20 は 2026-04-30 に EOL で、Workers Builds のイメージは 22/24 を事前インストールする。`.nvmrc` は 22。
-6. `account_id` は購入者の Cloudflare アカウントごとに違うため、このリポジトリには書きません。自分のアカウントで `wrangler deploy` するときだけ、必要ならローカルの設定や環境変数で指定してください。
+それぞれ実行すると値の入力を求められるので、控えた値を貼り付けて Enter を押します。
+入力した値は画面や納品物には残りません。ダッシュボードの「Workers & Pages → coconala-tool → 設定 → 変数とシークレット」からも登録できます。
 
-### メリット
+独自ドメインで公開していて、楽天に登録したサイトと公開URLが違う場合だけ、次も登録します（例: `https://shop.example.com`）。
 
-- 無料枠が大きい（月 500 ビルド、帯域無制限）
-- Cloudflare Workers との連携が容易（将来の API サーバー化に向いている）
+```bash
+npx wrangler secret put SERVER_RAKUTEN_ALLOWED_ORIGIN
+```
 
-### `/api/rakuten` の応答仕様（PR-3で追加）
+### 5. 確認する
 
-- GET 以外のメソッドは 405 を返します。
-- `q` は trim 後 1〜100文字、制御文字は除去されます。範囲外は 400 `invalid_query`。
-- `limit` は 1〜30 にクランプされます。
-- 上流（楽天API）への通信には約8秒のタイムアウトを設定しています（504 `timeout`）。
-- 上流エラーは `rate_limited`（429）/ `upstream_client_error`（4xx）/ `upstream_error`（5xx）/
-  `invalid_json`（応答形式が不正）に分類して返します。内部例外や Application ID は
-  一切クライアントへ返しません。
-- 商品名・ショップ名は最大長でクランプされ、商品URL・画像URLは `https:` のみ許可されます
-  （それ以外は空文字として除外）。
-- 応答はキャッシュしません（`cache-control: no-store`）。理由は
-  [`docs/adr/0001-no-rakuten-response-cache.md`](adr/0001-no-rakuten-response-cache.md) を参照してください。
+公開URLを開き、データソースを「楽天市場」にして商品名を検索します。
+ヘッダーが緑色の「実データ表示中 — 楽天市場」になり、カードに「公式API取得」と表示されれば完了です。
 
-### Cloudflareでのレート制限設定（推奨）
+自動チェックも実行できます（初回だけブラウザの準備が必要です）。
 
-`functions/api/rakuten.ts` はインメモリの回数カウンタでレート制限を行っていません
-（Pages Functions のインスタンスは分散・使い捨てのため、インメモリ実装は確実な制限になりません）。
-過度なリクエストからアプリと楽天APIの無料枠を守るには、Cloudflare 側の機能を利用してください。
+```bash
+npx playwright install chromium
+E2E_BASE_URL=https://coconala-tool.xxxx.workers.dev npm run e2e:postdeploy
+```
 
-1. Cloudflare ダッシュボードで対象の Pages プロジェクトを開きます。
-2. 「Security」→「WAF」→「Rate limiting rules」（または「Rules」→「Rate Limiting Rules」）を開きます。
-3. 「Create rule」で以下のようなルールを作成します。
-   - **Field**: URI Path が `/api/rakuten` に一致
-   - **Requests**: 例）1分あたり同一IPから 20 リクエストまで
-   - **Action**: Block または Challenge
-4. 保存して有効化します。反映まで数分かかる場合があります。
+すべて `passed` になれば、画面表示・検索・比較・履歴・セキュリティ設定が公開環境でも正しく動いています。
+確認内容の一覧は [`post-deploy-qa.md`](post-deploy-qa.md) にあります。
 
-需要が増えた場合は、リクエスト数上限や期間をプロジェクトの利用規模に合わせて調整してください。
+### GitHub と連携して自動公開する（任意）
+
+Cloudflare ダッシュボードの「Workers & Pages → 作成 → Git リポジトリをインポート」から連携できます。
+
+- Build command: `npm run build`
+- Deploy command: `npx wrangler deploy`
+- Worker 名は `wrangler.jsonc` の `"name"`（既定 `coconala-tool`）と同じにします。
+- キーは手順4と同じく「変数とシークレット」に登録します。
 
 ---
 
-## Vercel へのデプロイ
+## かんたん公開（楽天の実データなし）
 
-### 手順
+納品物の `app-static/` は、ビルド済みの完成品です。Node.js もコマンドも不要です。
 
-1. [Vercel](https://vercel.com/) にログインします
-2. 「Add New Project」で GitHub リポジトリをインポートします
-3. フレームワークが「Vite」として自動検出されることを確認します
-4. ビルド設定を確認します：
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist/client`
-5. 「Deploy」をクリックします
-6. デプロイ完了後、発行された `*.vercel.app` URL でアプリが利用できます
+1. [Cloudflare ダッシュボード](https://dash.cloudflare.com/) で「Workers & Pages → 作成 → Pages → アセットをアップロード（直接アップロード）」を選びます。
+2. プロジェクト名を入力し、`app-static` フォルダの**中身**をドラッグ＆ドロップして「デプロイ」します。
+3. 表示された `https://<プロジェクト名>.pages.dev` を開けば完了です。
 
-### メリット
-
-- Hobby プランは無料
-- Next.js への移行が容易（将来の SSR 対応に向いている）
-- Vercel Edge Functions でサーバーサイド処理を追加できる（ただし本アプリは未実装。実API連携が必要な場合は別途開発が必要です）
-
-### 注意
-
-現時点で楽天APIプロキシは Cloudflare Pages Functions 専用に実装されています。Vercel にデプロイした場合、データソースは「サンプルデータ」「モック（楽天API想定）」のみで動作し、実データへの切り替えはできません。
+- 楽天市場モードを選ぶと「この公開版は楽天市場との連携なしで動作しています」と表示され、見本データになります。
+- セキュリティ設定（`_headers`）も一緒に反映されます。
+- Netlify（Netlify Drop）など、静的ファイルを置けるサービスでも同じフォルダで公開できます。
+- Vercel や GitHub Pages で楽天の実データを使うには、別途サーバー機能の開発が必要です（標準の対象外）。
 
 ---
 
-## GitHub Pages へのデプロイ
+## 安全のための仕組み（設定不要）
 
-### 注意事項
+- 楽天のキーはサーバー側（Workers のシークレット）にだけ保存され、画面・ブラウザ・納品物には含まれません。
+- `/api/rakuten` は、他のサイトの画面から呼び出されると 403 で拒否します（プログラムからの直接呼び出しは、下のレート制限で抑えます）。
+- 1人（IPアドレス）あたり 60 秒に 30 回を超える検索は一時的に止めます（`wrangler.jsonc` の `ratelimits`）。
+  楽天の利用上限を守るための仕組みで、回数は `"limit"` で変更できます。
+- 画面には、他サイトへの埋め込み禁止・読み込み元の制限などのセキュリティヘッダーが付きます（`public/_headers`）。
+- 楽天の応答は約8秒でタイムアウトし、失敗しても画面は落ちずに理由を表示して見本データに切り替えます。
 
-- GitHub Pages はサブパス（例: `username.github.io/coconala-tool/`）でホストする場合、`vite.config.ts` の `base` オプションを設定する必要があります
-- ルートドメイン対応は `CNAME` ファイルで可能
+## うまくいかないとき
 
-### 手順
+| 症状 | 原因と対処 |
+|---|---|
+| 「楽天市場との連携がまだ設定されていない」と出る | キーが未登録。手順4で **2つとも** 登録し、数十秒待って再検索 |
+| 「楽天市場の設定（アプリID・アクセスキー・許可サイト）が正しくない」と出る | キーの貼り間違い、または楽天の「許可されたWebサイト」と公開URLの不一致。独自ドメインなら `SERVER_RAKUTEN_ALLOWED_ORIGIN` も登録 |
+| 「短時間に検索が集中した」と出る | 1分ほど待つ。利用者が多いなら `wrangler.jsonc` の `"limit"` を増やして再公開 |
+| `npm run deploy` で `wrangler login` を求められる | 手順2の `npx wrangler login` を先に実行 |
+| GitHub 連携の自動ビルドがすぐ失敗する | ダッシュボードの Build の API トークンが古い可能性。[Cloudflare の案内](https://developers.cloudflare.com/workers/ci-cd/builds/troubleshoot/) に従って作り直し、Retry |
+| Node.js のバージョンエラー | Node.js 22 を使う（`.nvmrc`）。ダッシュボードの `NODE_VERSION` が 20 なら 22 に変更 |
 
-1. `vite.config.ts` に `base` を追加します（サブパスの場合）：
+## 開発者向けメモ
 
-   ```ts
-   export default defineConfig({
-     base: '/coconala-tool/',
-     plugins: [react()],
-   });
-   ```
-
-2. GitHub Actions ワークフローを追加します（`.github/workflows/deploy.yml`）：
-
-   ```yaml
-   name: Deploy to GitHub Pages
-   on:
-     push:
-       branches: [main]
-   jobs:
-     deploy:
-       runs-on: ubuntu-latest
-       steps:
-         - uses: actions/checkout@v4
-         - uses: actions/setup-node@v4
-           with:
-             node-version: '22'
-         - run: npm install
-         - run: npm run build
-         - uses: peaceiris/actions-gh-pages@v4
-           with:
-             github_token: ${{ secrets.GITHUB_TOKEN }}
-             publish_dir: ./dist/client
-   ```
-
-3. リポジトリの Settings → Pages → Source を「gh-pages ブランチ」に設定します
-
----
-
-## デプロイ後の確認
-
-- [ ] アプリが正常に表示される
-- [ ] 画面上部ヘッダーに「デモ表示中 — サンプル/モックデータ」バッジが常時表示される（楽天API未接続時）
-- [ ] 検索エリア近くに `現在のデータ: サンプル / 楽天市場` が表示される
-- [ ] サンプルモードで `PS5` を検索し、カード / 比較 / CSV が動作する
-- [ ] 楽天市場モードで `SONY` を検索し、モックカードが表示される（キー未設定時）
-- [ ] 楽天市場モードで0件検索し、候補キーワード案内が表示される
-- [ ] テーマ切替が動作する
-- [ ] ローカルストレージが正常に動作する（履歴の保存・再開）
-- [ ] CSV エクスポートが動作する
-- [ ] 外部リンクが正しく開く
-
-## バイヤー向けメモ
-
-- APIキー不要で、そのままデプロイ可能です（サンプル/モックデータで動作）。
-- 楽天市場 商品検索APIの実データを使う場合は、Cloudflare Pages に `SERVER_RAKUTEN_APP_ID` を設定してください（`docs/setup-guide.md` 参照）。
-- 楽天以外の実API接続（eBay / Yahoo!ショッピング 等）は未実装で、次フェーズの有償カスタマイズ（別見積り）です。
-
----
-
-## カスタムドメインの設定（オプション）
-
-Cloudflare Pages / Vercel ともにカスタムドメインを無料で設定できます。
-各サービスのダッシュボードから「Custom Domain」を追加し、DNS レコード（CNAME）を設定してください。
+- ビルド: `npm run build`（`dist/client` に画面、`dist/coconala_tool` に Worker）
+- 静的版ビルド: `npm run build:static`（`dist-static/client`）
+- `/api/rakuten` の仕様: `GET /api/rakuten?q=<検索語>&limit=<1〜30>`。GET 以外は 405、検索語が不正なら 400 `invalid_query`、
+  キー未設定は 503 `no_key`、楽天側の認証・許可サイトエラーは 502 `upstream_auth`、429 `rate_limited`、
+  5xx は 502 `upstream_error`、応答形式の不正は 502 `invalid_json`、タイムアウトは 504 `timeout`。
+  楽天の「該当なし（404）」は 0件の正常応答として返します。応答はキャッシュしません（`cache-control: no-store`）。
+- `wrangler.jsonc` の `env.e2e` は自動テスト専用です（本番の `npm run deploy` には含まれません）。

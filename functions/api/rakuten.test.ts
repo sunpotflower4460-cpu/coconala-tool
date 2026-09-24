@@ -477,7 +477,7 @@ describe('functions/api/rakuten onRequest', () => {
       capturedUrl = url;
       return Promise.resolve(upstreamJsonResponse({ Items: [] }));
     });
-    const injected = 'PS5&applicationId=attacker-key&hits=1';
+    const injected = 'PS5&applicationId=attacker-test-key&hits=1';
     await onRequest(
       makeContext({ method: 'GET', search: `?q=${encodeURIComponent(injected)}`, appId: 'real-app-id' }),
     );
@@ -631,7 +631,7 @@ describe('functions/api/rakuten onRequest', () => {
       const calls = captureFetch();
       const res = await onRequest({
         request: new Request('https://example.pages.dev/api/rakuten?q=PS5'),
-        env: { SERVER_RAKUTEN_APP_ID: 'app-only' },
+        env: { SERVER_RAKUTEN_APP_ID: 'test-app-only' },
       });
       expect(res.status).toBe(503);
       expect((await readJson(res)).error).toBe('no_key');

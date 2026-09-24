@@ -1,8 +1,10 @@
 # 本番故障リスク・再現テストマトリクス
 
-最終更新: 2026-09-01
+最終更新: 2026-09-24
 
-対象: 相場カード比較ボード (`coconala-tool`) v0.9.0-rc.10
+対象: 相場カード比較ボード (`coconala-tool`) v0.9.0-rc.11
+
+自動テストの実行方法: `npm run verify:all`（単体・E2E・整合チェック・納品ZIP検証を一括実行し、`dist-delivery/VERIFICATION_REPORT.md` に結果を出力）
 
 目的: 本番運用で起こり得る故障を、API / 認証・秘密情報 / 通信 / 同時実行 / データ不整合 / ユーザー操作 / 外部サービス障害 / セキュリティの観点から洗い出し、**各リスクに再現手順と期待結果を持たせる**。
 
@@ -95,11 +97,11 @@
 ## API-07 巨大な上流レスポンス
 
 - 重大度: P2
-- 状態: Partial
+- 状態: Protected（rc.11 で本文サイズ上限 2MB を追加）
 - 故障: JSON parse時のメモリ/CPU増大
-- 再現: テスト環境で数MB〜数十MB相当のItemsを返す
-- 期待結果: Functionsの制限内で失敗しても502/モックへ倒れ、秘密情報を返さない。80件程度の肥大 Items は正規化して返し、名前はクランプ、キーは返さない
-- 自動テスト: `functions/api/rakuten.test.ts`（80件・長文。数十MB級は未実施）
+- 再現: 2MB を超える応答、Content-Length が上限超過の応答
+- 期待結果: 読み切らずに 502 `upstream_error` → 見本データへ。秘密情報を返さない。80件程度の肥大 Items は正規化して返す
+- 自動テスト: `functions/api/rakuten.test.ts`、`e2e/rakuten-worker.spec.ts`（`__big`、実Worker経由）
 
 ## API-08 HEAD / OPTIONS / PUT / DELETE / PATCH
 
@@ -133,7 +135,7 @@
 - 重大度: P0
 - 状態: Protected
 - 故障: `q=PS5&applicationId=attacker` が楽天URLの別パラメータとして解釈され、キーを差し替えられる
-- 再現: `q=` に `PS5&applicationId=attacker-key&hits=1` をエンコードして送る
+- 再現: `q=` に `PS5&applicationId=attacker-test-key&hits=1` をエンコードして送る
 - 期待結果: `URLSearchParams.set` により keyword 1値としてエンコードされる。`applicationId` はサーバーキーのまま
 - 自動テスト: `functions/api/rakuten.test.ts`
 
@@ -217,11 +219,12 @@
 ## AUTH-04 公開プロキシURLを第三者が直接叩く
 
 - 重大度: P0
-- 状態: External / Open
-- 故障: Application ID自体は隠れていても、第三者が `/api/rakuten` を連打して楽天API枠を枯渇させる
+- 状態: Protected（rc.11 で Workers Rate Limiting バインディングを追加）/ External（厳密な回数管理ではない）
+- 故障: キー自体は隠れていても、第三者が `/api/rakuten` を連打して楽天API枠を枯渇させる
 - 再現: 別PC/CLIからOriginなしで本番 `/api/rakuten?q=PS5` を連続実行
-- 期待結果: **コードだけで完全防止はできない**。Cloudflare Rate Limiting/WAFで閾値超過を429/ブロックし、通常利用は維持する
-- 販売前条件: Cloudflare側のrate limit設定手順をデプロイガイドへ反映することを推奨
+- 期待結果: 1IPあたり60秒30回を超えると楽天へ送らず 429 `rate_limited`。レート制限サービス自体の障害時は検索を止めない
+- 自動テスト: `worker.test.ts`（超過時に上流を呼ばない・キーは CF-Connecting-IP）
+- 備考: Cloudflare の拠点ごとの計数で結果整合。大規模な濫用には Cloudflare WAF の併用を推奨（任意）
 
 ## AUTH-05 Worker env の Application ID 引き回し
 
@@ -413,11 +416,11 @@
 ## DATA-02 ブラウザでStorage利用が禁止
 
 - 重大度: P1
-- 状態: Partial
+- 状態: Protected
 - 故障: SecurityErrorでアプリ全体が落ちる/履歴保存を成功扱いする
 - 再現: localStorage getterをthrowさせる
 - 期待結果: アプリ主要機能は継続。履歴保存は失敗表示
-- 自動テスト: `historyStore.test.ts`（検知関数）
+- 自動テスト: `historyStore.test.ts`（検知関数）、`e2e/resilience.spec.ts`（DATA-02: 起動・検索・比較・利益計算・ページエラー0件）
 
 ## DATA-03 localStorage JSONが手動編集/破損
 
@@ -509,11 +512,11 @@
 ## DATA-12 比較ボード件数に上限がない
 
 - 重大度: P2
-- 状態: Partial
+- 状態: Protected（rc.11 で上限50件。比較ボードは localStorage に保存）
 - 故障: 大量追加で localStorage / 描画が重くなる
-- 再現: 比較カードを数十件追加
-- 期待結果: 現状は id 重複だけ防ぐ。件数上限は未実装。履歴は 20 件で抑制
-- 自動化: 重複防止のみ `researchStore.test.ts`
+- 再現: 比較カードを55件追加
+- 期待結果: 50件で止まり「比較に追加」が押せなくなる。保存・復元も50件まで。履歴は 20 件
+- 自動テスト: `researchStore.test.ts`
 
 ---
 
@@ -691,6 +694,7 @@
 - 故障: フォントだけシステムフォントへフォールバック。機能は維持
 - 再現: fonts.googleapis.com をブロック
 - 期待結果: 検索・比較・利益は操作可能
+- 自動テスト: `e2e/resilience.spec.ts`（EXT-10）
 
 ---
 
@@ -720,10 +724,11 @@
 ## SEC-03 Origin/Sec-Fetch-Site無しのCLIから公開プロキシを濫用
 
 - 重大度: P0
-- 状態: External / Open
+- 状態: Protected（Workers Rate Limiting）/ External（厳密な回数管理ではない）
 - 故障: HTTPヘッダーは攻撃者が自由に作れるため、ブラウザorigin検証だけでは防げない
 - 再現: `curl 'https://<host>/api/rakuten?q=PS5'` を高頻度実行
-- 期待結果: Cloudflare Rate Limiting/WAFで抑止。必要なら認証付き非公開運用を選ぶ
+- 期待結果: 1IPあたり60秒30回を超えると 429。必要なら Cloudflare WAF や認証付き非公開運用を選ぶ
+- 自動テスト: `worker.test.ts`
 - 備考: このリスクを「CORSで防げる」と誤認しないこと
 
 ## SEC-04 API/手動文字列によるXSS
@@ -800,19 +805,58 @@
 ## SEC-12 CSP 未設定
 
 - 重大度: P1
-- 状態: Open / External
+- 状態: Protected（rc.11 で `public/_headers` と API 応答に CSP を追加）
 - 故障: もし XSS が1つでも残るとインライン script が動く
-- 再現: 本番レスポンスヘッダーに CSP が無い
-- 期待結果: 現状アプリ側では未設定。Cloudflare で `Content-Security-Policy` を検討（Google Fonts を許可する必要あり）
+- 再現: 本番レスポンスヘッダーを確認し、主要フロー中の CSP 違反をコンソールで監視
+- 期待結果: `script-src 'self'`（インライン script 不可）。テーマ初期化もインラインではなく `public/theme-init.js`。CSP 違反0件
+- 自動テスト: `e2e/security.spec.ts`（@postdeploy。デプロイ後も同じテストで確認できる）
 - 備考: React のテキスト描画と URL サニタイズが第一防御
 
 ## SEC-13 クリックジャッキング
 
 - 重大度: P2
-- 状態: Open / External
+- 状態: Protected（rc.11 で `X-Frame-Options: DENY` と `frame-ancestors 'none'`）
 - 故障: 悪意サイトが iframe で本アプリを重ね、比較追加や履歴削除を誘導
-- 再現: 外部ページから iframe で本番 URL を表示
-- 期待結果: アプリコードでは未防止。Cloudflare で `X-Frame-Options: DENY` または `frame-ancestors 'none'` を推奨
+- 再現: 本番レスポンスヘッダーを確認
+- 期待結果: 画面・API とも iframe 埋め込み不可
+- 自動テスト: `e2e/security.spec.ts`、`functions/api/rakuten.test.ts`
+
+## SEC-15 楽天 旧API（app.rakuten.co.jp）の提供終了
+
+- 重大度: P0
+- 状態: Protected（rc.11 で新API `openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701` に移行）
+- 故障: 旧APIは 2026-05-14 に終了。旧実装のままだと実キーを設定しても常に見本データになり、販売文の主要機能が成立しない
+- 再現: 旧エンドポイントへアプリIDだけで問い合わせる
+- 期待結果: アプリID＋アクセスキーの両方を送り、楽天の「許可されたWebサイト」と照合される Origin / Referer を付ける。どちらかのキーが無ければ 503 `no_key`
+- 自動テスト: `functions/api/rakuten.test.ts`（新ホスト・accessKey・Origin）、`e2e/rakuten-worker.spec.ts`（偽楽天APIで上流に届いた値を検証）、`npm run verify:release`（旧ドメインが残っていないこと）
+- 残る人手: 実キーでの1回の検索確認（`docs/post-deploy-qa.md`）
+
+## API-13 楽天の「該当なし」404 / 認証エラー / 検索語エラーの取り違え
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 0件を通信失敗として見本データ表示する、キーの誤りを「一時的な不具合」と案内する、見本データを実データのように見せる
+- 再現: 上流 404 / 401 / 403 / 400（applicationId・accessKey）/ 400（keyword）
+- 期待結果: 404 → 実データの0件。401・403・キー起因400 → 「設定を確認」。検索語起因400 → 見本データを出さず検索語の直し方を案内
+- 自動テスト: `functions/api/rakuten.test.ts`、`e2e/rakuten-worker.spec.ts`
+
+## USER-11 日本語入力の変換確定 Enter で検索が走る
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 入力途中の語で検索が走り、楽天の利用枠も消費する
+- 再現: IME 変換中（isComposing / keyCode 229）に Enter
+- 期待結果: 検索しない。確定後の Enter で検索する
+- 自動テスト: `ProductSearchBar.test.tsx`、`e2e/core-flows.spec.ts`
+
+## DATA-13 比較ボードが再読込で消える / 履歴が検索するまで見えない
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 再読込すると比較ボードが空になり、保存済み履歴も検索するまで表示されない
+- 再現: 比較に追加・履歴保存 → 再読込
+- 期待結果: 比較ボード（最大50件）は復元され、履歴・利益計算は検索前から表示される。v1 の保存データは設定を引き継いで v2 に移行
+- 自動テスト: `researchStore.test.ts`、`AppShell.test.tsx`、`e2e/core-flows.spec.ts`
 
 ## SEC-14 パス大文字小文字の取り違え
 
@@ -825,40 +869,37 @@
 
 ---
 
-# 販売前に必ず行う「故障注入」セット
+# 故障注入セット（すべて自動化済み）
 
-以下は正式販売前に最低1回、Previewまたはテスト環境で実施する。
+以下は `npm run verify:all`（ローカル・CI）で毎回自動実行される。人が手で実施する必要はない。
 
-1. キー未設定 -> `mock_no_key`
-2. 無効キー -> 実データ表示にならずフォールバック
-3. upstream 429 -> `mock_rate_limited`
-4. upstream 500 -> `mock_upstream_error`
-5. 8秒以上応答なし -> timeout
-6. `/api/rakuten`がHTMLを返す -> 画面クラッシュなし
-7. 検索中に検索語変更 -> 旧結果が混ざらない
-8. 検索中にデータソース変更 -> 旧結果が混ざらない
-9. localStorage容量超過 -> 保存失敗が利用者へ分かる
-10. localStorage破損 -> 白画面にならない（`e2e/core-flows.spec.ts`）
-11. 別origin / same-site request -> 403
-12. CLI連打 -> Cloudflare rate limitが働くこと（設定する場合）
-13. CSV formula injection -> Excelで式実行されない
-14. 375px実機/ブラウザ -> 横スクロールなし
-15. 本番成果物secret scan -> Application IDなし
-16. 履歴の HTML タイトル -> テキスト表示、alert なし
-17. 複数タブで履歴保存 -> 他タブへ反映
-18. USD × 為替0 -> 仕入れに 0円を入れない
-19. `/api/rakuten/` 末尾スラッシュ -> ハンドラが応答
+| # | 故障 | 期待結果 | 自動テスト |
+|---|---|---|---|
+| 1 | キー未設定 | 見本データ＋「設定前」の案内 | `e2e/rakuten-worker.spec.ts` |
+| 2 | 無効キー・許可サイト不一致（401/403/400） | 実データ表示にならず「設定を確認」 | `e2e/rakuten-worker.spec.ts` |
+| 3 | 上流 429 | 「アクセス集中」 | `e2e/rakuten-worker.spec.ts` |
+| 4 | 上流 500 / 503 | 「楽天側の一時的な不具合」 | `e2e/rakuten-worker.spec.ts` |
+| 5 | 8秒以上応答なし | タイムアウトとして見本データ | `e2e/rakuten-worker.spec.ts` |
+| 6 | HTML・壊れたJSON・巨大応答・契約違反 | 画面クラッシュなし・実データと誤認させない | `e2e/rakuten-worker.spec.ts` |
+| 7 | 検索中に検索語・データソース変更、クリア後の再検索 | 旧結果が混ざらない | `ProductSearchBar.test.tsx` |
+| 8 | localStorage 容量超過 / 使用不可 / 破損 | 保存失敗を表示・白画面にならない | `e2e/resilience.spec.ts`、`e2e/core-flows.spec.ts` |
+| 9 | 別origin / same-site / POST | 403 / 405 | `e2e/security.spec.ts` |
+| 10 | CLI 連打 | 429（楽天へ送らない） | `worker.test.ts` |
+| 11 | CSV formula injection・負の利益 | 数式として実行されない・数値のまま | `e2e/core-flows.spec.ts` |
+| 12 | 375 / 768 / 1280px・iPhone（WebKit） | 横スクロールなし・タップ領域44px以上 | `e2e/layout.spec.ts` |
+| 13 | 本番成果物・納品ZIPの secret scan | キー・トークンなし | `npm run verify:release`、`npm run delivery:verify` |
+| 14 | 履歴の HTML タイトル | テキスト表示、alert なし | `e2e/production-failure.spec.ts` |
+| 15 | 複数タブで履歴保存 | 他タブへ反映 | `e2e/production-failure.spec.ts` |
+| 16 | USD × 為替0 | 仕入れに 0円を入れない | `CompareBoard.test.tsx` |
+| 17 | オフライン・画像403・フォント不通・Worker 不在 | 理由表示・NO IMAGE・主要フロー継続 | `e2e/resilience.spec.ts`、`e2e/rakuten-worker.spec.ts` |
+| 18 | CSP 違反・iframe 埋め込み | 違反0件・埋め込み不可 | `e2e/security.spec.ts` |
 
 ---
 
-# 現時点の主要残リスク
+# 現時点の残リスク（コードでは完全に防げないもの）
 
-正式販売判断で特に認識しておくべき未完了項目:
-
-1. **公開 `/api/rakuten` のCLI濫用**: Origin検査だけでは完全防御できない。Cloudflare Rate Limiting/WAFを推奨。
-2. **複数タブの同時書き込みマージ**: 他タブの更新は `storage` イベントで再読込するが、同時保存の3-way mergeはしない。
-3. **https の外部画像URL**: ユーザーが貼った https 画像は読み込む（トラッキングピクセルになり得る）。javascript/http は拒否済み。
-4. **CSP / クリックジャッキング**: アプリ側未設定。Cloudflare ヘッダーでの防御を推奨。
-5. **比較ボード件数上限**: 重複 id は防ぐが件数キャップは無い。履歴は20件。
-
-P0の公開プロキシ濫用対策だけは、本番Cloudflare設定時に必ず判断する。
+1. **楽天側の仕様変更・障害**: 理由を表示して見本データへ切り替えるが、恒久対応には改修が必要。実キーでの確認は公開後に1回行う（`docs/post-deploy-qa.md`）。
+2. **レート制限の精度**: Workers Rate Limiting は拠点ごとの結果整合。大規模な濫用には Cloudflare WAF の併用を推奨。
+3. **複数タブの同時書き込みマージ**: 他タブの更新は `storage` イベントで再読込するが、同時保存の3-way mergeはしない。
+4. **https の外部画像URL**: ユーザーが貼った https 画像は読み込む（参照元URLは送らない）。javascript/http は拒否済み。
+5. **Cloudflare 自体の障害**（EXT-05）: アプリ内では対処できない。
