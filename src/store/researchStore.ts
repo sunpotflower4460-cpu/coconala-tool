@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import type { DataSourceMode, MarketCard, MarketSearchResponse, MarketSearchStatus, ProfitSettings, ThemeId } from '../types/market';
 import { clampAmount, clampFeeRate } from '../features/profit/profitCalculator';
 import { MAX_SEARCH_QUERY_LENGTH } from '../lib/limits';
@@ -59,6 +59,34 @@ type ResearchStore = {
 };
 
 export { defaultProfitSettings };
+
+/**
+ * 保存に失敗しても（容量超過・保存禁止のブラウザ）操作を止めない localStorage ラッパー。
+ * 画面上の値はそのまま使え、次に保存できたときに反映される。
+ */
+const safeLocalStorage = {
+  getItem: (key: string) => {
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string) => {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      // 容量超過など。設定・比較ボードの保存だけを諦め、画面操作は続けられるようにする。
+    }
+  },
+  removeItem: (key: string) => {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // 何もしない
+    }
+  },
+};
 
 export const useResearchStore = create<ResearchStore>()(
   persist(
@@ -218,6 +246,7 @@ export const useResearchStore = create<ResearchStore>()(
     }),
     {
       name: RESEARCH_STORAGE_KEY,
+      storage: createJSONStorage(() => safeLocalStorage),
       version: RESEARCH_PERSIST_VERSION,
       partialize: (state) => ({
         dataSourceMode: state.dataSourceMode,

@@ -267,4 +267,30 @@ describe('researchStore search request identity', () => {
     expect(useResearchStore.getState().dataSourceMode).toBe('rakuten_mock');
     expect(useResearchStore.getState().profitSettings.buyPrice).toBe(500);
   });
+
+  it('保存容量がいっぱいでもテーマ変更・比較追加・利益入力で例外を出さず、画面の値は変わる', () => {
+    const original = Storage.prototype.setItem;
+    Storage.prototype.setItem = () => {
+      throw new DOMException('QuotaExceededError', 'QuotaExceededError');
+    };
+    try {
+      expect(() => useResearchStore.getState().setTheme('dark-trader')).not.toThrow();
+      expect(() => useResearchStore.getState().setProfitSettings({ buyPrice: 777 })).not.toThrow();
+      expect(() =>
+        useResearchStore.getState().addComparedCard({
+          id: 'quota',
+          title: 'q',
+          siteName: 's',
+          sourceType: 'manual',
+          pageUrl: 'https://example.com/q',
+          confidence: 'high',
+          createdAt: '2026-09-25T00:00:00.000Z',
+        }),
+      ).not.toThrow();
+      expect(useResearchStore.getState().theme).toBe('dark-trader');
+      expect(useResearchStore.getState().profitSettings.buyPrice).toBe(777);
+    } finally {
+      Storage.prototype.setItem = original;
+    }
+  });
 });
