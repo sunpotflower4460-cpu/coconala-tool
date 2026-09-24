@@ -109,11 +109,14 @@ async function pathExists(p) {
 
 /** Git 管理下（追跡中＋未追跡で .gitignore 対象外）のファイル一覧。 */
 function listCandidateFiles() {
-  const out = execFileSync('git', ['ls-files', '-co', '--exclude-standard', '-z'], { cwd: REPO_ROOT });
-  return out
-    .toString('utf-8')
-    .split('\0')
-    .filter(Boolean);
+  const list = (args) =>
+    execFileSync('git', ['ls-files', ...args, '-z'], { cwd: REPO_ROOT })
+      .toString('utf-8')
+      .split('\0')
+      .filter(Boolean);
+  // 追跡中でも作業ツリーで削除済み（未コミット）のファイルは除く。
+  const deleted = new Set(list(['-d']));
+  return list(['-co', '--exclude-standard']).filter((file) => !deleted.has(file));
 }
 
 export function selectSourceFiles(candidates) {

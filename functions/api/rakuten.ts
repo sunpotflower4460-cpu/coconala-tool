@@ -278,13 +278,18 @@ async function readTextCapped(response: Response, maxBytes: number): Promise<str
 }
 
 /** 楽天のエラー本文（`{ error, error_description }`）から、利用者へ出す分類だけを取り出す。本文そのものは返さない。 */
-async function classifyUpstreamClientError(response: Response): Promise<'invalid_query' | 'upstream_auth' | 'upstream_client_error'> {
+async function classifyUpstreamClientError(
+  response: Response,
+  signal: AbortSignal,
+): Promise<'invalid_query' | 'upstream_auth' | 'upstream_client_error'> {
   if (response.status === 401 || response.status === 403) return 'upstream_auth';
   let description = '';
   try {
     const body = JSON.parse(await readTextCapped(response, 10_000)) as { error?: unknown; error_description?: unknown };
     description = `${String(body.error ?? '')} ${String(body.error_description ?? '')}`.toLowerCase();
-  } catch {
+  } catch (err) {
+    // 本文の読み取り中にタイムアウトした場合は、呼び出し元で timeout として扱う。
+    if (signal.aborted) throw err;
     return 'upstream_client_error';
   }
   if (/keyword/.test(description)) return 'invalid_query';
@@ -344,7 +349,7 @@ async function handleGet(context: PagesFunctionContext, requestId: string): Prom
     if (!upstream.ok) {
       if (upstream.status === 429) return errorResponse('rate_limited', 429, requestId, upstream.status);
       if (upstream.status >= 500) return errorResponse('upstream_error', 502, requestId, upstream.status);
-      const kind = await classifyUpstreamClientError(upstream);
+      const kind = await classifyUpstreamClientError(upstream, controller.signal);
       if (kind === 'invalid_query') return errorResponse('invalid_query', 400, requestId, upstream.status);
       return errorResponse(kind, 502, requestId, upstream.status);
     }

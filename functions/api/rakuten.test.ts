@@ -702,6 +702,24 @@ describe('functions/api/rakuten onRequest', () => {
       expect((await readJson(res)).error).toBe('timeout');
     });
 
+    it('4xx の本文読み取り中にタイムアウトしても timeout として返す', async () => {
+      vi.useFakeTimers();
+      globalThis.fetch = vi.fn().mockImplementation((_url: string, options: { signal: AbortSignal }) => {
+        const body = new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('{"error":'));
+            options.signal.addEventListener('abort', () => controller.error(new DOMException('aborted', 'AbortError')));
+          },
+        });
+        return Promise.resolve(new Response(body, { status: 400 }));
+      });
+      const promise = onRequest(makeContext({ search: '?q=PS5', appId: 'key' }));
+      await vi.advanceTimersByTimeAsync(8_000);
+      const res = await promise;
+      expect(res.status).toBe(504);
+      expect((await readJson(res)).error).toBe('timeout');
+    });
+
     it('上流の差し替え（E2E用）はフラグ＋ループバックURLのときだけ効き、本番値では常に楽天へ送る', () => {
       const fake = 'http://127.0.0.1:43174/ichibams/api/IchibaItem/Search/20260701';
       expect(resolveRakutenEndpoint({ E2E_FAKE_UPSTREAM: '1', RAKUTEN_API_BASE_OVERRIDE: fake })).toBe(fake);
