@@ -4,6 +4,7 @@ import type { DataSourceMode, MarketCard, MarketSearchResponse, MarketSearchStat
 import { clampAmount, clampFeeRate } from '../features/profit/profitCalculator';
 import { MAX_SEARCH_QUERY_LENGTH } from '../lib/limits';
 import {
+  MAX_COMPARED_CARDS,
   RESEARCH_PERSIST_VERSION,
   RESEARCH_STORAGE_KEY,
   defaultProfitSettings,
@@ -18,6 +19,8 @@ type PriceField = 'buyPrice' | 'sellPrice';
 
 type ResearchStore = {
   query: string;
+  /** 直近に検索（または履歴から再開）した語。入力欄の編集途中の値とは別に持つ。 */
+  searchedQuery: string;
   resultCards: MarketCard[];
   comparedCards: MarketCard[];
   dataSourceMode: DataSourceMode;
@@ -32,8 +35,7 @@ type ResearchStore = {
   /** 進行中の検索リクエスト世代。clear / 新しい検索で増やす。 */
   searchRequestId: number;
   setQuery: (q: string) => void;
-  setSearchResult: (response: MarketSearchResponse) => void;
-  setIsSearching: (isSearching: boolean) => void;
+  setSearchResult: (response: MarketSearchResponse, searchedQuery?: string) => void;
   /** 検索開始。既に検索中なら null。呼び出し側は最新世代以外の結果を捨てる。 */
   beginSearch: () => number | null;
   isCurrentSearchRequest: (requestId: number) => boolean;
@@ -51,7 +53,6 @@ type ResearchStore = {
     resultCards: MarketCard[];
     comparedCards: MarketCard[];
     profitSettings: ProfitSettings;
-    dataSourceMode?: DataSourceMode;
   }) => void;
   clearSearch: () => void;
   resetSession: () => void;
@@ -63,6 +64,7 @@ export const useResearchStore = create<ResearchStore>()(
   persist(
     (set, get) => ({
       query: '',
+      searchedQuery: '',
       resultCards: [],
       comparedCards: [],
       dataSourceMode: 'sample',
@@ -78,15 +80,14 @@ export const useResearchStore = create<ResearchStore>()(
 
       setQuery: (q) => set({ query: q.slice(0, MAX_SEARCH_QUERY_LENGTH) }),
 
-      setSearchResult: (response) =>
-        set({
+      setSearchResult: (response, searchedQuery) =>
+        set((state) => ({
+          searchedQuery: (searchedQuery ?? state.query).trim().slice(0, MAX_SEARCH_QUERY_LENGTH),
           resultCards: sanitizeCards(response.cards),
           searchStatus: response.status,
           searchWarnings: Array.isArray(response.warnings) ? response.warnings : [],
           lastSearchedAt: response.searchedAt,
-        }),
-
-      setIsSearching: (isSearching) => set({ isSearching }),
+        })),
 
       beginSearch: () => {
         if (get().isSearching) return null;
@@ -108,6 +109,7 @@ export const useResearchStore = create<ResearchStore>()(
         if (!sanitized) return;
         const { comparedCards } = get();
         if (comparedCards.find((c) => c.id === sanitized.id)) return;
+        if (comparedCards.length >= MAX_COMPARED_CARDS) return;
         set({ comparedCards: [...comparedCards, sanitized] });
       },
 
@@ -124,8 +126,9 @@ export const useResearchStore = create<ResearchStore>()(
         if (!sanitized) return;
         set((state) => ({
           resultCards: [sanitized, ...state.resultCards],
-          comparedCards: state.comparedCards.some((c) => c.id === sanitized.id)
-            ? state.comparedCards
+          comparedCards:
+            state.comparedCards.some((c) => c.id === sanitized.id) || state.comparedCards.length >= MAX_COMPARED_CARDS
+              ? state.comparedCards
             : [...state.comparedCards, sanitized],
         }));
       },
@@ -164,13 +167,15 @@ export const useResearchStore = create<ResearchStore>()(
         }));
       },
 
-      loadResearchSession: (payload) =>
+      loadResearchSession: (payload) => {
+        const query = typeof payload.query === 'string' ? payload.query.slice(0, MAX_SEARCH_QUERY_LENGTH) : '';
         set({
-          query: typeof payload.query === 'string' ? payload.query.slice(0, MAX_SEARCH_QUERY_LENGTH) : '',
+          query,
+          searchedQuery: query.trim(),
           resultCards: sanitizeCards(payload.resultCards),
           comparedCards: sanitizeCards(payload.comparedCards),
           profitSettings: sanitizeProfitSettings(payload.profitSettings),
-          dataSourceMode: sanitizeDataSourceMode(payload.dataSourceMode) ?? get().dataSourceMode,
+          // データソースは利用者の現在の選択を維持する（古い履歴を開いただけで楽天→サンプルに切り替えない）。
           buyPriceSource: null,
           sellPriceSource: null,
           // 保存スナップショットはライブな検索状態ではない。進行中リクエストも無効化する。
@@ -179,11 +184,13 @@ export const useResearchStore = create<ResearchStore>()(
           lastSearchedAt: null,
           isSearching: false,
           searchRequestId: get().searchRequestId + 1,
-        }),
+        });
+      },
 
       clearSearch: () =>
         set((state) => ({
           query: '',
+          searchedQuery: '',
           resultCards: [],
           searchStatus: null,
           searchWarnings: [],
@@ -195,6 +202,7 @@ export const useResearchStore = create<ResearchStore>()(
       resetSession: () =>
         set((state) => ({
           query: '',
+          searchedQuery: '',
           resultCards: [],
           comparedCards: [],
           dataSourceMode: state.dataSourceMode,
@@ -215,7 +223,10 @@ export const useResearchStore = create<ResearchStore>()(
         dataSourceMode: state.dataSourceMode,
         theme: state.theme,
         profitSettings: state.profitSettings,
+        comparedCards: state.comparedCards,
       }),
+      // v1 → v2: 比較ボードも保存対象に追加。旧データは設定だけ引き継ぎ、壊れた値は捨てる。
+      migrate: (persistedState) => sanitizeResearchPersisted(persistedState),
       merge: (persistedState, currentState) => ({
         ...currentState,
         ...sanitizeResearchPersisted(persistedState),

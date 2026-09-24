@@ -4,12 +4,9 @@ import { useHistoryStore, MAX_SESSIONS, wasSessionPersisted } from '../features/
 import { useResearchStore } from '../store/researchStore';
 import { DATA_SOURCE_MODE_LABELS, SEARCH_STATUS_LABELS } from '../types/market';
 import { MAX_HISTORY_NAME_LENGTH } from '../lib/limits';
+import { formatJst } from '../lib/dateFormat';
 
-type Props = {
-  onLoadSession?: () => void;
-};
-
-export function ResearchHistoryPanel({ onLoadSession }: Props) {
+export function ResearchHistoryPanel() {
   const [name, setName] = useState('');
   const [saveError, setSaveError] = useState('');
   const { sessions, saveSession, deleteSession } = useHistoryStore();
@@ -25,7 +22,7 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
   function handleSave() {
     if (!hasData) return;
     const saved = saveSession({
-      name: name.trim() || `${query || 'リサーチ'} ${new Date().toLocaleString()}`,
+      name: name.trim() || `${query || 'リサーチ'} ${formatJst(new Date().toISOString())}`,
       query,
       resultCards,
       comparedCards,
@@ -76,7 +73,7 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
         <button
           onClick={handleSave}
           disabled={!hasData}
-          className="shrink-0 rounded-control border border-white/12 bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+          className="min-h-11 shrink-0 rounded-control border border-white/12 bg-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <span className="inline-flex items-center gap-1">
             <Save size={12} />
@@ -87,21 +84,21 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
 
       <div className="mt-3 flex max-h-56 flex-col gap-2 overflow-auto pr-1">
         {sortedSessions.length === 0 && (
-          <p className="rounded-xl border border-dashed border-white/15 p-3 text-xs text-slate-400">
+          <p className="rounded-xl border border-dashed border-white/15 p-3 text-xs text-slate-300">
             まだ履歴がありません。
           </p>
         )}
         {sortedSessions.map((session) => (
           <div key={session.id} className="rounded-xl border border-white/10 bg-black/20 p-2.5">
             <p className="truncate text-xs font-semibold text-slate-200">{session.name}</p>
-            <p className="mt-1 text-[11px] text-slate-400">
+            <p className="mt-1 text-[11px] text-slate-300">
               {session.query || 'クエリなし'} / 比較 {session.comparedCards.length} 件
             </p>
-            <p className="text-[10px] text-slate-500">
+            <p className="text-[11px] text-slate-300">
               保存時のデータ: {DATA_SOURCE_MODE_LABELS[session.dataSourceMode]}
               {session.searchStatus ? `（${SEARCH_STATUS_LABELS[session.searchStatus]}）` : ''}
             </p>
-            <p className="text-[10px] text-slate-500">{new Date(session.updatedAt).toLocaleString()}</p>
+            <p className="text-[11px] text-slate-300">{formatJst(session.updatedAt)}</p>
             <div className="mt-2 flex gap-1.5">
               <button
                 onClick={() => {
@@ -110,13 +107,12 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
                     resultCards: session.resultCards,
                     comparedCards: session.comparedCards,
                     profitSettings: session.profitSettings,
-                    dataSourceMode: session.dataSourceMode,
                   });
-                  onLoadSession?.();
                 }}
-                className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] hover:bg-white/10"
+                aria-label={`履歴「${session.name}」を再開`}
+                className="flex min-h-11 items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs hover:bg-white/10"
               >
-                <Play size={11} />
+                <Play size={12} aria-hidden="true" />
                 再開
               </button>
               <button
@@ -124,9 +120,10 @@ export function ResearchHistoryPanel({ onLoadSession }: Props) {
                   if (!window.confirm('この履歴を削除しますか？元に戻せません。')) return;
                   deleteSession(session.id);
                 }}
-                className="flex items-center gap-1 rounded-full border border-red-300/20 bg-red-400/10 px-2.5 py-1 text-[10px] text-red-200 hover:bg-red-400/20"
+                aria-label={`履歴「${session.name}」を削除`}
+                className="flex min-h-11 items-center gap-1 rounded-full border border-red-300/20 bg-red-400/10 px-3 py-1 text-xs text-red-200 hover:bg-red-400/20"
               >
-                <Trash2 size={11} />
+                <Trash2 size={12} aria-hidden="true" />
                 削除
               </button>
             </div>

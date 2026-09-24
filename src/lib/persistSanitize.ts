@@ -24,7 +24,7 @@ import { toSafeHttpUrl, toSafeHttpsUrl } from './safeUrl';
 
 export const RESEARCH_STORAGE_KEY = 'coconala-tool-research';
 export const HISTORY_STORAGE_KEY = 'coconala-tool-history';
-export const RESEARCH_PERSIST_VERSION = 1;
+export const RESEARCH_PERSIST_VERSION = 2;
 export const HISTORY_PERSIST_VERSION = 1;
 
 const THEME_IDS: ThemeId[] = ['simple-pro', 'soft-market', 'dark-trader', 'natural-board'];
@@ -38,6 +38,8 @@ const MARKET_SEARCH_STATUSES: MarketSearchStatus[] = [
   'mock_network',
   'mock_rate_limited',
   'mock_upstream_error',
+  'mock_setup_error',
+  'invalid_query',
   'empty',
 ];
 const CONFIDENCES = ['high', 'medium', 'low'] as const;
@@ -179,7 +181,11 @@ export type ResearchPersistedSlice = {
   dataSourceMode: DataSourceMode;
   theme: ThemeId;
   profitSettings: ProfitSettings;
+  comparedCards: MarketCard[];
 };
+
+/** 比較ボードとして保存する最大件数。localStorage を圧迫しないための上限。 */
+export const MAX_COMPARED_CARDS = 50;
 
 export function sanitizeResearchPersisted(value: unknown): Partial<ResearchPersistedSlice> {
   const record = asRecord(value);
@@ -190,6 +196,9 @@ export function sanitizeResearchPersisted(value: unknown): Partial<ResearchPersi
     ...(dataSourceMode ? { dataSourceMode } : {}),
     ...(theme ? { theme } : {}),
     ...(record.profitSettings !== undefined ? { profitSettings: sanitizeProfitSettings(record.profitSettings) } : {}),
+    ...(Array.isArray(record.comparedCards)
+      ? { comparedCards: sanitizeCards(record.comparedCards).slice(0, MAX_COMPARED_CARDS) }
+      : {}),
   };
 }
 

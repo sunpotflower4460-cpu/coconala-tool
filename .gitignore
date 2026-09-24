@@ -6,7 +6,7 @@ dist-delivery/
 .env
 .env.*
 !.env.example
-.dev.vars
+
 .wrangler/
 .DS_Store
 .vscode/*
@@ -16,3 +16,5 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
+dist-e2e/
+.dev.vars*

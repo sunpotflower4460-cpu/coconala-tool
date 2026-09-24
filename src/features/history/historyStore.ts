@@ -42,9 +42,8 @@ export { HISTORY_STORAGE_KEY };
 
 /**
  * 実際に localStorage への書き込みが成功したかを確認する。
- * zustand の persist ミドルウェアは書き込み失敗（容量超過等）を内部で
- * console.warn するだけで例外を再送出しないため、呼び出し側では検知できない。
- * そのため、保存直後に該当セッションIDが永続化データへ実際に含まれているかを確認する。
+ * 書き込み失敗（容量超過等）は zustand のバージョンや保存先によって例外になったりならなかったりするため、
+ * 保存直後に該当セッションIDが永続化データへ実際に含まれているかで判定する。
  */
 export function wasSessionPersisted(sessionId: string): boolean {
   try {

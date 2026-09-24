@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { useResearchStore } from '../../store/researchStore';
 import { createManualCard } from './manualCardFactory';
@@ -36,7 +36,48 @@ function validateImageUrlText(value: string): string {
 }
 
 export function ManualAddPanel({ onClose, onSuccess }: Props) {
-  const { addManualCard, resultCards } = useResearchStore();
+  const addManualCard = useResearchStore((s) => s.addManualCard);
+  const resultCards = useResearchStore((s) => s.resultCards);
+  const comparedCards = useResearchStore((s) => s.comparedCards);
+  const titleId = useId();
+  const urlErrorId = useId();
+  const imageErrorId = useId();
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const firstFieldRef = useRef<HTMLInputElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  // ダイアログの基本操作: 開いたら URL 欄へフォーカス、Esc で閉じる、Tab はダイアログ内で循環、閉じたら元の場所へ戻す。
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    firstFieldRef.current?.focus();
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input, select, textarea, a[href]'),
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, []);
   const [form, setForm] = useState({
     title: '',
     siteName: '',
@@ -58,7 +99,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
       setDuplicateWarning('');
       return;
     }
-    const exists = resultCards.some(
+    const exists = [...resultCards, ...comparedCards].some(
       (c) => c.pageUrl.trim().replace(/\/+$/, '') === normalized,
     );
     setDuplicateWarning(exists ? '同じURLのカードがすでに存在します。別のURLを入力するか、そのまま追加できます。' : '');
@@ -100,25 +141,39 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
   const inputClass = 'glass-input w-full px-3 py-2 text-sm text-ink placeholder:text-ink/40';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="glass-modal w-full max-w-lg p-6">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm sm:items-center"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="glass-modal my-auto max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto p-5 sm:p-6"
+      >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-display text-base font-semibold text-ink">手動で追加</h2>
+          <h2 id={titleId} className="font-display text-base font-semibold text-ink">手動で追加</h2>
           <button
             onClick={onClose}
             aria-label="閉じる"
             className="flex h-11 w-11 items-center justify-center rounded-control text-ink/55 hover:bg-white/10 hover:text-ink transition"
           >
-            <X size={20} />
+            <X size={20} aria-hidden="true" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1 text-xs text-slate-400">
+          <label className="flex flex-col gap-1 text-xs text-slate-200">
             URL <span className="text-red-400">*</span>
             <input
+              ref={firstFieldRef}
               required
               type="url"
+              aria-invalid={Boolean(urlError)}
+              aria-describedby={urlError ? urlErrorId : undefined}
               maxLength={MAX_URL_LENGTH}
               value={form.pageUrl}
               onChange={(e) => {
@@ -131,13 +186,17 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
               placeholder="https://..."
               className={inputClass}
             />
-            {urlError && <span className="text-xs text-red-300">{urlError}</span>}
+            {urlError && (
+              <span id={urlErrorId} role="alert" className="text-xs text-red-200">
+                {urlError}
+              </span>
+            )}
             {!urlError && duplicateWarning && (
-              <span className="text-xs text-amber-300">{duplicateWarning}</span>
+              <span className="text-xs text-amber-200">{duplicateWarning}</span>
             )}
           </label>
 
-          <label className="flex flex-col gap-1 text-xs text-slate-400">
+          <label className="flex flex-col gap-1 text-xs text-slate-200">
             タイトル（任意）
             <input
               type="text"
@@ -149,7 +208,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
             />
           </label>
 
-          <label className="flex flex-col gap-1 text-xs text-slate-400">
+          <label className="flex flex-col gap-1 text-xs text-slate-200">
             サイト名
             <input
               type="text"
@@ -162,7 +221,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
           </label>
 
           <div className="grid grid-cols-[1fr_auto] gap-3">
-            <label className="flex flex-col gap-1 text-xs text-slate-400">
+            <label className="flex flex-col gap-1 text-xs text-slate-200">
               価格
               <input
                 type="text"
@@ -173,7 +232,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
                 className={inputClass}
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-slate-400">
+            <label className="flex flex-col gap-1 text-xs text-slate-200">
               通貨
               <select
                 value={form.currency}
@@ -187,11 +246,11 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
             </label>
           </div>
           {!form.priceText.trim() && (
-            <span className="-mt-2 text-xs text-slate-500">価格を入力しないと「価格不明」と表示されます。</span>
+            <span className="-mt-2 text-xs text-slate-300">価格を入力しないと「価格不明」と表示されます。「1.5万円」「¥12,800」のように書けます。</span>
           )}
 
           <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-1 text-xs text-slate-400">
+            <label className="flex flex-col gap-1 text-xs text-slate-200">
               送料
               <input
                 type="text"
@@ -202,7 +261,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
                 className={inputClass}
               />
             </label>
-            <label className="flex flex-col gap-1 text-xs text-slate-400">
+            <label className="flex flex-col gap-1 text-xs text-slate-200">
               状態
               <input
                 type="text"
@@ -215,11 +274,13 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
             </label>
           </div>
 
-          <label className="flex flex-col gap-1 text-xs text-slate-400">
+          <label className="flex flex-col gap-1 text-xs text-slate-200">
             画像URL（任意）
             <input
               type="url"
               maxLength={MAX_URL_LENGTH}
+              aria-invalid={Boolean(imageUrlError)}
+              aria-describedby={imageUrlError ? imageErrorId : undefined}
               value={form.imageUrl}
               onChange={(e) => {
                 const nextValue = e.target.value;
@@ -229,10 +290,14 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
               placeholder="https://..."
               className={inputClass}
             />
-            {imageUrlError && <span className="text-xs text-red-300">{imageUrlError}</span>}
+            {imageUrlError && (
+              <span id={imageErrorId} role="alert" className="text-xs text-red-200">
+                {imageUrlError}
+              </span>
+            )}
           </label>
 
-          <label className="flex flex-col gap-1 text-xs text-slate-400">
+          <label className="flex flex-col gap-1 text-xs text-slate-200">
             メモ（任意）
             <textarea
               maxLength={MAX_CARD_NOTE_LENGTH}
@@ -247,7 +312,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
           <button
             type="submit"
             disabled={!form.pageUrl}
-            className="mt-2 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+            className="mt-2 min-h-11 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
           >
             比較に追加
           </button>

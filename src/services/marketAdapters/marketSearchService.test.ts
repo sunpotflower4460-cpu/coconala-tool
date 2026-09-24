@@ -2,12 +2,37 @@ import { describe, it, expect } from 'vitest';
 import { runMarketSearch } from './marketSearchService';
 
 describe('runMarketSearch (sample mode)', () => {
-  it('タイトルの部分一致でカードを絞り込む', async () => {
+  it('タイトルの部分一致でカードを絞り込み、PS5 と PlayStation 5 を同じ語として扱う', async () => {
     const result = await runMarketSearch('PS5', 'sample', 8);
     expect(result.status).toBe('sample');
     expect(result.cards.length).toBeGreaterThan(0);
     for (const card of result.cards) {
-      expect(card.title.includes('PS5')).toBe(true);
+      expect(/PS5|PlayStation 5/.test(card.title)).toBe(true);
+    }
+    const long = await runMarketSearch('PlayStation 5', 'sample', 8);
+    expect(long.cards.map((c) => c.id)).toEqual(result.cards.map((c) => c.id));
+  });
+
+  it('空白区切りの語はすべて含むカードだけに絞り込む（全角英数も同一視）', async () => {
+    const result = await runMarketSearch('ＰＳ５ Digital', 'sample', 8);
+    expect(result.cards.length).toBeGreaterThan(0);
+    for (const card of result.cards) expect(card.title).toMatch(/Digital|デジタル/i);
+  });
+
+  it('楽天モードの見本データは PS5 / ウォークマン / Walkman でもヒットする', async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async () =>
+      new Response(JSON.stringify({ items: [], error: 'no_key' }), {
+        status: 503,
+        headers: { 'content-type': 'application/json' },
+      })) as typeof fetch;
+    try {
+      for (const q of ['PS5', 'ウォークマン', 'walkman', 'SONY NW-A55', '3DS']) {
+        const result = await runMarketSearch(q, 'rakuten_mock', 8);
+        expect([q, result.status, result.cards.length > 0]).toEqual([q, 'mock_no_key', true]);
+      }
+    } finally {
+      globalThis.fetch = originalFetch;
     }
   });
 

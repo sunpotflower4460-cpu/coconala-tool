@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ProductSearchBar } from './ProductSearchBar';
 import { useResearchStore } from '../store/researchStore';
@@ -48,7 +48,7 @@ describe('ProductSearchBar', () => {
   });
 
   it('disables the search button until a query is entered', async () => {
-    render(<ProductSearchBar onSearch={() => {}} />);
+    render(<ProductSearchBar />);
     const button = screen.getByRole('button', { name: 'まとめて探す' });
     expect(button).toBeDisabled();
 
@@ -58,7 +58,7 @@ describe('ProductSearchBar', () => {
   });
 
   it('検索入力はサーバー側契約と同じ100文字を上限にする', async () => {
-    render(<ProductSearchBar onSearch={() => {}} />);
+    render(<ProductSearchBar />);
     const input = screen.getByLabelText('商品名・型番・JAN・URL') as HTMLInputElement;
     await userEvent.type(input, 'a'.repeat(101));
     expect(input.value).toHaveLength(100);
@@ -67,51 +67,59 @@ describe('ProductSearchBar', () => {
   it('shows a 検索中… loading state and disables the button while a search is in flight', async () => {
     const deferred = deferredSearch();
     vi.spyOn(marketSearchService, 'runMarketSearch').mockReturnValue(deferred.promise);
-
-    const onSearch = vi.fn();
-    render(<ProductSearchBar onSearch={onSearch} />);
+    render(<ProductSearchBar />);
     await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), 'PS5');
     await userEvent.click(screen.getByRole('button', { name: 'まとめて探す' }));
 
     const loadingButton = await screen.findByRole('button', { name: '検索中…' });
     expect(loadingButton).toBeDisabled();
-    expect(onSearch).not.toHaveBeenCalled();
+    expect(useResearchStore.getState().lastSearchedAt).toBeNull();
 
     deferred.resolveSearch(emptyResponse);
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'まとめて探す' })).toBeEnabled();
     });
-    expect(onSearch).toHaveBeenCalledTimes(1);
+    expect(useResearchStore.getState().lastSearchedAt).toBe(emptyResponse.searchedAt);
   });
 
   it('does not trigger a second search while one is already in flight (double-submit guard)', async () => {
-    const searchSpy = vi
-      .spyOn(marketSearchService, 'runMarketSearch')
-      .mockImplementation(
-        () =>
-          new Promise((resolve) =>
-            setTimeout(() => resolve(emptyResponse), 50),
-          ) as ReturnType<typeof marketSearchService.runMarketSearch>,
-      );
+    const deferred = deferredSearch();
+    const searchSpy = vi.spyOn(marketSearchService, 'runMarketSearch').mockReturnValue(deferred.promise);
 
-    render(<ProductSearchBar onSearch={() => {}} />);
-    await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), 'PS5');
-    const button = screen.getByRole('button', { name: 'まとめて探す' });
-    await userEvent.click(button);
-    // The button is now disabled/relabeled, so a raw click bypassing UI state
-    // (simulating a rapid double-click race) should still only fire once.
-    await userEvent.click(screen.getByRole('button', { name: '検索中…' })).catch(() => {});
+    render(<ProductSearchBar />);
+    const input = screen.getByLabelText('商品名・型番・JAN・URL');
+    await userEvent.type(input, 'PS5');
+    await userEvent.click(screen.getByRole('button', { name: 'まとめて探す' }));
+    expect(screen.getByRole('button', { name: '検索中…' })).toBeDisabled();
+    // ボタンが無効でも Enter 経由の再送を試みる（連打・二重送信の競合を再現）。
+    fireEvent.keyDown(input, { key: 'Enter' });
+    fireEvent.keyDown(input, { key: 'Enter' });
 
+    deferred.resolveSearch(emptyResponse);
+    await waitFor(() => expect(useResearchStore.getState().isSearching).toBe(false));
+    expect(searchSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('日本語入力の変換確定 Enter（isComposing / keyCode 229）では検索しない', async () => {
+    const searchSpy = vi.spyOn(marketSearchService, 'runMarketSearch').mockResolvedValue(emptyResponse);
+    render(<ProductSearchBar />);
+    const input = screen.getByLabelText('商品名・型番・JAN・URL');
+    await userEvent.type(input, 'ぷれすて');
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+    fireEvent.keyDown(input, { key: 'Enter', keyCode: 229 });
+    expect(searchSpy).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(input, { key: 'Enter' });
     await waitFor(() => expect(searchSpy).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(useResearchStore.getState().searchedQuery).toBe('ぷれすて'));
   });
 
   it('検索中にクエリを変更した場合、遅れて返った旧クエリ結果を現在状態へ適用しない', async () => {
     const deferred = deferredSearch();
     vi.spyOn(marketSearchService, 'runMarketSearch').mockReturnValue(deferred.promise);
-    const onSearch = vi.fn();
 
-    render(<ProductSearchBar onSearch={onSearch} />);
+    render(<ProductSearchBar />);
     const input = screen.getByLabelText('商品名・型番・JAN・URL');
     await userEvent.type(input, 'PS5');
     await userEvent.click(screen.getByRole('button', { name: 'まとめて探す' }));
@@ -136,15 +144,14 @@ describe('ProductSearchBar', () => {
     await waitFor(() => expect(useResearchStore.getState().isSearching).toBe(false));
     expect(useResearchStore.getState().query).toBe('Nintendo Switch');
     expect(useResearchStore.getState().resultCards).toHaveLength(0);
-    expect(onSearch).not.toHaveBeenCalled();
+    expect(useResearchStore.getState().lastSearchedAt).toBeNull();
   });
 
   it('検索中にデータソースを切り替えた場合、旧モードの結果を適用しない', async () => {
     const deferred = deferredSearch();
     vi.spyOn(marketSearchService, 'runMarketSearch').mockReturnValue(deferred.promise);
-    const onSearch = vi.fn();
 
-    render(<ProductSearchBar onSearch={onSearch} />);
+    render(<ProductSearchBar />);
     await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), 'PS5');
     await userEvent.click(screen.getByRole('button', { name: 'まとめて探す' }));
     await userEvent.selectOptions(screen.getByLabelText('データソースを選ぶ'), 'rakuten_mock');
@@ -153,7 +160,7 @@ describe('ProductSearchBar', () => {
 
     await waitFor(() => expect(useResearchStore.getState().isSearching).toBe(false));
     expect(useResearchStore.getState().dataSourceMode).toBe('rakuten_mock');
-    expect(onSearch).not.toHaveBeenCalled();
+    expect(useResearchStore.getState().lastSearchedAt).toBeNull();
   });
 
   it('検索クリアは比較ボードと利益設定を消さない', async () => {
@@ -177,7 +184,7 @@ describe('ProductSearchBar', () => {
         exchangeRate: 155,
       },
     });
-    render(<ProductSearchBar onSearch={() => {}} />);
+    render(<ProductSearchBar />);
     await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), 'PS5');
     await userEvent.click(screen.getByRole('button', { name: '検索内容をクリア' }));
     expect(useResearchStore.getState().query).toBe('');
@@ -195,7 +202,6 @@ describe('ProductSearchBar', () => {
         typeof marketSearchService.runMarketSearch
       >;
     });
-    const onSearch = vi.fn();
     const card = (id: string) => ({
       id,
       title: id,
@@ -206,7 +212,7 @@ describe('ProductSearchBar', () => {
       createdAt: '2026-07-22T00:00:00.000Z',
     });
 
-    render(<ProductSearchBar onSearch={onSearch} />);
+    render(<ProductSearchBar />);
     await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), 'PS5');
     await userEvent.click(screen.getByRole('button', { name: 'まとめて探す' }));
 
@@ -220,7 +226,7 @@ describe('ProductSearchBar', () => {
     deferredA.resolveSearch({ ...emptyResponse, cards: [card('from-a')] });
     await waitFor(() => expect(useResearchStore.getState().isSearching).toBe(false));
     expect(useResearchStore.getState().resultCards.map((c) => c.id)).toEqual(['from-b']);
-    expect(onSearch).toHaveBeenCalledTimes(1);
+    expect(useResearchStore.getState().lastSearchedAt).toBe(emptyResponse.searchedAt);
   });
 
   it('検索中の finally が新しいリクエストの isSearching=false を上書きしない', async () => {
@@ -234,7 +240,7 @@ describe('ProductSearchBar', () => {
       >;
     });
 
-    render(<ProductSearchBar onSearch={() => {}} />);
+    render(<ProductSearchBar />);
     await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), 'PS5');
     await userEvent.click(screen.getByRole('button', { name: 'まとめて探す' }));
     await userEvent.click(screen.getByRole('button', { name: '検索内容をクリア' }));
@@ -253,7 +259,7 @@ describe('ProductSearchBar', () => {
   it('Enter 連打でも検索中は2回目を送らない', async () => {
     const deferred = deferredSearch();
     const searchSpy = vi.spyOn(marketSearchService, 'runMarketSearch').mockReturnValue(deferred.promise);
-    render(<ProductSearchBar onSearch={() => {}} />);
+    render(<ProductSearchBar />);
     const input = screen.getByLabelText('商品名・型番・JAN・URL');
     await userEvent.type(input, 'PS5{Enter}{Enter}');
     expect(searchSpy).toHaveBeenCalledTimes(1);

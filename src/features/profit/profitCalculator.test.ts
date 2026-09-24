@@ -61,8 +61,23 @@ describe('profitCalculator', () => {
     expect(calcProfit(10000, 0, 0, 100)).toBe(0);
   });
 
-  it('handles decimal prices', () => {
-    expect(calcFee(1000.5, 10)).toBeCloseTo(100.05, 5);
+  it('手数料は1円未満を切り捨て、浮動小数の誤差で端数を出さない', () => {
+    expect(calcFee(1000.5, 10)).toBe(100);
+    expect(calcFee(1999, 10)).toBe(199);
+    expect(calcFee(9001, 10)).toBe(900);
+    expect(calcFee(3333, 3.3)).toBe(109);
+    expect(calcProfit(1999, 1000, 0, 10)).toBe(800);
+    for (let price = 1; price < 5000; price += 7) {
+      expect(Number.isInteger(calcProfit(price, 0, 0, 10))).toBe(true);
+    }
+  });
+
+  it('円・ドル以外の通貨は換算不能（円として扱わない）', () => {
+    const base = { id: 'x', title: 't', siteName: 's', sourceType: 'manual' as const, pageUrl: 'https://e.x/', confidence: 'high' as const, createdAt: '' };
+    expect(toJpyPrice({ ...base, priceValue: 100, currency: 'EUR' }, 155)).toBeUndefined();
+    expect(toJpyPrice({ ...base, priceValue: 100, currency: 'OTHER' }, 155)).toBeUndefined();
+    expect(toJpyPrice({ ...base, priceValue: 100, currency: 'JPY' }, 155)).toBe(100);
+    expect(toJpyPrice({ ...base, priceValue: 100 }, 155)).toBe(100);
   });
 
   describe('clampAmount', () => {

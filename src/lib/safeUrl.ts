@@ -25,11 +25,3 @@ export function toSafeHttpsUrl(value: unknown): string | undefined {
   if (!parsed || parsed.protocol !== 'https:') return undefined;
   return parsed.href;
 }
-
-export function isSafeHttpUrl(value: unknown): value is string {
-  return Boolean(toSafeHttpUrl(value));
-}
-
-export function isSafeHttpsUrl(value: unknown): value is string {
-  return Boolean(toSafeHttpsUrl(value));
-}

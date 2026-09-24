@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AppShell } from './AppShell';
 import { useResearchStore } from '../store/researchStore';
@@ -11,7 +11,7 @@ async function runSearch(query: string, response: MarketSearchResponse) {
   await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), query);
   await userEvent.click(screen.getByRole('button', { name: 'まとめて探す' }));
   // wait for the async handler to settle and re-render
-  await screen.findByText(query, { exact: false }).catch(() => {});
+  await waitFor(() => expect(useResearchStore.getState().lastSearchedAt).toBe(response.searchedAt));
 }
 
 describe('AppShell', () => {
@@ -24,6 +24,7 @@ describe('AppShell', () => {
       searchWarnings: [],
       isSearching: false,
       lastSearchedAt: null,
+      searchedQuery: '',
       dataSourceMode: 'sample',
     });
   });
@@ -34,8 +35,8 @@ describe('AppShell', () => {
 
   it('shows the amber デモ表示中 badge before any search has happened', () => {
     render(<AppShell />);
-    expect(screen.getByText('デモ表示中 — サンプル/モックデータ')).toBeInTheDocument();
-    expect(screen.queryByText(/公式データ取得中/)).not.toBeInTheDocument();
+    expect(screen.getByText('デモ表示中 — サンプル/見本データ')).toBeInTheDocument();
+    expect(screen.queryByText(/実データ表示中/)).not.toBeInTheDocument();
   });
 
   it('switches to the green 公式データ取得中 badge after a search resolves with status=official_api', async () => {
@@ -60,8 +61,8 @@ describe('AppShell', () => {
       searchedAt: '2026-07-22T00:00:00.000Z',
     });
 
-    expect(await screen.findByText('公式データ取得中 — 楽天市場')).toBeInTheDocument();
-    expect(screen.queryByText('デモ表示中 — サンプル/モックデータ')).not.toBeInTheDocument();
+    expect(await screen.findByText('実データ表示中 — 楽天市場')).toBeInTheDocument();
+    expect(screen.queryByText('デモ表示中 — サンプル/見本データ')).not.toBeInTheDocument();
   });
 
   it('shows the fallback reason banner and keeps the demo badge when the search falls back to mock', async () => {
@@ -73,7 +74,7 @@ describe('AppShell', () => {
       searchedAt: '2026-07-22T00:00:00.000Z',
     });
 
-    expect(screen.getByText('デモ表示中 — サンプル/モックデータ')).toBeInTheDocument();
+    expect(screen.getByText('デモ表示中 — サンプル/見本データ')).toBeInTheDocument();
     expect(
       await screen.findByText('楽天APIキーが未設定のため、公式API想定モックを表示しています。'),
     ).toBeInTheDocument();
@@ -112,7 +113,7 @@ describe('AppShell', () => {
       warnings: ['楽天市場 公式API取得。価格・在庫は変動します。'],
       searchedAt: '2026-07-22T00:00:00.000Z',
     });
-    expect(await screen.findByText('公式データ取得中 — 楽天市場')).toBeInTheDocument();
+    expect(await screen.findByText('実データ表示中 — 楽天市場')).toBeInTheDocument();
 
     useResearchStore.getState().loadResearchSession({
       query: 'PS5',
@@ -140,7 +141,53 @@ describe('AppShell', () => {
       },
     });
 
-    expect(await screen.findByText('デモ表示中 — サンプル/モックデータ')).toBeInTheDocument();
-    expect(screen.queryByText(/公式データ取得中/)).not.toBeInTheDocument();
+    expect(await screen.findByText('デモ表示中 — サンプル/見本データ')).toBeInTheDocument();
+    expect(screen.queryByText(/実データ表示中/)).not.toBeInTheDocument();
+  });
+
+  it('検索前でも比較ボード・利益計算・履歴・CSV を表示する（再読込後に保存データが見える）', () => {
+    render(<AppShell />);
+    expect(screen.getByRole('heading', { name: 'リサーチ履歴' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /^比較ボード \(/ })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '利益見込み計算' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'CSVエクスポート' })).toBeInTheDocument();
+  });
+
+  it('0件の検索結果でも「手動で追加」から登録できる', async () => {
+    render(<AppShell />);
+    await runSearch('Walkman', {
+      cards: [],
+      status: 'sample',
+      warnings: ['該当するサンプルカードが見つかりませんでした。'],
+      searchedAt: '2026-07-22T00:00:00.000Z',
+    });
+    await userEvent.click(screen.getByRole('button', { name: '手動で追加' }));
+    expect(screen.getByRole('dialog', { name: '手動で追加' })).toBeInTheDocument();
+  });
+
+  it('楽天モードで検索前は「楽天市場モード」、実データ0件は実データ表示のまま', async () => {
+    useResearchStore.setState({ dataSourceMode: 'rakuten_mock' });
+    render(<AppShell />);
+    expect(screen.getByText('楽天市場モード — 検索すると接続します')).toBeInTheDocument();
+    await runSearch('zzzz', { cards: [], status: 'empty', warnings: ['0件'], searchedAt: '2026-07-22T00:00:00.000Z' });
+    expect(await screen.findByText('実データ表示中 — 楽天市場')).toBeInTheDocument();
+    expect(screen.queryByText(/デモ表示中/)).not.toBeInTheDocument();
+  });
+
+  it('検索リンクは入力途中の語ではなく、実際に検索した語で作る', async () => {
+    render(<AppShell />);
+    await runSearch('PS5', { cards: [], status: 'sample', warnings: [], searchedAt: '2026-07-22T00:00:00.000Z' });
+    await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), ' 入力途中');
+    const links = screen.getAllByRole('link').map((a) => a.getAttribute('href') ?? '');
+    expect(links.some((href) => href.includes('PS5'))).toBe(true);
+    expect(links.some((href) => decodeURIComponent(href).includes('入力途中'))).toBe(false);
+  });
+
+  it('楽天ウェブサービス規約のクレジット表記を改変せずに表示する', () => {
+    render(<AppShell />);
+    const footer = screen.getByRole('contentinfo');
+    const credit = within(footer).getByRole('link', { name: 'Supported by Rakuten Developers' });
+    expect(credit).toHaveAttribute('href', 'https://developers.rakuten.com/');
+    expect(credit).toHaveAttribute('target', '_blank');
   });
 });

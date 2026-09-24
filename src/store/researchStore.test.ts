@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useResearchStore } from './researchStore';
+import { MAX_COMPARED_CARDS, RESEARCH_STORAGE_KEY } from '../lib/persistSanitize';
 
 const defaultProfitSettings = {
   buyPrice: 0,
@@ -160,7 +161,8 @@ describe('researchStore search request identity', () => {
     expect(useResearchStore.getState().finishSearchIfCurrent(id as number)).toBe(false);
   });
 
-  it('履歴再開中は進行中検索を無効化し、公式ライブ状態を復元しない', () => {
+  it('履歴再開中は進行中検索を無効化し、公式ライブ状態を復元せず、データソースも切り替えない', () => {
+    useResearchStore.getState().setDataSourceMode('rakuten_mock');
     const inFlight = useResearchStore.getState().beginSearch();
     useResearchStore.getState().loadResearchSession({
       query: 'Nintendo',
@@ -177,8 +179,9 @@ describe('researchStore search request identity', () => {
       ],
       comparedCards: [],
       profitSettings: { ...defaultProfitSettings },
-      dataSourceMode: 'rakuten_mock',
     });
+    expect(useResearchStore.getState().dataSourceMode).toBe('rakuten_mock');
+    expect(useResearchStore.getState().searchedQuery).toBe('Nintendo');
     expect(useResearchStore.getState().isCurrentSearchRequest(inFlight as number)).toBe(false);
     expect(useResearchStore.getState().isSearching).toBe(false);
     expect(useResearchStore.getState().searchStatus).toBeNull();
@@ -226,5 +229,42 @@ describe('researchStore search request identity', () => {
     expect(persisted.state).toHaveProperty('theme');
     expect(persisted.state).toHaveProperty('dataSourceMode');
     expect(persisted.state).toHaveProperty('profitSettings');
+  });
+
+  it('比較ボードは localStorage に保存され、再読込後も復元される（最大件数つき）', async () => {
+    const card = (id: string) => ({
+      id,
+      title: id,
+      siteName: 'sample',
+      sourceType: 'manual' as const,
+      pageUrl: `https://example.com/${id}`,
+      confidence: 'high' as const,
+      createdAt: '2026-08-31T00:00:00.000Z',
+    });
+    useResearchStore.setState({ comparedCards: [] });
+    for (let i = 0; i < MAX_COMPARED_CARDS + 5; i += 1) useResearchStore.getState().addComparedCard(card(`c${i}`));
+    expect(useResearchStore.getState().comparedCards).toHaveLength(MAX_COMPARED_CARDS);
+
+    const raw = localStorage.getItem(RESEARCH_STORAGE_KEY) ?? '{}';
+    const saved = JSON.parse(raw);
+    expect(saved.version).toBe(2);
+    expect(saved.state.comparedCards).toHaveLength(MAX_COMPARED_CARDS);
+
+    // 再読込の再現: メモリ上の状態を消してから保存済みデータで復元する。
+    useResearchStore.setState({ comparedCards: [] });
+    localStorage.setItem(RESEARCH_STORAGE_KEY, raw);
+    await useResearchStore.persist.rehydrate();
+    expect(useResearchStore.getState().comparedCards).toHaveLength(MAX_COMPARED_CARDS);
+  });
+
+  it('v1（比較ボード未保存時代）のデータは設定を引き継いで v2 へ移行する', async () => {
+    localStorage.setItem(
+      RESEARCH_STORAGE_KEY,
+      JSON.stringify({ state: { theme: 'dark-trader', dataSourceMode: 'rakuten_mock', profitSettings: { buyPrice: 500 } }, version: 1 }),
+    );
+    await useResearchStore.persist.rehydrate();
+    expect(useResearchStore.getState().theme).toBe('dark-trader');
+    expect(useResearchStore.getState().dataSourceMode).toBe('rakuten_mock');
+    expect(useResearchStore.getState().profitSettings.buyPrice).toBe(500);
   });
 });

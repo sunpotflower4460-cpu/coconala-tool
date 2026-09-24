@@ -86,7 +86,7 @@ describe('rakutenAdapter.search', () => {
     const result = await rakutenAdapter.search({ query: 'PS5' });
 
     expect(result.status).toBe('mock_upstream_error');
-    expect(result.warnings.join(' ')).toContain('予期しない応答');
+    expect(result.warnings.join(' ')).toContain('想定外の応答');
   });
 
   it('キー未設定(no_key)の場合、status=mock_no_key でモックにフォールバックする', async () => {

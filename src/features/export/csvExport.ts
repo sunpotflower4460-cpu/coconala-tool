@@ -1,3 +1,4 @@
+import { formatJst } from '../../lib/dateFormat';
 import { calcProfit } from '../profit/profitCalculator';
 import {
   DATA_SOURCE_MODE_LABELS,
@@ -18,7 +19,13 @@ export type CsvSearchMeta = {
 
 const DEMO_ORIGIN_LABELS: Record<'sample' | 'mock', string> = {
   sample: 'サンプルデータ',
-  mock: 'モック（楽天API想定）',
+  mock: '見本データ（実在しない商品）',
+};
+
+const CONFIDENCE_LABELS: Record<MarketCard['confidence'], string> = {
+  high: '高',
+  medium: '中',
+  low: '低',
 };
 
 const cardHeader = [
@@ -34,7 +41,7 @@ const cardHeader = [
   '信頼度',
   '元URL',
   'メモ',
-  '取得日時',
+  '取得日時（日本時間）',
 ];
 
 /**
@@ -48,9 +55,11 @@ function neutralizeFormula(value: string): string {
 
 function escapeCsvCell(value: string | number | undefined): string {
   if (value === undefined) return '';
-  const neutralized = neutralizeFormula(String(value));
+  // 数値はそのまま出す（負の利益 -5500 を文字列 '-5500 にしない）。数値は数式として解釈されない。
+  if (typeof value === 'number') return Number.isFinite(value) ? String(value) : '';
+  const neutralized = neutralizeFormula(value);
   const normalized = neutralized.replace(/"/g, '""');
-  return /[",\n]/.test(normalized) ? `"${normalized}"` : normalized;
+  return /[",\r\n]/.test(normalized) ? `"${normalized}"` : normalized;
 }
 
 function dataKindLabel(card: MarketCard): string {
@@ -78,10 +87,10 @@ export function buildResearchCsv(
       card.currency,
       card.shippingText,
       card.conditionText,
-      card.confidence,
+      CONFIDENCE_LABELS[card.confidence],
       card.pageUrl,
       card.note,
-      card.createdAt,
+      formatJst(card.createdAt) || card.createdAt,
     ]),
   );
 
@@ -94,10 +103,10 @@ export function buildResearchCsv(
 
   const summaryRows = [
     ['項目', '値'],
-    ['生成日時', generatedAt],
+    ['生成日時（日本時間）', formatJst(generatedAt) || generatedAt],
     ['データソース', searchMeta ? DATA_SOURCE_MODE_LABELS[searchMeta.dataSourceMode] : ''],
     ['検索状態', searchMeta?.searchStatus ? SEARCH_STATUS_LABELS[searchMeta.searchStatus] : ''],
-    ['検索日時', searchMeta?.lastSearchedAt ?? ''],
+    ['検索日時（日本時間）', formatJst(searchMeta?.lastSearchedAt)],
     ['警告', (searchMeta?.searchWarnings ?? []).join(' / ')],
     ['仕入れ価格', profitSettings.buyPrice],
     ['販売価格', profitSettings.sellPrice],
@@ -137,5 +146,6 @@ export function downloadResearchCsv(
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  // Safari ではクリック直後に URL を破棄するとダウンロードが失敗することがあるため少し遅らせる。
+  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
 }

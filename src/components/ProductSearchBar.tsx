@@ -1,16 +1,21 @@
 import { Search, X } from 'lucide-react';
+import { useShallow } from 'zustand/react/shallow';
 import { useResearchStore } from '../store/researchStore';
 import { DataSourceModeSelector } from './DataSourceModeSelector';
 import { runMarketSearch } from '../services/marketAdapters/marketSearchService';
 import { MAX_SEARCH_QUERY_LENGTH } from '../lib/limits';
 
-type Props = {
-  onSearch: () => void;
-};
-
-export function ProductSearchBar({ onSearch }: Props) {
-  const { query, setQuery, setSearchResult, isSearching, dataSourceMode, clearSearch } =
-    useResearchStore();
+export function ProductSearchBar() {
+  const { query, setQuery, setSearchResult, isSearching, dataSourceMode, clearSearch } = useResearchStore(
+    useShallow((s) => ({
+      query: s.query,
+      setQuery: s.setQuery,
+      setSearchResult: s.setSearchResult,
+      isSearching: s.isSearching,
+      dataSourceMode: s.dataSourceMode,
+      clearSearch: s.clearSearch,
+    })),
+  );
 
   async function handleSearch() {
     const requestedQuery = query.trim();
@@ -28,15 +33,16 @@ export function ProductSearchBar({ onSearch }: Props) {
       if (!current.isCurrentSearchRequest(requestId)) return;
       if (current.query.trim() !== requestedQuery || current.dataSourceMode !== requestedMode) return;
 
-      setSearchResult(response);
-      onSearch();
+      setSearchResult(response, requestedQuery);
     } finally {
       useResearchStore.getState().finishSearchIfCurrent(requestId);
     }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter') void handleSearch();
+    // 日本語入力の変換確定の Enter では検索しない（入力途中の語で検索が走るのを防ぐ）。
+    if (e.key !== 'Enter' || e.nativeEvent.isComposing || e.keyCode === 229) return;
+    void handleSearch();
   }
 
   return (
@@ -55,7 +61,7 @@ export function ProductSearchBar({ onSearch }: Props) {
             onKeyDown={handleKeyDown}
             placeholder="商品名・型番・JAN・URLを入力"
             aria-label="商品名・型番・JAN・URL"
-            className="glass-input w-full py-3 pl-11 pr-10 text-sm text-ink placeholder:text-ink/40"
+            className="glass-input w-full py-3 pl-11 pr-12 text-sm text-ink placeholder:text-ink/40"
           />
           {query && (
             <button
@@ -63,7 +69,7 @@ export function ProductSearchBar({ onSearch }: Props) {
                 clearSearch();
               }}
               aria-label="検索内容をクリア"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/50 hover:text-ink transition"
+              className="absolute right-1 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center text-ink/50 hover:text-ink transition"
             >
               <X size={16} />
             </button>
