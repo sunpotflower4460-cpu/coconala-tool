@@ -312,7 +312,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
           <button
             type="submit"
             disabled={!form.pageUrl}
-            className="mt-2 min-h-11 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-accent-hover disabled:opacity-40 disabled:cursor-not-allowed"
+            className="mt-2 min-h-11 rounded-xl bg-accent-strong px-4 py-2.5 text-sm font-semibold text-on-accent transition hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             比較に追加
           </button>

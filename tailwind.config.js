@@ -20,7 +20,9 @@ export default {
           // like bg-accent/80 and text-accent/70 work natively.
           DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)',
           hover: 'rgb(var(--color-accent-hover) / <alpha-value>)',
+          strong: 'rgb(var(--color-accent-strong) / <alpha-value>)',
         },
+        'on-accent': 'var(--color-on-accent)',
       },
       boxShadow: {
         'glass-1': '0 4px 24px -8px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.12)',

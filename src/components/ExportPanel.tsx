@@ -28,7 +28,7 @@ export function ExportPanel() {
           })
         }
         disabled={!canExport}
-        className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-control bg-accent/85 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-control bg-accent-strong px-3 py-2.5 text-xs font-semibold text-on-accent transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Download size={13} />
         比較中カードをCSV出力

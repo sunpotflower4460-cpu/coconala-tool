@@ -30,7 +30,7 @@ export function ResultCard({ card }: Props) {
   const safeImageUrl = toSafeHttpsUrl(card.imageUrl);
 
   return (
-    <div className="glass-card group flex flex-col overflow-hidden">
+    <article className="glass-card group flex flex-col overflow-hidden">
       {/* Demo-origin badge (sample / mock) */}
       {card.demoOrigin && (
         <div className="relative z-10 px-4 pt-3 pb-0">
@@ -112,7 +112,7 @@ export function ResultCard({ card }: Props) {
             className={`flex min-h-11 flex-1 items-center justify-center gap-1 rounded-control py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
               compared
                 ? 'bg-emerald-600/80 text-white hover:bg-emerald-600'
-                : 'bg-accent/85 text-white hover:bg-accent'
+                : 'bg-accent-strong text-on-accent hover:brightness-110'
             }`}
           >
             {compared ? <CheckCircle size={13} /> : <PlusCircle size={13} />}
@@ -120,6 +120,6 @@ export function ResultCard({ card }: Props) {
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

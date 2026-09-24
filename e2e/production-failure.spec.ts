@@ -1,9 +1,5 @@
 import { test, expect } from '@playwright/test';
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => window.localStorage.clear());
-});
-
 test('SEC-04: 履歴の HTML タイトルはテキスト表示され alert されない', async ({ page }) => {
   const alerts: string[] = [];
   page.on('dialog', (dialog) => {
@@ -68,11 +64,11 @@ test('SEC-04: 履歴の HTML タイトルはテキスト表示され alert さ�
   await page.getByLabel('商品名・型番・JAN・URL').fill('PS5');
   await page.getByRole('button', { name: 'まとめて探す' }).click();
   await expect(page.getByText('XSS履歴')).toBeVisible();
-  await page.getByRole('button', { name: '再開' }).click();
+  await page.getByRole('button', { name: '履歴「XSS履歴」を再開' }).click();
 
   await expect(page.getByText('<img src=x onerror=alert(1)>').first()).toBeVisible();
-  await expect(page.getByText('デモ表示中 — サンプル/モックデータ', { exact: true })).toBeVisible();
-  await expect(page.getByText(/公式データ取得中/)).toHaveCount(0);
+  await expect(page.getByText('デモ表示中 — サンプル/見本データ', { exact: true })).toBeVisible();
+  await expect(page.getByText(/実データ表示中/)).toHaveCount(0);
   expect(alerts).toEqual([]);
 });
 
@@ -89,7 +85,7 @@ test('CONC-05: 他タブの履歴保存が storage 経由で反映される', as
   await expect(pageB.getByText(/検索結果 \(\d+件\)/)).toBeVisible();
 
   await page.getByLabel('保存名').fill('タブAの履歴');
-  await page.getByRole('button', { name: '保存' }).click();
+  await page.getByRole('button', { name: '保存', exact: true }).click();
   await expect(page.getByText('タブAの履歴')).toBeVisible();
   await expect(pageB.getByText('タブAの履歴')).toBeVisible({ timeout: 5_000 });
 });
@@ -98,7 +94,7 @@ test('USER-07: URL を検索語にしてもアプリは落ちずサンプル検�
   await page.goto('/');
   await page.getByLabel('商品名・型番・JAN・URL').fill('https://jp.mercari.com/search?keyword=PS5');
   await page.getByRole('button', { name: 'まとめて探す' }).click();
-  await expect(page.getByText(/該当する候補が見つかりませんでした|検索結果 \(\d+件\)/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^検索結果 \(\d+件\)$/ })).toBeVisible();
   await expect(page.getByRole('heading', { name: '相場カード比較ボード' })).toBeVisible();
 });
 

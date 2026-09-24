@@ -32,7 +32,7 @@ export function DataSourceModeSelector() {
             value={dataSourceMode}
             onChange={(event) => setDataSourceMode(event.target.value as DataSourceMode)}
             aria-label="データソースを選ぶ"
-            className="glass-input min-h-11 bg-black/30 px-2 py-1 text-xs text-ink"
+            className="glass-input h-11 bg-black/30 px-2 py-1 text-xs text-ink"
           >
             {modeOptions.map((option) => (
               <option key={option.value} value={option.value}>

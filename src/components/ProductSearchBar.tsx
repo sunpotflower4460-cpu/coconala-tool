@@ -79,7 +79,7 @@ export function ProductSearchBar() {
           onClick={() => void handleSearch()}
           disabled={!query.trim() || isSearching}
           aria-busy={isSearching}
-          className="shrink-0 rounded-card bg-accent bg-gradient-to-b from-white/15 to-transparent px-6 py-3 text-sm font-semibold text-white shadow-glass-2 transition hover:bg-accent-hover hover:shadow-[0_0_28px_-4px_rgb(var(--color-accent)/0.7)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-glass-2"
+          className="shrink-0 rounded-card bg-accent-strong px-6 py-3 text-sm font-semibold text-on-accent shadow-glass-2 transition hover:brightness-110 hover:shadow-[0_0_28px_-4px_rgb(var(--color-accent)/0.7)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:shadow-glass-2"
         >
           {isSearching ? '検索中…' : 'まとめて探す'}
         </button>

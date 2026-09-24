@@ -27,7 +27,7 @@ function CompareCardItem({ card }: { card: MarketCard }) {
   };
 
   return (
-    <div className="glass-card flex items-center gap-3 p-3">
+    <li className="glass-card flex items-center gap-3 p-3">
       {safeImageUrl && !imageError ? (
         <img
           src={safeImageUrl}
@@ -67,7 +67,7 @@ function CompareCardItem({ card }: { card: MarketCard }) {
           <button
             onClick={handleUseAsSell}
             disabled={!hasPrice}
-            className="min-h-11 rounded-full bg-accent/85 px-3 py-1 text-[11px] font-semibold text-white hover:bg-accent disabled:cursor-not-allowed disabled:opacity-40"
+            className="min-h-11 rounded-full bg-accent-strong px-3 py-1 text-[11px] font-semibold text-on-accent hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
           >
             この価格を販売に使う
           </button>
@@ -95,7 +95,7 @@ function CompareCardItem({ card }: { card: MarketCard }) {
           <span className="flex h-11 w-11 items-center justify-center text-[11px] text-ink/50">—</span>
         )}
       </div>
-    </div>
+    </li>
   );
 }
 
@@ -115,9 +115,11 @@ export function CompareBoard() {
 
   return (
     <div className="flex flex-col gap-2">
-      {comparedCards.map((card) => (
-        <CompareCardItem key={card.id} card={card} />
-      ))}
+      <ul aria-label="比較中のカード" className="flex flex-col gap-2">
+        {comparedCards.map((card) => (
+          <CompareCardItem key={card.id} card={card} />
+        ))}
+      </ul>
       {comparedCards.length >= MAX_COMPARED_CARDS && (
         <p className="text-[11px] text-amber-100">比較ボードは最大{MAX_COMPARED_CARDS}件です。不要なカードを外すと追加できます。</p>
       )}

@@ -10,11 +10,14 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:e2e": "CLOUDFLARE_ENV=e2e vite build --outDir dist-e2e",
+    "build:static": "VITE_DEPLOY_MODE=static vite build --outDir dist-static",
     "preview": "vite preview",
     "lint": "tsc -b",
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
+    "e2e:postdeploy": "playwright test --grep @postdeploy --project desktop-chromium",
     "delivery:package": "node scripts/create-delivery-package.mjs",
     "deploy": "npm run build && wrangler deploy"
   },
@@ -25,6 +28,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@cloudflare/vite-plugin": "^1.59.0",
     "@playwright/test": "^1.61.1",
     "@testing-library/jest-dom": "^6.9.1",
