@@ -38,11 +38,12 @@ const statusBannerClassByStatus: Record<string, string> = {
 type DisplayMode = 'live' | 'demo' | 'rakuten_idle';
 
 export function AppShell() {
-  const { resultCards, searchedQuery, comparedCards, searchStatus, searchWarnings, dataSourceMode, lastSearchedAt, searchSources, exchangeRate } =
+  const { resultCards, pastedCards, searchedQuery, comparedCards, searchStatus, searchWarnings, dataSourceMode, lastSearchedAt, searchSources, exchangeRate } =
     useResearchStore(
       useShallow((s) => ({
         resultCards: s.resultCards,
         searchSources: s.searchSources,
+        pastedCards: s.pastedCards,
         exchangeRate: s.profitSettings.exchangeRate,
         searchedQuery: s.searchedQuery,
         comparedCards: s.comparedCards,
@@ -63,7 +64,10 @@ export function AppShell() {
   const shortcuts = buildSearchLinks(searchedQuery);
   const hasResults = resultCards.length > 0;
   const visibleCards = applyResultView(resultCards, filter, sort, exchangeRate);
-  const outliers = useMemo(() => findPriceOutliers(resultCards, exchangeRate), [resultCards, exchangeRate]);
+  const outliers = useMemo(
+    () => findPriceOutliers([...resultCards, ...pastedCards], exchangeRate),
+    [resultCards, pastedCards, exchangeRate],
+  );
   const [includeOutliers, setIncludeOutliers] = useState(false);
   const hasSearched = lastSearchedAt !== null;
 

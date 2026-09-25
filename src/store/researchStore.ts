@@ -50,6 +50,11 @@ type ResearchStore = {
   /** 検索リンクで開いたサイト（メルカリ等）で見た価格を、相場一覧に1件加える。比較ボードには入れない。 */
   addObservedPrice: (entry: { market: MarketId; price: number; pageUrl: string; query: string }) => void;
   removeResultCard: (id: string) => void;
+  /** 検索ページからコピーして貼り付けた価格（相場一覧だけに使い、検索結果の一覧には出さない）。 */
+  pastedCards: MarketCard[];
+  /** そのサイトの貼り付け価格を置き換える（貼り直し＝入れ替え）。 */
+  setPastedPrices: (entry: { market: MarketId; prices: number[]; pageUrl: string; query: string }) => void;
+  clearPastedPrices: (market: MarketId) => void;
   setDataSourceMode: (mode: DataSourceMode) => void;
   setTheme: (theme: ThemeId) => void;
   setProfitSettings: (settings: Partial<ProfitSettings>) => void;
@@ -109,6 +114,7 @@ export const useResearchStore = create<ResearchStore>()(
       searchStatus: null,
       searchWarnings: [],
       searchSources: [],
+      pastedCards: [],
       isSearching: false,
       lastSearchedAt: null,
       searchRequestId: 0,
@@ -122,6 +128,7 @@ export const useResearchStore = create<ResearchStore>()(
           searchStatus: response.status,
           searchWarnings: Array.isArray(response.warnings) ? response.warnings : [],
           searchSources: Array.isArray(response.sources) ? response.sources : [],
+          pastedCards: [],
           lastSearchedAt: response.searchedAt,
         })),
 
@@ -191,6 +198,30 @@ export const useResearchStore = create<ResearchStore>()(
         set((state) => ({ resultCards: [...state.resultCards, card] }));
       },
 
+      setPastedPrices: ({ market, prices, pageUrl, query }) => {
+        const label = MARKET_LABELS[market];
+        const createdAt = new Date().toISOString();
+        const cards = sanitizeCards(
+          prices.map((price, i) => ({
+            id: `pasted-${market}-${i}`,
+            title: `${query || '検索結果'}（${label}の検索表示から推定）`,
+            siteName: label,
+            sourceType: 'search_api',
+            priceText: `¥${Math.round(price).toLocaleString('ja-JP')}`,
+            priceValue: price,
+            currency: 'JPY',
+            pageUrl,
+            confidence: 'low',
+            note: `${label}の検索ページからコピーした価格（検索表示から推定）`,
+            createdAt,
+            market,
+          })),
+        );
+        set((state) => ({ pastedCards: [...state.pastedCards.filter((c) => c.market !== market), ...cards] }));
+      },
+
+      clearPastedPrices: (market) => set((state) => ({ pastedCards: state.pastedCards.filter((c) => c.market !== market) })),
+
       removeResultCard: (id) => set((state) => ({ resultCards: state.resultCards.filter((c) => c.id !== id) })),
 
       setDataSourceMode: (mode) => {
@@ -242,6 +273,7 @@ export const useResearchStore = create<ResearchStore>()(
           searchStatus: null,
           searchWarnings: [],
           searchSources: [],
+          pastedCards: [],
           lastSearchedAt: null,
           isSearching: false,
           searchRequestId: get().searchRequestId + 1,
@@ -256,6 +288,7 @@ export const useResearchStore = create<ResearchStore>()(
           searchStatus: null,
           searchWarnings: [],
           searchSources: [],
+          pastedCards: [],
           isSearching: false,
           lastSearchedAt: null,
           searchRequestId: state.searchRequestId + 1,
@@ -274,6 +307,7 @@ export const useResearchStore = create<ResearchStore>()(
           searchStatus: null,
           searchWarnings: [],
           searchSources: [],
+          pastedCards: [],
           isSearching: false,
           lastSearchedAt: null,
           searchRequestId: state.searchRequestId + 1,

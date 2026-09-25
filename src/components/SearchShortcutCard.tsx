@@ -2,26 +2,13 @@ import { useState } from 'react';
 import { ExternalLink, LayoutGrid } from 'lucide-react';
 import type { SearchShortcut } from '../types/market';
 import { MANUAL_MARKETS } from '../services/searchLinkBuilder';
+import { openTiled } from '../lib/tiledWindows';
 
 type Props = {
   shortcuts: SearchShortcut[];
 };
 
 const DEFAULT_SELECTED = new Set(MANUAL_MARKETS.map((m) => m.shortcutId));
-
-/** 画面を n 個に格子状に分けた、各ウィンドウの位置と大きさ。 */
-export function tileLayout(count: number, screen: { width: number; height: number; left: number; top: number }) {
-  const cols = count <= 1 ? 1 : count <= 4 ? 2 : 3;
-  const rows = Math.ceil(count / cols);
-  const width = Math.floor(screen.width / cols);
-  const height = Math.floor(screen.height / rows);
-  return Array.from({ length: count }, (_, i) => ({
-    left: screen.left + (i % cols) * width,
-    top: screen.top + Math.floor(i / cols) * height,
-    width,
-    height,
-  }));
-}
 
 /**
  * 外部サイトの検索ページ。自動取得はせず、利用者が開いて確かめる。
@@ -41,28 +28,7 @@ export function SearchShortcutCard({ shortcuts }: Props) {
       return next;
     });
 
-  const openTiled = () => {
-    const targets = shortcuts.filter((sc) => selected.has(sc.id));
-    const scr = window.screen as Screen & { availLeft?: number; availTop?: number };
-    const tiles = tileLayout(targets.length, {
-      width: scr.availWidth || window.innerWidth,
-      height: scr.availHeight || window.innerHeight,
-      left: scr.availLeft ?? 0,
-      top: scr.availTop ?? 0,
-    });
-    let failed = 0;
-    targets.forEach((sc, i) => {
-      const t = tiles[i];
-      const win = window.open(
-        sc.url,
-        `market-${sc.id}`,
-        `popup=yes,width=${t.width},height=${t.height},left=${t.left},top=${t.top}`,
-      );
-      if (!win) failed += 1;
-      else win.opener = null;
-    });
-    setBlocked(failed);
-  };
+  const openSelected = () => setBlocked(openTiled(shortcuts.filter((sc) => selected.has(sc.id))));
 
   return (
     <section className="glass border-sky-400/25 bg-sky-500/10 p-4">
@@ -70,17 +36,18 @@ export function SearchShortcutCard({ shortcuts }: Props) {
         <div className="flex flex-col gap-1">
           <h2 className="text-sm font-semibold text-sky-200">検索ショートカット（外部ページ）</h2>
           <p className="text-xs text-sky-100/85">
-            ここは価格カードではありません。チェックしたサイトは「まとめて開く」で画面を分割して同時に表示できます。
+            ここは価格カードではありません。「まとめて開く」で、チェックしたサイトを画面の右側に並べて開きます。
+            このツールのウィンドウを画面の左側（3分の1ほど）に寄せておくと、相場一覧を見ながら各サイトを確認できます。
           </p>
         </div>
         <button
           type="button"
-          onClick={openTiled}
+          onClick={openSelected}
           disabled={selected.size === 0}
           className="flex min-h-11 items-center gap-1.5 rounded-control bg-accent-strong px-4 text-xs font-semibold text-on-accent hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           <LayoutGrid size={14} aria-hidden="true" />
-          まとめて開く（画面分割・{selected.size}サイト）
+          まとめて開く（右側に画面分割・{selected.size}サイト）
         </button>
       </div>
       {blocked > 0 && (

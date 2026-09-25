@@ -99,6 +99,49 @@ test('相場から大きく外れた価格（付属品等）は価格帯から�
   await expect(yahooRow.getByText('最安')).toBeVisible();
 });
 
+test('貼り付け取り込み: メルカリの検索ページをコピーして貼ると価格を一括で並べ、クーポン・付属品は除く', async ({ page }) => {
+  await multiSearch(page, 'E2E貼り付け');
+  const mercari = overviewRow(page, 'メルカリ');
+  await mercari.getByRole('button', { name: 'メルカリの検索ページを貼り付けて価格を取り込む' }).click();
+  const pasted = [
+    'E2E貼り付け の検索結果',
+    '300円OFFクーポン',
+    '¥',
+    '10,500',
+    '¥11,200',
+    '¥12,000',
+    '¥9,800',
+    'ケース ¥1,280',
+    '送料込み',
+  ].join('\n');
+  await page.getByLabel('メルカリの検索ページで「すべて選択」→「コピー」して、ここに貼り付けてください').fill(pasted);
+  await expect(page.getByText('価格が 5 件見つかりました（¥1,280 〜 ¥12,000）')).toBeVisible();
+  await page.getByRole('button', { name: '5件を取り込む' }).click();
+
+  await expect(mercari.getByText('検索表示から推定')).toBeVisible();
+  await expect(mercari).toContainText('貼り付けた 5 件');
+  // ケース（¥1,280）は相場から外れるので価格帯から除かれる
+  await expect(mercari).toContainText('¥9,800 〜 ¥12,000');
+  // 検索結果の一覧（カード）には出さない
+  await expect(page.getByRole('article').filter({ hasText: '検索表示から推定）' })).toHaveCount(0);
+
+  await mercari.getByRole('button', { name: 'メルカリの貼り付けた価格をすべて削除' }).click();
+  await expect(mercari).not.toContainText('貼り付けた');
+});
+
+test('相場一覧の「開く」はツールの右側に並べる別ウィンドウで開く（同じサイトは同じウィンドウを使い回す）', async ({ page, context }) => {
+  await context.route(/^https:\/\/jp\.mercari\.com\//, (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<title>ok</title>' }));
+  await multiSearch(page, 'PS5');
+  const mercari = overviewRow(page, 'メルカリ');
+  const popup = page.waitForEvent('popup');
+  await mercari.getByRole('link', { name: '開く' }).click();
+  const win = await popup;
+  expect(win.url()).toContain('jp.mercari.com/search?keyword=PS5');
+  await mercari.getByRole('link', { name: '開く' }).click();
+  await page.waitForTimeout(500);
+  expect(context.pages()).toHaveLength(2);
+});
+
 test('一部のサイトが失敗しても他のサイトの実データを表示し、失敗したサイトは理由だけ出す（見本データを混ぜない）', async ({ page }) => {
   await multiSearch(page, '__yahoofail PS5');
   await expect(page.getByRole('status').filter({ hasText: 'Yahoo!ショッピング: 想定外の応答がありました' })).toBeVisible();
@@ -127,9 +170,9 @@ test('まとめて開く: チェックしたサイトを別ウィンドウで格
     route.fulfill({ status: 200, contentType: 'text/html', body: '<title>ok</title>' }),
   );
   await multiSearch(page, 'PS5');
-  await expect(page.getByRole('button', { name: /まとめて開く（画面分割・4サイト）/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /まとめて開く（右側に画面分割・4サイト）/ })).toBeVisible();
   await page.getByRole('checkbox', { name: 'Google 検索 をまとめて開く対象にする' }).check();
-  await expect(page.getByRole('button', { name: /まとめて開く（画面分割・5サイト）/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /まとめて開く（右側に画面分割・5サイト）/ })).toBeVisible();
 
   const opened: string[] = [];
   context.on('page', (p) => opened.push(p.url()));

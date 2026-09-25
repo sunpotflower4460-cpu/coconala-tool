@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { ExternalLink, Plus, X } from 'lucide-react';
+import { ClipboardPaste, ExternalLink, Plus, X } from 'lucide-react';
 import { useResearchStore } from '../store/researchStore';
 import { MARKET_LABELS, type MarketCard, type MarketId } from '../types/market';
 import { toJpyPrice } from '../features/profit/profitCalculator';
@@ -8,6 +8,8 @@ import { buildSearchLinks, MANUAL_MARKETS } from '../services/searchLinkBuilder'
 import { marketOf } from '../lib/marketOf';
 import { parseNumberInput } from '../lib/numberInput';
 import type { OutlierReason } from '../lib/priceOutliers';
+import { extractPastedPrices } from '../lib/pricePaste';
+import { openInSlot } from '../lib/tiledWindows';
 
 const AUTO_MARKETS: MarketId[] = ['rakuten', 'yahoo_shopping', 'ebay'];
 
@@ -73,6 +75,54 @@ function ObservedPriceInput({ market, searchUrl, query }: { market: MarketId; se
   );
 }
 
+function PastePanel({ market, searchUrl, query, onDone }: { market: MarketId; searchUrl: string; query: string; onDone: () => void }) {
+  const setPastedPrices = useResearchStore((s) => s.setPastedPrices);
+  const [text, setText] = useState('');
+  const textId = useId();
+  const prices = extractPastedPrices(text);
+  const label = MARKET_LABELS[market];
+  return (
+    <div className="mt-2 rounded-control border border-white/15 bg-black/20 p-3">
+      <label htmlFor={textId} className="text-xs font-semibold text-ink">
+        {label}の検索ページで「すべて選択」→「コピー」して、ここに貼り付けてください
+      </label>
+      <textarea
+        id={textId}
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={3}
+        placeholder="Ctrl+A（MacはCmd+A）→ Ctrl+C でコピーして、ここで Ctrl+V"
+        className="glass-input mt-1.5 w-full px-2 py-1.5 text-xs text-ink placeholder:text-ink/50"
+      />
+      <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+        <p className="num text-xs text-ink/80" aria-live="polite">
+          {text
+            ? prices.length
+              ? `価格が ${prices.length} 件見つかりました（${yen(Math.min(...prices))} 〜 ${yen(Math.max(...prices))}）`
+              : '価格が見つかりませんでした。検索結果のページ全体をコピーしてください。'
+            : 'クーポン・ポイント・送料の金額は自動で除きます。'}
+        </p>
+        <div className="flex gap-1.5">
+          <button type="button" onClick={onDone} className="min-h-11 rounded-control border border-white/15 px-3 text-xs text-ink/85 hover:bg-white/10">
+            閉じる
+          </button>
+          <button
+            type="button"
+            disabled={prices.length === 0}
+            onClick={() => {
+              setPastedPrices({ market, prices, pageUrl: searchUrl, query });
+              onDone();
+            }}
+            className="min-h-11 rounded-control bg-accent-strong px-3 text-xs font-semibold text-on-accent hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {prices.length ? `${prices.length}件を取り込む` : '取り込む'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * 相場一覧: サイトごとの価格帯を同じ目盛りの横棒で並べ、どこが安いかを一目で比べる。
  *  - 楽天・Yahoo!ショッピング・eBay は検索結果から自動で集計（eBay はドル円レートで円換算）
@@ -85,9 +135,13 @@ type BoardProps = {
 };
 
 export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers }: BoardProps) {
-  const { resultCards, searchSources, searchedQuery, exchangeRate, dataSourceMode, removeResultCard } = useResearchStore(
+  const [pasteFor, setPasteFor] = useState<MarketId | null>(null);
+  const [blockedWindow, setBlockedWindow] = useState(false);
+  const { resultCards, pastedCards, clearPastedPrices, searchSources, searchedQuery, exchangeRate, dataSourceMode, removeResultCard } = useResearchStore(
     useShallow((s) => ({
       resultCards: s.resultCards,
+      pastedCards: s.pastedCards,
+      clearPastedPrices: s.clearPastedPrices,
       searchSources: s.searchSources,
       searchedQuery: s.searchedQuery,
       exchangeRate: s.profitSettings.exchangeRate,
@@ -99,7 +153,7 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
 
   const links = buildSearchLinks(searchedQuery);
   const byMarket = new Map<MarketId, MarketCard[]>();
-  for (const card of resultCards) {
+  for (const card of [...resultCards, ...pastedCards]) {
     const market = marketOf(card);
     byMarket.set(market, [...(byMarket.get(market) ?? []), card]);
   }
@@ -142,7 +196,7 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
             相場一覧（サイト別の価格帯）
           </h2>
           <p className="mt-0.5 text-xs text-ink/70">
-            同じ目盛りで並べています。メルカリ・ヤフオク・ラクマ・Amazon は「開く」で見た価格を入力すると並びます（自動取得はしません）。
+            同じ目盛りで並べています。メルカリ・ヤフオク・ラクマ・Amazon は「開く」で右側に表示し、ページをコピーして貼り付けボタンで取り込むか、見た価格を入力すると並びます（自動取得はしません）。
           </p>
         </div>
         {all.length > 0 && (
@@ -175,8 +229,10 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
           const max = row.prices.length ? Math.max(...row.prices) : undefined;
           const mid = row.prices.length ? median(row.prices) : undefined;
           const observed = row.kind === 'manual' ? row.cards.filter((c) => c.id.startsWith('observed-')) : [];
+          const pasted = row.kind === 'manual' ? row.cards.filter((c) => c.id.startsWith('pasted-')) : [];
+          const slot = MANUAL_MARKETS.findIndex((m) => m.market === row.market);
           return (
-            <li key={row.market} className="grid grid-cols-1 gap-2 py-2.5 sm:grid-cols-[9rem_minmax(0,1fr)_15.5rem] sm:items-center">
+            <li key={row.market} className="grid grid-cols-1 gap-2 py-2.5 sm:grid-cols-[9rem_minmax(0,1fr)_18.5rem] sm:items-center">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-sm font-semibold text-ink">{MARKET_LABELS[row.market]}</span>
                 {row.market === cheapest && (
@@ -210,6 +266,20 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
                     {row.status ?? (row.kind === 'manual' ? '「開く」で検索ページを見て、価格を入力してください' : '該当なし')}
                   </p>
                 )}
+                {pasted.length > 0 && (
+                  <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-ink/80">
+                    <span className="rounded-full bg-sky-500/20 px-2 py-0.5 text-sky-100">検索表示から推定</span>
+                    貼り付けた {pasted.length} 件
+                    <button
+                      type="button"
+                      onClick={() => clearPastedPrices(row.market)}
+                      aria-label={`${MARKET_LABELS[row.market]}の貼り付けた価格をすべて削除`}
+                      className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/15"
+                    >
+                      <X size={12} aria-hidden="true" />
+                    </button>
+                  </p>
+                )}
                 {observed.length > 0 && (
                   <ul aria-label={`${MARKET_LABELS[row.market]}で入力した価格`} className="mt-1 flex flex-wrap gap-1">
                     {observed.map((card) => (
@@ -235,20 +305,45 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
                     href={row.searchUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => {
+                      // ツールの右側、「まとめて開く」と同じ位置のウィンドウで開く（ブロックされたら通常のタブで開く）
+                      const opened = openInSlot({ id: `${row.market}`, url: row.searchUrl as string }, Math.max(slot, 0), MANUAL_MARKETS.length);
+                      if (opened) e.preventDefault();
+                      setBlockedWindow(!opened);
+                    }}
                     className="flex h-11 items-center gap-1 rounded-control border border-white/15 px-3 text-xs text-ink/90 hover:bg-white/10"
                   >
                     <ExternalLink size={13} aria-hidden="true" />
                     開く
                   </a>
+                  <button
+                    type="button"
+                    onClick={() => setPasteFor(pasteFor === row.market ? null : row.market)}
+                    aria-expanded={pasteFor === row.market}
+                    aria-label={`${MARKET_LABELS[row.market]}の検索ページを貼り付けて価格を取り込む`}
+                    className="flex h-11 w-11 items-center justify-center rounded-control border border-white/15 text-ink/90 hover:bg-white/10"
+                  >
+                    <ClipboardPaste size={15} aria-hidden="true" />
+                  </button>
                   <ObservedPriceInput market={row.market} searchUrl={row.searchUrl} query={searchedQuery} />
                 </div>
               ) : (
                 <span />
               )}
+              {pasteFor === row.market && row.searchUrl && (
+                <div className="sm:col-span-3">
+                  <PastePanel market={row.market} searchUrl={row.searchUrl} query={searchedQuery} onDone={() => setPasteFor(null)} />
+                </div>
+              )}
             </li>
           );
         })}
       </ul>
+      {blockedWindow && (
+        <p role="alert" className="mt-2 text-xs text-amber-100">
+          ブラウザがウィンドウをブロックしたため、新しいタブで開きました。右側に並べて開くには、アドレスバー右端のアイコンからポップアップを許可してください。
+        </p>
+      )}
     </section>
   );
 }
