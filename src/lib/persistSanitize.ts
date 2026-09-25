@@ -1,6 +1,7 @@
 import type {
   DataSourceMode,
   MarketCard,
+  MarketId,
   MarketSearchStatus,
   ProfitSettings,
   SavedResearchSession,
@@ -28,7 +29,8 @@ export const RESEARCH_PERSIST_VERSION = 2;
 export const HISTORY_PERSIST_VERSION = 1;
 
 const THEME_IDS: ThemeId[] = ['simple-pro', 'soft-market', 'dark-trader', 'natural-board'];
-const DATA_SOURCE_MODES: DataSourceMode[] = ['sample', 'rakuten_mock'];
+const DATA_SOURCE_MODES: DataSourceMode[] = ['sample', 'rakuten_mock', 'multi'];
+const MARKET_IDS: MarketId[] = ['rakuten', 'yahoo_shopping', 'ebay', 'mercari', 'yahoo_auctions', 'rakuma', 'amazon', 'other'];
 const SOURCE_TYPES: SourceType[] = ['official_api', 'search_api', 'search_link', 'manual'];
 const MARKET_SEARCH_STATUSES: MarketSearchStatus[] = [
   'sample',
@@ -148,6 +150,7 @@ export function sanitizeMarketCard(value: unknown): MarketCard | undefined {
     note: record.note === undefined ? undefined : clampText(record.note, MAX_CARD_NOTE_LENGTH),
     createdAt: typeof record.createdAt === 'string' ? record.createdAt : new Date(0).toISOString(),
     demoOrigin,
+    ...(MARKET_IDS.includes(record.market as MarketId) ? { market: record.market as MarketId } : {}),
   };
 }
 

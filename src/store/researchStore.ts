@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { DataSourceMode, MarketCard, MarketSearchResponse, MarketSearchStatus, ProfitSettings, ThemeId } from '../types/market';
+import type { DataSourceMode, MarketCard, MarketId, MarketSearchResponse, MarketSearchStatus, ProfitSettings, SourceResult, ThemeId } from '../types/market';
+import { MARKET_LABELS } from '../types/market';
 import { clampAmount, clampFeeRate } from '../features/profit/profitCalculator';
 import { MAX_SEARCH_QUERY_LENGTH } from '../lib/limits';
 import {
@@ -30,6 +31,8 @@ type ResearchStore = {
   sellPriceSource: string | null;
   searchStatus: MarketSearchStatus | null;
   searchWarnings: string[];
+  /** まとめて検索のときの、サイトごとの結果（保存しない）。 */
+  searchSources: SourceResult[];
   isSearching: boolean;
   lastSearchedAt: string | null;
   /** 進行中の検索リクエスト世代。clear / 新しい検索で増やす。 */
@@ -44,6 +47,9 @@ type ResearchStore = {
   removeComparedCard: (id: string) => void;
   isCompared: (id: string) => boolean;
   addManualCard: (card: MarketCard) => void;
+  /** 検索リンクで開いたサイト（メルカリ等）で見た価格を、相場一覧に1件加える。比較ボードには入れない。 */
+  addObservedPrice: (entry: { market: MarketId; price: number; pageUrl: string; query: string }) => void;
+  removeResultCard: (id: string) => void;
   setDataSourceMode: (mode: DataSourceMode) => void;
   setTheme: (theme: ThemeId) => void;
   setProfitSettings: (settings: Partial<ProfitSettings>) => void;
@@ -102,6 +108,7 @@ export const useResearchStore = create<ResearchStore>()(
       sellPriceSource: null,
       searchStatus: null,
       searchWarnings: [],
+      searchSources: [],
       isSearching: false,
       lastSearchedAt: null,
       searchRequestId: 0,
@@ -114,6 +121,7 @@ export const useResearchStore = create<ResearchStore>()(
           resultCards: sanitizeCards(response.cards),
           searchStatus: response.status,
           searchWarnings: Array.isArray(response.warnings) ? response.warnings : [],
+          searchSources: Array.isArray(response.sources) ? response.sources : [],
           lastSearchedAt: response.searchedAt,
         })),
 
@@ -160,6 +168,30 @@ export const useResearchStore = create<ResearchStore>()(
             : [...state.comparedCards, sanitized],
         }));
       },
+
+      addObservedPrice: ({ market, price, pageUrl, query }) => {
+        const label = MARKET_LABELS[market];
+        const card = sanitizeCards([
+          {
+            id: `observed-${market}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            title: `${query || '検索結果'}（${label}で確認した価格）`,
+            siteName: label,
+            sourceType: 'manual',
+            priceText: `¥${Math.round(price).toLocaleString('ja-JP')}`,
+            priceValue: price,
+            currency: 'JPY',
+            pageUrl,
+            confidence: 'medium',
+            note: `${label}の検索ページで確認した価格（手動入力）`,
+            createdAt: new Date().toISOString(),
+            market,
+          },
+        ])[0];
+        if (!card) return;
+        set((state) => ({ resultCards: [...state.resultCards, card] }));
+      },
+
+      removeResultCard: (id) => set((state) => ({ resultCards: state.resultCards.filter((c) => c.id !== id) })),
 
       setDataSourceMode: (mode) => {
         const next = sanitizeDataSourceMode(mode);
@@ -209,6 +241,7 @@ export const useResearchStore = create<ResearchStore>()(
           // 保存スナップショットはライブな検索状態ではない。進行中リクエストも無効化する。
           searchStatus: null,
           searchWarnings: [],
+          searchSources: [],
           lastSearchedAt: null,
           isSearching: false,
           searchRequestId: get().searchRequestId + 1,
@@ -222,6 +255,7 @@ export const useResearchStore = create<ResearchStore>()(
           resultCards: [],
           searchStatus: null,
           searchWarnings: [],
+          searchSources: [],
           isSearching: false,
           lastSearchedAt: null,
           searchRequestId: state.searchRequestId + 1,
@@ -239,6 +273,7 @@ export const useResearchStore = create<ResearchStore>()(
           sellPriceSource: null,
           searchStatus: null,
           searchWarnings: [],
+          searchSources: [],
           isSearching: false,
           lastSearchedAt: null,
           searchRequestId: state.searchRequestId + 1,

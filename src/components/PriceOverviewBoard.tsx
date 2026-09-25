@@ -1,0 +1,227 @@
+import { useId, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { ExternalLink, Plus, X } from 'lucide-react';
+import { useResearchStore } from '../store/researchStore';
+import { MARKET_LABELS, type MarketCard, type MarketId } from '../types/market';
+import { toJpyPrice } from '../features/profit/profitCalculator';
+import { buildSearchLinks, MANUAL_MARKETS } from '../services/searchLinkBuilder';
+import { marketOf } from '../lib/marketOf';
+import { parseNumberInput } from '../lib/numberInput';
+
+const AUTO_MARKETS: MarketId[] = ['rakuten', 'yahoo_shopping', 'ebay'];
+
+type Row = {
+  market: MarketId;
+  kind: 'auto' | 'manual';
+  prices: number[];
+  cards: MarketCard[];
+  hasDemo: boolean;
+  status?: string;
+  searchUrl?: string;
+};
+
+function yen(value: number) {
+  return `¥${Math.round(value).toLocaleString('ja-JP')}`;
+}
+
+function median(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function ObservedPriceInput({ market, searchUrl, query }: { market: MarketId; searchUrl: string; query: string }) {
+  const addObservedPrice = useResearchStore((s) => s.addObservedPrice);
+  const [text, setText] = useState('');
+  const inputId = useId();
+  const parsed = parseNumberInput(text);
+  const valid = parsed !== undefined && parsed > 0;
+  const submit = () => {
+    if (!valid) return;
+    addObservedPrice({ market, price: parsed, pageUrl: searchUrl, query });
+    setText('');
+  };
+  return (
+    <div className="flex items-center gap-1.5">
+      <label htmlFor={inputId} className="sr-only">
+        {MARKET_LABELS[market]}で見た価格（円）
+      </label>
+      <input
+        id={inputId}
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.nativeEvent.isComposing) submit();
+        }}
+        placeholder="見た価格"
+        className="glass-input num h-11 w-28 px-2 text-sm text-ink placeholder:text-ink/50"
+      />
+      <button
+        type="button"
+        onClick={submit}
+        disabled={!valid}
+        aria-label={`${MARKET_LABELS[market]}の価格を追加`}
+        className="flex h-11 w-11 items-center justify-center rounded-control border border-white/15 bg-white/10 text-ink hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Plus size={16} aria-hidden="true" />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * 相場一覧: サイトごとの価格帯を同じ目盛りの横棒で並べ、どこが安いかを一目で比べる。
+ *  - 楽天・Yahoo!ショッピング・eBay は検索結果から自動で集計（eBay はドル円レートで円換算）
+ *  - メルカリ・ヤフオク・ラクマ・Amazon は自動取得しない。検索ページを開いて見た価格を入力すると同じ棒に並ぶ
+ */
+export function PriceOverviewBoard() {
+  const { resultCards, searchSources, searchedQuery, exchangeRate, dataSourceMode, removeResultCard } = useResearchStore(
+    useShallow((s) => ({
+      resultCards: s.resultCards,
+      searchSources: s.searchSources,
+      searchedQuery: s.searchedQuery,
+      exchangeRate: s.profitSettings.exchangeRate,
+      dataSourceMode: s.dataSourceMode,
+      removeResultCard: s.removeResultCard,
+    })),
+  );
+  if (!searchedQuery) return null;
+
+  const links = buildSearchLinks(searchedQuery);
+  const byMarket = new Map<MarketId, MarketCard[]>();
+  for (const card of resultCards) {
+    const market = marketOf(card);
+    byMarket.set(market, [...(byMarket.get(market) ?? []), card]);
+  }
+  const toRow = (market: MarketId, kind: Row['kind']): Row => {
+    const cards = byMarket.get(market) ?? [];
+    const prices = cards.map((c) => toJpyPrice(c, exchangeRate)).filter((p): p is number => typeof p === 'number' && p > 0);
+    const source = searchSources.find((s) => s.market === market);
+    const shortcutId = MANUAL_MARKETS.find((m) => m.market === market)?.shortcutId;
+    return {
+      market,
+      kind,
+      prices,
+      cards,
+      hasDemo: cards.some((c) => c.demoOrigin),
+      status: source && source.outcome !== 'ok' ? source.message : undefined,
+      searchUrl: links.find((l) => l.id === shortcutId)?.url,
+    };
+  };
+
+  const autoRows = AUTO_MARKETS.filter((m) => dataSourceMode === 'multi' || byMarket.has(m)).map((m) => toRow(m, 'auto'));
+  const manualRows = MANUAL_MARKETS.map(({ market }) => toRow(market, 'manual'));
+  const otherRow = byMarket.has('other') ? [toRow('other', 'auto')] : [];
+  const rows = [...autoRows, ...manualRows, ...otherRow];
+
+  const all = rows.flatMap((r) => r.prices);
+  const lo = all.length ? Math.min(...all) : 0;
+  const hi = all.length ? Math.max(...all) : 0;
+  const span = hi - lo || 1;
+  const cheapest = rows.filter((r) => r.prices.length).sort((a, b) => Math.min(...a.prices) - Math.min(...b.prices))[0]?.market;
+  const pos = (value: number) => ((value - lo) / span) * 100;
+
+  return (
+    <section className="glass p-4" aria-labelledby="price-overview-title">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <h2 id="price-overview-title" className="font-display text-sm font-semibold text-ink">
+            相場一覧（サイト別の価格帯）
+          </h2>
+          <p className="mt-0.5 text-xs text-ink/70">
+            同じ目盛りで並べています。メルカリ・ヤフオク・ラクマ・Amazon は「開く」で見た価格を入力すると並びます（自動取得はしません）。
+          </p>
+        </div>
+        {all.length > 0 && (
+          <p className="num text-xs text-ink/70">
+            全体 {yen(lo)} 〜 {yen(hi)}
+          </p>
+        )}
+      </div>
+
+      <ul aria-label="サイト別の価格帯" className="flex flex-col divide-y divide-white/10">
+        {rows.map((row) => {
+          const min = row.prices.length ? Math.min(...row.prices) : undefined;
+          const max = row.prices.length ? Math.max(...row.prices) : undefined;
+          const mid = row.prices.length ? median(row.prices) : undefined;
+          const observed = row.kind === 'manual' ? row.cards.filter((c) => c.id.startsWith('observed-')) : [];
+          return (
+            <li key={row.market} className="grid grid-cols-1 gap-2 py-2.5 sm:grid-cols-[9rem_minmax(0,1fr)_15.5rem] sm:items-center">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-sm font-semibold text-ink">{MARKET_LABELS[row.market]}</span>
+                {row.market === cheapest && (
+                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">最安</span>
+                )}
+                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-ink/75">
+                  {row.kind === 'auto' ? (row.hasDemo ? '見本データ' : '自動取得') : '手入力'}
+                </span>
+              </div>
+
+              <div className="min-w-0">
+                {min !== undefined && max !== undefined && mid !== undefined ? (
+                  <>
+                    <div className="relative h-2.5 rounded-full bg-white/10" aria-hidden="true">
+                      <div
+                        className="absolute top-0 h-2.5 rounded-full bg-accent-strong/80"
+                        style={{ left: `${pos(min)}%`, width: `${Math.max(pos(max) - pos(min), 1.5)}%` }}
+                      />
+                      <div
+                        className="absolute -top-0.5 h-3.5 w-1 rounded-full bg-white"
+                        style={{ left: `calc(${pos(mid)}% - 2px)` }}
+                      />
+                    </div>
+                    <p className="num mt-1 text-xs text-ink/85">
+                      {min === max ? yen(min) : `${yen(min)} 〜 ${yen(max)}`}
+                      <span className="text-ink/65">（{row.prices.length}件{row.prices.length > 1 ? `・中央 ${yen(mid)}` : ''}）</span>
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-xs text-ink/65">
+                    {row.status ?? (row.kind === 'manual' ? '「開く」で検索ページを見て、価格を入力してください' : '該当なし')}
+                  </p>
+                )}
+                {observed.length > 0 && (
+                  <ul aria-label={`${MARKET_LABELS[row.market]}で入力した価格`} className="mt-1 flex flex-wrap gap-1">
+                    {observed.map((card) => (
+                      <li key={card.id} className="flex items-center gap-0.5 rounded-full bg-white/10 pl-2 text-[11px] text-ink/85">
+                        <span className="num">{card.priceText}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeResultCard(card.id)}
+                          aria-label={`${MARKET_LABELS[row.market]}の ${card.priceText} を削除`}
+                          className="flex h-11 w-11 items-center justify-center rounded-full hover:bg-white/15"
+                        >
+                          <X size={12} aria-hidden="true" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {row.kind === 'manual' && row.searchUrl ? (
+                <div className="flex items-center gap-1.5">
+                  <a
+                    href={row.searchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex h-11 items-center gap-1 rounded-control border border-white/15 px-3 text-xs text-ink/90 hover:bg-white/10"
+                  >
+                    <ExternalLink size={13} aria-hidden="true" />
+                    開く
+                  </a>
+                  <ObservedPriceInput market={row.market} searchUrl={row.searchUrl} query={searchedQuery} />
+                </div>
+              ) : (
+                <span />
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}

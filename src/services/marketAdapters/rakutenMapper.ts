@@ -55,6 +55,7 @@ export function mapRakutenItemToMarketCard(item: RakutenMockItem): MarketCard | 
       shippingText: Number(item.postageFlag) === 0 ? '送料込み' : '送料別',
       confidence: 'high',
       note: '楽天市場 公式API取得',
+      market: 'rakuten',
       createdAt: new Date().toISOString(),
     };
   } catch {

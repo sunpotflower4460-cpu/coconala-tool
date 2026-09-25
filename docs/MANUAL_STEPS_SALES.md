@@ -16,10 +16,12 @@ npm run verify:all                        # すべての自動チェック＋納
 
 ## 2. デモ環境を公開して実データで1回確認する（アカウント・実キーが必要）
 
-- [ ] 楽天ウェブサービスで新しいアプリを登録し、アプリIDとアクセスキーを取得（許可されたWebサイト＝デモの公開URL）
-- [ ] `npx wrangler login` → `npm run deploy` → `npx wrangler secret put SERVER_RAKUTEN_APP_ID` / `SERVER_RAKUTEN_ACCESS_KEY`
+- [x] 楽天ウェブサービスで新しいアプリを登録し、アプリIDとアクセスキーを取得・登録（2026-09-25 完了。有効期限 2027-09-25）
+- [ ] Yahoo!デベロッパーネットワークで Client ID を取得し `npx wrangler secret put SERVER_YAHOO_CLIENT_ID`
+- [ ] eBay Developers Program で Production の App ID / Cert ID を取得し `SERVER_EBAY_CLIENT_ID` / `SERVER_EBAY_CLIENT_SECRET` を登録
+- [ ] `npm run deploy`
 - [ ] `E2E_BASE_URL=<デモURL> npm run e2e:postdeploy` がすべて passed
-- [ ] デモURLで楽天市場モードにして1回検索し、緑の「実データ表示中」と実際の商品が出る（[`post-deploy-qa.md`](post-deploy-qa.md)）
+- [ ] デモURLでデータソース「まとめて」にして1回検索し、3サイトの件数と実際の商品が出る（[`post-deploy-qa.md`](post-deploy-qa.md)）
 - [ ] 手持ちのスマホでデモURLを開き、検索と「比較に追加」ができる
 
 ## 3. 出品物を仕上げる

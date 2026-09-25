@@ -87,4 +87,15 @@ describe('Cloudflare Worker entry', () => {
     expect(res.status).toBe(404);
     expect(limiter.limit).not.toHaveBeenCalled();
   });
+
+  it('/api/yahoo と /api/ebay もそれぞれのハンドラへ渡し、キー未設定なら no_key（レート制限の枠は共通）', async () => {
+    const keys: string[] = [];
+    const limiter = { limit: vi.fn(async ({ key }: { key: string }) => (keys.push(key), { success: true })) };
+    for (const path of ['/api/yahoo?q=PS5', '/api/ebay?q=PS5', '/api/yahoo/?q=PS5']) {
+      const res = await worker.fetch(makeRequest(path), { RAKUTEN_RATE_LIMITER: limiter });
+      expect(res.status).toBe(503);
+      expect(await res.json()).toMatchObject({ error: 'no_key' });
+    }
+    expect(limiter.limit).toHaveBeenCalledTimes(3);
+  });
 });

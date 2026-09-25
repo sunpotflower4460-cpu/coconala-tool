@@ -1,3 +1,5 @@
+import type { MarketId } from '../../types/market';
+
 const sitePatterns: { pattern: RegExp; name: string }[] = [
   { pattern: /(^|\.)ebay\./i, name: 'eBay' },
   { pattern: /(^|\.)mercari\.(com|jp)/i, name: 'メルカリ' },
@@ -24,4 +26,19 @@ export function detectSiteNameFromUrl(url: string): string {
   } catch {
     return '';
   }
+}
+
+const MARKET_BY_SITE_NAME: Record<string, MarketId> = {
+  楽天市場: 'rakuten',
+  'Yahoo!ショッピング': 'yahoo_shopping',
+  eBay: 'ebay',
+  メルカリ: 'mercari',
+  ヤフオク: 'yahoo_auctions',
+  ラクマ: 'rakuma',
+  Amazon: 'amazon',
+};
+
+/** URL から販売サイトを判定する（判定できなければ other）。 */
+export function detectMarketFromUrl(url: string): MarketId {
+  return MARKET_BY_SITE_NAME[detectSiteNameFromUrl(url)] ?? 'other';
 }

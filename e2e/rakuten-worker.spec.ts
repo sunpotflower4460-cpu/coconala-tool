@@ -65,21 +65,21 @@ test('実データ: Worker 経由で楽天の商品が「楽天市場の実デ�
   const rows = parseCsv(text.replace(/^\uFEFF/, ''));
   expect(rows[1][2]).toBe('実データ');
   expect(rows[1][3]).toBe('公式API取得');
-  expect(rows.find((r) => r[0] === '検索状態')?.[1]).toBe('楽天市場の実データ');
-  expect(rows.find((r) => r[0] === 'データソース')?.[1]).toBe('楽天市場');
+  expect(rows.find((r) => r[0] === '検索状態')?.[1]).toBe('実データ（公式API）');
+  expect(rows.find((r) => r[0] === 'データソース')?.[1]).toBe('楽天市場のみ');
 });
 
 const fallbackCases: Array<{ query: string; status: string; message: RegExp }> = [
   { query: '__429 PS5', status: '見本データ（アクセス集中）', message: /検索が集中したため/ },
-  { query: '__500 PS5', status: '見本データ（楽天側の一時的な不具合）', message: /想定外の応答/ },
-  { query: '__503 PS5', status: '見本データ（楽天側の一時的な不具合）', message: /想定外の応答/ },
-  { query: '__401 PS5', status: '見本データ（楽天連携の設定を確認）', message: /アプリID・アクセスキー・許可サイト/ },
-  { query: '__403 PS5', status: '見本データ（楽天連携の設定を確認）', message: /アプリID・アクセスキー・許可サイト/ },
-  { query: '__400app PS5', status: '見本データ（楽天連携の設定を確認）', message: /アプリID・アクセスキー・許可サイト/ },
-  { query: '__html PS5', status: '見本データ（楽天側の一時的な不具合）', message: /想定外の応答/ },
-  { query: '__badjson PS5', status: '見本データ（楽天側の一時的な不具合）', message: /想定外の応答/ },
-  { query: '__big PS5', status: '見本データ（楽天側の一時的な不具合）', message: /想定外の応答/ },
-  { query: '__error200 PS5', status: '見本データ（楽天側の一時的な不具合）', message: /想定外の応答/ },
+  { query: '__500 PS5', status: '見本データ（接続先の一時的な不具合）', message: /想定外の応答/ },
+  { query: '__503 PS5', status: '見本データ（接続先の一時的な不具合）', message: /想定外の応答/ },
+  { query: '__401 PS5', status: '見本データ（連携の設定を確認）', message: /アプリID・アクセスキー・許可サイト/ },
+  { query: '__403 PS5', status: '見本データ（連携の設定を確認）', message: /アプリID・アクセスキー・許可サイト/ },
+  { query: '__400app PS5', status: '見本データ（連携の設定を確認）', message: /アプリID・アクセスキー・許可サイト/ },
+  { query: '__html PS5', status: '見本データ（接続先の一時的な不具合）', message: /想定外の応答/ },
+  { query: '__badjson PS5', status: '見本データ（接続先の一時的な不具合）', message: /想定外の応答/ },
+  { query: '__big PS5', status: '見本データ（接続先の一時的な不具合）', message: /想定外の応答/ },
+  { query: '__error200 PS5', status: '見本データ（接続先の一時的な不具合）', message: /想定外の応答/ },
 ];
 
 for (const { query, status, message } of fallbackCases) {
@@ -116,7 +116,7 @@ test('キー未設定: 見本データのカードには必ず「見本データ
   const { text } = await downloadCsv(page);
   const rows = parseCsv(text.replace(/^\uFEFF/, ''));
   expect(rows[1][2]).toBe('見本データ（実在しない商品）');
-  expect(rows.find((r) => r[0] === '検索状態')?.[1]).toBe('見本データ（楽天連携の設定前）');
+  expect(rows.find((r) => r[0] === '検索状態')?.[1]).toBe('見本データ（連携の設定前）');
 });
 
 test('Worker 不在（静的ホスティングで /api が HTML の 404）でも落ちず、設定前として案内する', async ({ page }) => {
@@ -136,7 +136,7 @@ test('障害: 楽天の応答が遅い（8秒超）とタイムアウトとし�
   await page.getByRole('button', { name: 'まとめて探す' }).click();
   await expect(page.getByRole('button', { name: '検索中…' })).toBeDisabled();
   await expect(page.getByText(/楽天市場からの応答が遅いため/)).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByText('直近の検索結果: 見本データ（楽天の応答待ちが長すぎた）')).toBeVisible();
+  await expect(page.getByText('直近の検索結果: 見本データ（応答待ちが長すぎた）')).toBeVisible();
 });
 
 test('0件: 楽天が 0件 / 404 を返しても通信失敗扱いせず、実データの0件として案内する', async ({ page }) => {
@@ -146,7 +146,7 @@ test('0件: 楽天が 0件 / 404 を返しても通信失敗扱いせず、実�
     await expect(page.getByText(/楽天市場で該当する商品が見つかりませんでした/)).toBeVisible();
     await expect(resultCards(page)).toHaveCount(0);
     await expect(page.getByRole('status').filter({ hasText: /見本データ/ })).toHaveCount(0);
-    await expect(page.getByText('直近の検索結果: 楽天市場の実データ（0件）')).toBeVisible();
+    await expect(page.getByText('直近の検索結果: 実データ（0件）')).toBeVisible();
   }
 });
 

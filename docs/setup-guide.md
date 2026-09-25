@@ -14,7 +14,7 @@ npm run dev   # 表示された http://localhost:5173 をブラウザで開く
 
 楽天のキーが無くても、サンプルデータ・見本データで全機能を試せます。
 
-## 楽天市場の実データを手元で試す
+## 楽天・Yahoo!・eBay の実データを手元で試す
 
 楽天のキーは **画面側（`VITE_` で始まる変数）には絶対に置きません**。サーバー側（`/api/rakuten`）だけが読みます。
 
@@ -26,9 +26,12 @@ npm run dev   # 表示された http://localhost:5173 をブラウザで開く
    SERVER_RAKUTEN_APP_ID=あなたのアプリID
    SERVER_RAKUTEN_ACCESS_KEY=あなたのアクセスキー
    SERVER_RAKUTEN_ALLOWED_ORIGIN=https://楽天に登録した公開ドメイン
+   SERVER_YAHOO_CLIENT_ID=あなたのYahoo! Client ID（任意）
+   SERVER_EBAY_CLIENT_ID=あなたのeBay App ID（任意）
+   SERVER_EBAY_CLIENT_SECRET=あなたのeBay Cert ID（任意）
    ```
 
-3. `npm run dev` を起動し直し、データソースを「楽天市場」にして検索します。
+3. `npm run dev` を起動し直し、データソースを「まとめて（楽天・Yahoo!・eBay）」にして検索します。
    `npm run dev` は Cloudflare の仕組みで Worker（`/api/rakuten`）も同時に動かすため、別のサーバーを起動する必要はありません。
 
 キーが無い・間違っている・楽天に接続できない場合も画面は落ちず、理由を表示して見本データに切り替わります。

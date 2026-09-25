@@ -26,7 +26,21 @@
  *  { items: NormalizedItem[], source: 'official_api', status: 'ok' | 'error', requestId: string, error?: string, upstreamStatus?: number }
  */
 
-import { checkRakutenSearchQuery, stripControlChars } from '../../src/lib/searchQuery';
+import { checkRakutenSearchQuery } from '../../src/lib/searchQuery';
+import {
+  API_SECURITY_HEADERS,
+  RESPONSE_HEADERS,
+  UpstreamTooLargeError,
+  clampText,
+  createRequestId,
+  isHttpsUrl,
+  isSameOrigin,
+  parseLimit,
+  readTextCapped,
+  resolveTestOverride,
+} from './shared';
+
+export { API_SECURITY_HEADERS };
 
 export type RakutenFunctionEnv = {
   SERVER_RAKUTEN_APP_ID?: string;
@@ -44,28 +58,11 @@ type PagesFunctionContext = {
 };
 
 export const RAKUTEN_ENDPOINT = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701';
-const MAX_LIMIT = 30;
-const MIN_LIMIT = 1;
-const DEFAULT_LIMIT = 8;
 const UPSTREAM_TIMEOUT_MS = 8_000;
 /** 30件 × 画像3枚でも数百KB。これを超える応答は異常とみなして読まない。 */
 export const MAX_UPSTREAM_BYTES = 2_000_000;
 const MAX_TEXT_LENGTH = 200;
 const MAX_SHOP_NAME_LENGTH = 100;
-const MAX_URL_LENGTH = 2000;
-
-export const API_SECURITY_HEADERS = {
-  'cache-control': 'no-store',
-  'x-content-type-options': 'nosniff',
-  'x-frame-options': 'DENY',
-  'referrer-policy': 'no-referrer',
-  'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
-} as const;
-
-const RESPONSE_HEADERS = {
-  'content-type': 'application/json; charset=utf-8',
-  ...API_SECURITY_HEADERS,
-} as const;
 
 /** フロントの rakutenMapper が期待する最小フィールド形へ正規化する。 */
 type NormalizedItem = {
@@ -90,13 +87,6 @@ export type ErrorCode =
   | 'invalid_json'
   | 'timeout'
   | 'fetch_failed';
-
-function createRequestId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  return `req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
 
 function successResponse(items: NormalizedItem[], requestId: string): Response {
   return new Response(JSON.stringify({ items, source: 'official_api', status: 'ok', requestId }), {
@@ -125,20 +115,6 @@ export function errorResponse(
       headers: RESPONSE_HEADERS,
     },
   );
-}
-
-function isHttpsUrl(value: unknown): value is string {
-  if (typeof value !== 'string' || value.length === 0 || value.length > MAX_URL_LENGTH) return false;
-  try {
-    return new URL(value).protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
-function clampText(value: unknown, maxLength: number): string {
-  if (typeof value !== 'string') return '';
-  return stripControlChars(value).slice(0, maxLength);
 }
 
 /** 楽天 formatVersion=2 / 旧形式どちらの画像配列でも、https の文字列URLのみへ正規化する。 */
@@ -198,44 +174,9 @@ function extractItems(value: unknown): unknown[] | null {
   return null;
 }
 
-/**
- * ブラウザからの別origin利用を抑止する。
- * `Origin` が無いCLI等は許可するため、公開プロキシの濫用対策は `worker.ts` のレート制限と併用する。
- */
-function isSameOrigin(request: Request): boolean {
-  const fetchSite = request.headers.get('sec-fetch-site');
-  if (fetchSite === 'same-site' || fetchSite === 'cross-site') return false;
-
-  const origin = request.headers.get('origin');
-  if (!origin) return true;
-  try {
-    return new URL(origin).origin === new URL(request.url).origin;
-  } catch {
-    return false;
-  }
-}
-
-function parseLimit(value: string | null): number {
-  if (value === null || value.trim() === '') return DEFAULT_LIMIT;
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) return DEFAULT_LIMIT;
-  return Math.min(Math.max(Math.trunc(parsed), MIN_LIMIT), MAX_LIMIT);
-}
-
-function isLoopbackUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' && (url.hostname === '127.0.0.1' || url.hostname === 'localhost');
-  } catch {
-    return false;
-  }
-}
-
 /** 上流URL。E2E の偽楽天サーバーはフラグ付き・ループバック限定でのみ使い、本番設定では絶対に効かない。 */
 export function resolveRakutenEndpoint(env: RakutenFunctionEnv): string {
-  const override = env.RAKUTEN_API_BASE_OVERRIDE?.trim();
-  if (env.E2E_FAKE_UPSTREAM === '1' && override && isLoopbackUrl(override)) return override;
-  return RAKUTEN_ENDPOINT;
+  return resolveTestOverride(env, env.RAKUTEN_API_BASE_OVERRIDE, RAKUTEN_ENDPOINT);
 }
 
 /** 楽天に送る Origin。設定値が不正ならリクエスト自身の origin を使う。 */
@@ -250,31 +191,6 @@ function resolveUpstreamOrigin(env: RakutenFunctionEnv, request: Request): strin
     }
   }
   return new URL(request.url).origin;
-}
-
-class UpstreamTooLargeError extends Error {}
-
-/** 本文をサイズ上限つきで読む。上限超過は UpstreamTooLargeError。 */
-async function readTextCapped(response: Response, maxBytes: number): Promise<string> {
-  const declared = Number(response.headers?.get?.('content-length') ?? NaN);
-  if (Number.isFinite(declared) && declared > maxBytes) throw new UpstreamTooLargeError();
-  if (!response.body) return response.text();
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let received = 0;
-  let text = '';
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    received += value.byteLength;
-    if (received > maxBytes) {
-      await reader.cancel().catch(() => undefined);
-      throw new UpstreamTooLargeError();
-    }
-    text += decoder.decode(value, { stream: true });
-  }
-  return text + decoder.decode();
 }
 
 /** 楽天のエラー本文（`{ error, error_description }`）から、利用者へ出す分類だけを取り出す。本文そのものは返さない。 */
