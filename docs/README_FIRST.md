@@ -19,6 +19,7 @@
 | ファイル / フォルダ | 内容 |
 |---|---|
 | `README_FIRST.md` | このファイル |
+| `マニュアル.pdf` | **画面写真入りの操作・導入マニュアル（まずはこちら）** |
 | [`QUICK_START.md`](QUICK_START_BUYER.md) | 5分で試せる使い方の流れ |
 | [`USER_GUIDE.md`](user-guide.md) | 画面と機能の詳しい説明 |
 | [`DEPLOY_GUIDE.md`](deployment-guide.md) | インターネットに公開する手順（楽天の設定を含む） |

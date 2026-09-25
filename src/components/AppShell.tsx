@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { findPriceOutliers } from '../lib/priceOutliers';
 import { useShallow } from 'zustand/react/shallow';
 import { useResearchStore } from '../store/researchStore';
 import { ProductSearchBar } from './ProductSearchBar';
@@ -62,6 +63,8 @@ export function AppShell() {
   const shortcuts = buildSearchLinks(searchedQuery);
   const hasResults = resultCards.length > 0;
   const visibleCards = applyResultView(resultCards, filter, sort, exchangeRate);
+  const outliers = useMemo(() => findPriceOutliers(resultCards, exchangeRate), [resultCards, exchangeRate]);
+  const [includeOutliers, setIncludeOutliers] = useState(false);
   const hasSearched = lastSearchedAt !== null;
 
   const displayMode: DisplayMode =
@@ -150,7 +153,13 @@ export function AppShell() {
           )}
 
           {/* サイト別の価格帯（一目で比較） */}
-          {(hasSearched || hasResults) && <PriceOverviewBoard />}
+          {(hasSearched || hasResults) && (
+            <PriceOverviewBoard
+              outliers={outliers}
+              includeOutliers={includeOutliers}
+              onToggleOutliers={() => setIncludeOutliers((v) => !v)}
+            />
+          )}
 
           {/* Search shortcuts */}
           {shortcuts.length > 0 && <SearchShortcutCard shortcuts={shortcuts} />}
@@ -219,7 +228,7 @@ export function AppShell() {
                 visibleCards.length > 0 ? (
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {visibleCards.map((card) => (
-                      <ResultCard key={card.id} card={card} />
+                      <ResultCard key={card.id} card={card} outlier={outliers.get(card.id)} />
                     ))}
                   </div>
                 ) : (

@@ -62,6 +62,8 @@ function handleYahoo(url, res) {
     condition: i === 2 ? 'used' : 'new',
     inStock: true,
   }));
+  // 付属品が混ざった検索結果を再現（1件だけ極端に安い）
+  if (query.startsWith('__outlier')) hits[0].price = 900;
   return json(res, 200, { totalResultsAvailable: 3, hits });
 }
 

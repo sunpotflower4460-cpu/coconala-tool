@@ -116,6 +116,7 @@ APIキー不要で、サンプルデータ・見本データで主要な流れ�
 ## 納品物
 
 - ZIPファイル1つ（構成は `docs/DELIVERY_CONTENTS.md`）
+  - `マニュアル.pdf`（画面写真入りの操作・導入マニュアル）
   - `README_FIRST.md`（最初に読む案内）/ `QUICK_START.md` / `USER_GUIDE.md` / `DEPLOY_GUIDE.md` / `SUPPORT_POLICY.md` / `PRIVACY_AND_DATA.md` / `TERMS.md` / `CHANGELOG.md`
   - `QUALITY_REPORT.md`（納品前に自動実行した品質チェックの結果）
   - `app-static/`（ビルド済みの静的版）/ `source/`（ソースコード一式）/ `sample/`（画面の見本）

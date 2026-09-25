@@ -8,6 +8,8 @@ import { CardSourceBadges, DEMO_ORIGIN_LABELS } from './CardSourceBadges';
 
 type Props = {
   card: MarketCard;
+  /** 相場から大きく外れた価格（付属品・まとめ売り等の可能性） */
+  outlier?: 'too_low' | 'too_high';
 };
 
 function formatCardUrl(url: string) {
@@ -20,7 +22,7 @@ function formatCardUrl(url: string) {
   }
 }
 
-export function ResultCard({ card }: Props) {
+export function ResultCard({ card, outlier }: Props) {
   const [imageError, setImageError] = useState(false);
   const addComparedCard = useResearchStore((s) => s.addComparedCard);
   const removeComparedCard = useResearchStore((s) => s.removeComparedCard);
@@ -71,6 +73,11 @@ export function ResultCard({ card }: Props) {
 
         <div className="flex flex-wrap gap-1.5">
           <CardSourceBadges card={{ ...card, demoOrigin: undefined }} />
+          {outlier && (
+            <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-100">
+              {outlier === 'too_low' ? '相場より大幅に安い（付属品等の可能性）' : '相場より大幅に高い（まとめ売り等の可能性）'}
+            </span>
+          )}
           {card.conditionText && (
             <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-ink/70">
               {card.conditionText}

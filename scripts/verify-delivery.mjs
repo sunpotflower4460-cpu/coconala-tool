@@ -30,6 +30,7 @@ const SKIP_INSTALL = process.argv.includes('--skip-install');
 
 const REQUIRED = [
   'README_FIRST.md',
+  'マニュアル.pdf',
   'QUICK_START.md',
   'USER_GUIDE.md',
   'DEPLOY_GUIDE.md',

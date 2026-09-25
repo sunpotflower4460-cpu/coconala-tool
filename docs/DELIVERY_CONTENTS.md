@@ -5,6 +5,7 @@
 ```text
 相場カード比較ボード-v{version}/
 ├─ README_FIRST.md      最初に読む案内（docs/README_FIRST.md）
+├─ マニュアル.pdf        画面写真入りの操作・導入マニュアル（scripts/marketing/manual.spec.ts が毎回撮り直して生成）
 ├─ QUICK_START.md        5分で試す使い方（docs/QUICK_START_BUYER.md）
 ├─ USER_GUIDE.md         画面と機能の説明（docs/user-guide.md）
 ├─ DEPLOY_GUIDE.md       公開手順・楽天のキー設定（docs/deployment-guide.md）
