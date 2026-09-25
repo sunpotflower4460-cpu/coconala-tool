@@ -16,7 +16,9 @@ async function auditSeriousViolations(page: Page) {
 }
 
 for (const theme of THEMES) {
-  test(`axe: テーマ「${theme}」で検索・比較後の画面に重大なアクセシビリティ違反がない`, async ({ page }) => {
+  test(`axe: テーマ「${theme}」で検索・比較後の画面に重大なアクセシビリティ違反がない`, async ({ page, browserName }) => {
+    // WebKit の axe 監査は CI（macOS のランナー）で30秒を超えることがあるため、時間の上限を3倍にする
+    test.slow(browserName === 'webkit', 'WebKit の axe 監査は時間がかかる');
     await page.goto('/');
     await page.getByRole('button', { name: `テーマ: ${theme}` }).click();
     await search(page, 'PS5');
