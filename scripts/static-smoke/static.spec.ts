@@ -20,10 +20,10 @@ test('静的版: 検索→比較→利益→CSV が動き、楽天市場は見�
   expect((await download).suggestedFilename()).toMatch(/\.csv$/);
 
   await page.getByLabel('データソースを選ぶ').selectOption('rakuten_mock');
-  await expect(page.getByText(/この公開版は楽天市場と連携していないため/)).toBeVisible();
+  await expect(page.getByText(/この版は楽天市場と連携していないため/)).toBeVisible();
   await page.getByLabel('商品名・型番・JAN・URL').fill('ウォークマン');
   await page.getByRole('button', { name: 'まとめて探す' }).click();
-  await expect(page.getByText(/この公開版は楽天市場との連携なしで動作しています/)).toBeVisible();
+  await expect(page.getByText(/この版は楽天市場との連携なしで動作しています/)).toBeVisible();
   await expect(page.getByRole('article').first().getByText('見本データ（実在しない商品）')).toBeVisible();
 
   expect(errors).toEqual([]);

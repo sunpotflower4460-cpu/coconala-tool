@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { findPriceOutliers } from '../lib/priceOutliers';
+import { performSearch } from '../features/search/performSearch';
 import { useShallow } from 'zustand/react/shallow';
 import { useResearchStore } from '../store/researchStore';
 import { ProductSearchBar } from './ProductSearchBar';
@@ -141,18 +142,31 @@ export function AppShell() {
         {/* Left: results */}
         <div className="flex min-w-0 flex-1 flex-col gap-6">
           {!hasSearched && !hasResults && (
-            <div className="glass flex flex-col items-center justify-center gap-4 border-dashed px-4 py-16 text-center sm:py-20">
+            <div className="glass flex flex-col items-center justify-center gap-4 border-dashed px-4 py-14 text-center sm:py-16">
               <BarChart2 size={40} className="text-accent/60" aria-hidden="true" />
-              <p className="text-base font-medium text-ink/80">商品名・型番・JAN・URLを入力して「まとめて探す」</p>
-              <p className="text-xs text-ink/60">例: PS5 / PlayStation 5 CFI-2000A01 / JANコード / 商品URL</p>
-              <button
-                type="button"
-                onClick={() => setShowManualAdd(true)}
-                className="flex min-h-11 items-center gap-1.5 rounded-full border border-white/12 bg-white/5 px-4 py-2 text-xs transition hover:bg-white/10"
-              >
-                <PlusCircle size={14} aria-hidden="true" />
-                URLから手動で追加
-              </button>
+              <p className="text-base font-medium text-ink/85">商品名・型番・JAN・URLを入力して「まとめて探す」</p>
+              <p className="text-xs text-ink/65">はじめての方は、下のボタンで試してみてください（入力と検索を自動で行います）。</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const example = dataSourceMode === 'sample' ? 'PS5' : 'Nintendo Switch 2';
+                    useResearchStore.getState().setQuery(example);
+                    void performSearch();
+                  }}
+                  className="flex min-h-11 items-center gap-1.5 rounded-full bg-accent-strong px-5 text-sm font-semibold text-on-accent hover:brightness-110"
+                >
+                  {dataSourceMode === 'sample' ? 'PS5 で試してみる' : 'Nintendo Switch 2 で試してみる'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowManualAdd(true)}
+                  className="flex min-h-11 items-center gap-1.5 rounded-full border border-white/12 bg-white/5 px-4 py-2 text-xs transition hover:bg-white/10"
+                >
+                  <PlusCircle size={14} aria-hidden="true" />
+                  URLから手動で追加
+                </button>
+              </div>
             </div>
           )}
 

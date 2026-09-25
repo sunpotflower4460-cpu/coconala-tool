@@ -26,7 +26,7 @@ const MULTI_EMPTY_WARNING = '該当する商品が見つかりませんでした
 const ALL_FAILED_WARNING =
   '楽天市場・Yahoo!ショッピング・eBay のどれにも接続できなかったため、見本データ（実在しない商品）を表示しています。';
 const STATIC_WARNING =
-  'この公開版は楽天市場・Yahoo!ショッピング・eBay と連携していないため、見本データを表示しています。実データを使うには Cloudflare Workers 版で公開してください（設定ガイド参照）。';
+  'この版は楽天市場・Yahoo!ショッピング・eBay と連携していないため、見本データを表示しています。実データを使うには Cloudflare Workers 版で公開してください（設定ガイド参照）。';
 
 async function fetchOutcome(market: OfficialMarketId, query: string, limit: number): Promise<RakutenOutcome> {
   try {

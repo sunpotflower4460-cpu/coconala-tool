@@ -4,23 +4,21 @@
 
 ```text
 相場カード比較ボード-v{version}/
-├─ README_FIRST.md      最初に読む案内（docs/README_FIRST.md）
-├─ マニュアル.pdf        画面写真入りの操作・導入マニュアル（scripts/marketing/manual.spec.ts が毎回撮り直して生成）
-├─ QUICK_START.md        5分で試す使い方（docs/QUICK_START_BUYER.md）
-├─ USER_GUIDE.md         画面と機能の説明（docs/user-guide.md）
-├─ DEPLOY_GUIDE.md       公開手順・楽天のキー設定（docs/deployment-guide.md）
-├─ SUPPORT_POLICY.md     プラン内容・サポート範囲
-├─ PRIVACY_AND_DATA.md   データの保存先・外部通信
-├─ TERMS.md              利用規約
-├─ CHANGELOG.md          変更履歴
-├─ QUALITY_REPORT.md     納品前に自動実行した品質チェックの結果
-├─ app-static/           ビルド済みの静的版（楽天連携なし。そのまま公開可能）
-├─ source/               ソースコード一式（Workers 版の公開・改造用）
-├─ sample/               画面の見本画像（npm run marketing:capture の結果）
-└─ checksums.txt         各ファイルの SHA-256
+├─ ①ツールを開く.html     ダブルクリックで動く1ファイル版（静的版の JS・CSS をすべて埋め込み。scripts/build-local-html.mjs）
+├─ ②マニュアル.pdf         画面写真入りの操作・導入マニュアル（scripts/marketing/manual.spec.ts が毎回撮り直して生成）
+└─ ③詳しい資料（公開する人向け）/
+   ├─ README_FIRST.md      最初に読む案内（docs/README_FIRST.md）
+   ├─ QUICK_START.md / USER_GUIDE.md / DEPLOY_GUIDE.md / SUPPORT_POLICY.md / PRIVACY_AND_DATA.md / TERMS.md / CHANGELOG.md
+   ├─ QUALITY_REPORT.md    納品前に自動実行した品質チェックの結果
+   ├─ app-static/          ビルド済みの静的版（サーバーに置いて公開する用）
+   ├─ source/              ソースコード一式（Workers 版の公開・改造用）
+   ├─ sample/              画面の見本画像
+   └─ checksums.txt        ZIP 全体の各ファイルの SHA-256（パスは ZIP の一番上から）
 ```
 
-ZIP直下の文書内の相対リンクは、ZIPの構成に合わせて自動で書き換えます（例: `setup-guide.md` → `source/docs/setup-guide.md`）。
+初心者が迷わないよう、ZIP を開いて最初に見えるのは①②③の3つだけにしています（`delivery:verify` が検証）。
+
+③の中の文書の相対リンクは、ZIPの構成に合わせて自動で書き換えます（例: `setup-guide.md` → `source/docs/setup-guide.md`）。
 
 ## `source/` に含めるもの（許可リスト・Git 管理下のファイルのみ）
 

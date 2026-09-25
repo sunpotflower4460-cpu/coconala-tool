@@ -22,15 +22,15 @@ import { fileURLToPath } from 'node:url';
 import { checkMarkdownLinks } from './lib/markdown.mjs';
 import { loadLocalSecretValues, scanForSecrets } from './lib/secrets.mjs';
 import { sha256File, walkFiles } from './lib/files.mjs';
+import { DETAIL_DIR, MANUAL_FILE, TOOL_FILE } from './create-delivery-package.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const OUTPUT_DIR = path.join(REPO_ROOT, 'dist-delivery');
 const SKIP_INSTALL = process.argv.includes('--skip-install');
 
-const REQUIRED = [
+const DETAIL_REQUIRED = [
   'README_FIRST.md',
-  'マニュアル.pdf',
   'QUICK_START.md',
   'USER_GUIDE.md',
   'DEPLOY_GUIDE.md',
@@ -49,12 +49,15 @@ const REQUIRED = [
   'source/worker.ts',
   'source/worker.test.ts',
   'source/functions/api/rakuten.ts',
+  'source/functions/api/yahoo.ts',
+  'source/functions/api/ebay.ts',
   'source/e2e/fake-rakuten/server.mjs',
   'source/public/_headers',
   'source/.nvmrc',
   'source/.env.example',
   'source/docs/setup-guide.md',
 ];
+const REQUIRED = [TOOL_FILE, MANUAL_FILE, ...DETAIL_REQUIRED.map((f) => `${DETAIL_DIR}/${f}`)];
 
 const FORBIDDEN = [
   /(^|\/)\.env$/,
@@ -62,9 +65,9 @@ const FORBIDDEN = [
   /(^|\/)\.dev\.vars/,
   /(^|\/)AGENTS\.md$/,
   /(^|\/)COPILOT_INSTRUCTIONS\.md$/,
-  /^source\/scripts\//,
+  /(^|\/)source\/scripts\//,
   /(^|\/)node_modules\//,
-  /^source\/dist/,
+  /(^|\/)source\/dist/,
   /(^|\/)\.git\//,
   /docs\/(MANUAL_STEPS_SALES|coconala-listing-copy|qa-checklist|release-v1-checklist|manual-test-script|PRODUCTION_FAILURE_RISK_MATRIX|DELIVERY_CONTENTS|product-brief|data-source-policy|ux-principles|phase-roadmap)\.md$/,
   /docs\/(archive|adr)\//,
@@ -145,14 +148,22 @@ async function main() {
     const forbidden = files.filter((f) => FORBIDDEN.some((re) => re.test(f)));
     record('含めてはいけないファイル（秘密情報・内部資料・開発用スクリプト）が無い', forbidden.length === 0, forbidden.slice(0, 10).join(', '));
 
-    const checksumLines = (await fs.readFile(path.join(root, 'checksums.txt'), 'utf-8')).trim().split('\n');
+    const topLevel = (await fs.readdir(root)).sort();
+    const expectedTop = [TOOL_FILE, MANUAL_FILE, DETAIL_DIR].sort();
+    record(
+      'ZIP を開いて最初に見えるのは「①ツールを開く.html」「②マニュアル.pdf」「③詳しい資料」の3つだけ',
+      JSON.stringify(topLevel) === JSON.stringify(expectedTop),
+      topLevel.join(', '),
+    );
+
+    const checksumLines = (await fs.readFile(path.join(root, DETAIL_DIR, 'checksums.txt'), 'utf-8')).trim().split('\n');
     const mismatched = [];
     for (const line of checksumLines) {
       const [hash, rel] = line.split(/\s{2}/);
       const actual = await sha256File(path.join(root, rel)).catch(() => 'missing');
       if (actual !== hash) mismatched.push(rel);
     }
-    const unlisted = files.filter((f) => f !== 'checksums.txt' && !checksumLines.some((l) => l.endsWith(`  ${f}`)));
+    const unlisted = files.filter((f) => f !== `${DETAIL_DIR}/checksums.txt` && !checksumLines.some((l) => l.endsWith(`  ${f}`)));
     record('checksums.txt と中身が一致する', mismatched.length === 0 && unlisted.length === 0, [...mismatched, ...unlisted].slice(0, 5).join(', '));
 
     const linkProblems = await checkMarkdownLinks(root);
@@ -161,16 +172,16 @@ async function main() {
     const secrets = await scanForSecrets(root, await loadLocalSecretValues(REPO_ROOT));
     record('秘密情報らしき値が含まれていない', secrets.length === 0, secrets.slice(0, 5).join(' / '));
 
-    const sourcePkg = JSON.parse(await fs.readFile(path.join(root, 'source/package.json'), 'utf-8'));
+    const sourcePkg = JSON.parse(await fs.readFile(path.join(root, DETAIL_DIR, 'source/package.json'), 'utf-8'));
     const brokenScripts = Object.entries(sourcePkg.scripts ?? {}).filter(([, cmd]) => /scripts\//.test(cmd));
     record('source/package.json に納品物に無いスクリプトへの参照が無い', brokenScripts.length === 0, brokenScripts.map(([n]) => n).join(', '));
 
     const version = sourcePkg.version === pkg.version;
-    const report = await fs.readFile(path.join(root, 'QUALITY_REPORT.md'), 'utf-8');
+    const report = await fs.readFile(path.join(root, DETAIL_DIR, 'QUALITY_REPORT.md'), 'utf-8');
     record('バージョン表記がそろっている（package.json / 品質レポート）', version && report.includes(`v${pkg.version}`));
 
     if (!SKIP_INSTALL) {
-      const source = path.join(root, 'source');
+      const source = path.join(root, DETAIL_DIR, 'source');
       for (const [label, args] of [
         ['source/ で npm ci できる', ['ci', '--no-audit', '--no-fund']],
         ['source/ で型チェックが通る（npm run lint）', ['run', 'lint']],
@@ -191,13 +202,21 @@ async function main() {
     }
 
     // app-static を配信してブラウザで主要フローを確認する
-    const server = await serveStatic(path.join(root, 'app-static'));
+    const server = await serveStatic(path.join(root, DETAIL_DIR, 'app-static'));
     const { port } = server.address();
     try {
-      const smoke = await runAsync('npx', ['playwright', 'test', '--config', 'scripts/playwright.static-smoke.config.ts'], REPO_ROOT, {
+      const smoke = await runAsync('npx', ['playwright', 'test', '--config', 'scripts/playwright.static-smoke.config.ts', 'static.spec'], REPO_ROOT, {
         STATIC_SMOKE_URL: `http://127.0.0.1:${port}`,
       });
       record('app-static（静的版）がブラウザで動く（検索→比較→利益→CSV・楽天は見本データ）', smoke.ok, smoke.ok ? '' : tail(smoke.output, 25));
+      const local = await runAsync('npx', ['playwright', 'test', '--config', 'scripts/playwright.static-smoke.config.ts', 'local-file'], REPO_ROOT, {
+        LOCAL_HTML_PATH: path.join(root, TOOL_FILE),
+      });
+      record(
+        '①ツールを開く.html をダブルクリック（file://）で開いて使える（PC・iPhone 相当。検索→比較→利益→CSV→保存・再読込）',
+        local.ok && /2 passed/.test(local.output),
+        local.ok ? '' : tail(local.output, 25),
+      );
     } finally {
       server.close();
     }

@@ -26,12 +26,21 @@ import { ZipArchive } from 'archiver';
 import { checkMarkdownLinks, rewriteRelativeLinks, stripRepoOnly } from './lib/markdown.mjs';
 import { scanForSecrets, loadLocalSecretValues } from './lib/secrets.mjs';
 import { sha256File, walkFiles } from './lib/files.mjs';
+import { buildLocalHtml } from './build-local-html.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const OUTPUT_DIR = path.join(REPO_ROOT, 'dist-delivery');
 const PRODUCT_NAME = '相場カード比較ボード';
 const ALLOW_MISSING_REPORT = process.argv.includes('--allow-missing-report');
+
+/**
+ * ZIP を開いたとき最初に見えるのは次の3つだけにする（初心者が迷わないように）。
+ *  ① ダブルクリックで開ける1ファイル版のツール ② 画面写真入りマニュアル ③ 公開する人向けの詳しい資料一式
+ */
+export const TOOL_FILE = '①ツールを開く.html';
+export const MANUAL_FILE = '②マニュアル.pdf';
+export const DETAIL_DIR = '③詳しい資料（公開する人向け）';
 
 /** ZIP直下に置く購入者向け文書: [リポジトリ内のパス, ZIP内の名前] */
 export const ROOT_DOCS = [
@@ -227,7 +236,7 @@ async function stageSamples(stagingDir) {
 async function stageManual(stagingDir) {
   const manual = path.join(OUTPUT_DIR, 'manual', 'マニュアル.pdf');
   if (await pathExists(manual)) {
-    await fs.copyFile(manual, path.join(stagingDir, 'マニュアル.pdf'));
+    await fs.copyFile(manual, path.join(stagingDir, MANUAL_FILE));
     return;
   }
   if (!ALLOW_MISSING_REPORT) fail('マニュアル（dist-delivery/manual/マニュアル.pdf）がありません。npm run marketing:capture で生成してください。');
@@ -249,14 +258,15 @@ async function stageQualityReport(stagingDir, version) {
   );
 }
 
-async function writeChecksums(stagingDir) {
+/** 全ファイルの SHA-256 一覧。パスは ZIP の一番上からの相対パスで、ファイル自体は ③ の中に置く。 */
+async function writeChecksums(stagingDir, detailDir) {
   const files = (await walkFiles(stagingDir)).sort();
   const lines = [];
   for (const file of files) {
     const rel = path.relative(stagingDir, file).split(path.sep).join('/');
     lines.push(`${await sha256File(file)}  ${rel}`);
   }
-  await fs.writeFile(path.join(stagingDir, 'checksums.txt'), `${lines.join('\n')}\n`, 'utf-8');
+  await fs.writeFile(path.join(detailDir, 'checksums.txt'), `${lines.join('\n')}\n`, 'utf-8');
 }
 
 async function zipDirectory(stagingDir, zipPath, rootFolderName) {
@@ -286,17 +296,23 @@ async function main() {
   const stagingDir = path.join(stagingRoot, rootFolderName);
   await fs.mkdir(stagingDir, { recursive: true });
 
+  const detailDir = path.join(stagingDir, DETAIL_DIR);
+  await fs.mkdir(detailDir, { recursive: true });
+
   try {
     const sourceFiles = selectSourceFiles(listCandidateFiles());
     log(`ソースをステージング中...（${sourceFiles.length} ファイル）`);
-    await stageSource(stagingDir, sourceFiles);
+    await stageSource(detailDir, sourceFiles);
 
     log('購入者向け文書をステージング中（リンクをZIP構成へ書き換え）...');
-    await stageRootDocs(stagingDir, sourceFiles);
-    await stageStaticApp(stagingDir);
-    await stageSamples(stagingDir);
+    await stageRootDocs(detailDir, sourceFiles);
+    await stageStaticApp(detailDir);
+    await stageSamples(detailDir);
+    await stageQualityReport(detailDir, version);
+
+    log('一番上の階層: ①ツール（1ファイル版）と②マニュアル');
+    await buildLocalHtml(path.join(stagingDir, TOOL_FILE));
     await stageManual(stagingDir);
-    await stageQualityReport(stagingDir, version);
 
     log('文書のリンク切れを検査中...');
     const linkProblems = await checkMarkdownLinks(stagingDir);
@@ -314,7 +330,11 @@ async function main() {
     }
     log('シークレット走査: OK（検出なし）');
 
-    await writeChecksums(stagingDir);
+    const topLevel = (await fs.readdir(stagingDir)).sort();
+    const expectedTop = [TOOL_FILE, MANUAL_FILE, DETAIL_DIR].filter((name) => topLevel.includes(name) || name !== MANUAL_FILE || !ALLOW_MISSING_REPORT).sort();
+    if (JSON.stringify(topLevel) !== JSON.stringify(expectedTop)) fail(`ZIP の一番上の階層が想定と違います: ${topLevel.join(', ')}`);
+
+    await writeChecksums(stagingDir, detailDir);
     const zipPath = path.join(OUTPUT_DIR, `${rootFolderName}.zip`);
     log(`ZIPを生成中: ${zipPath}`);
     await zipDirectory(stagingDir, zipPath, rootFolderName);

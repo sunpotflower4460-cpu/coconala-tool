@@ -1,7 +1,7 @@
 {
   "name": "coconala-tool",
   "private": true,
-  "version": "0.9.0-rc.13",
+  "version": "0.9.0-rc.14",
   "type": "module",
   "engines": {
     "node": ">=22"
@@ -23,7 +23,8 @@
     "delivery:verify": "node scripts/verify-delivery.mjs",
     "verify:release": "node scripts/verify-release.mjs",
     "verify:all": "node scripts/verify-all.mjs",
-    "marketing:capture": "playwright test --config scripts/playwright.marketing.config.ts"
+    "marketing:capture": "playwright test --config scripts/playwright.marketing.config.ts",
+    "build:local": "npm run build:static && node scripts/build-local-html.mjs"
   },
   "dependencies": {
     "lucide-react": "^1.14.0",

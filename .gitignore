@@ -19,3 +19,4 @@ playwright/.cache/
 dist-e2e/
 .dev.vars*
 dist-static/
+dist-local/

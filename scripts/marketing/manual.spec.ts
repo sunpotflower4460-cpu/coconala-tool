@@ -43,6 +43,10 @@ test('マニュアル用の画面写真を撮り、PDF を作る', async ({ page
     });
   }, UNSTICK_HEADER);
 
+  // 0. はじめて開いたとき（サンプルデータ）
+  await page.goto('/');
+  await shot('start', page.getByRole('button', { name: 'PS5 で試してみる' }).locator('xpath=ancestor::div[contains(@class, "glass")][1]'));
+
   // 1. 最初の画面
   await page.goto('/');
   await page.getByLabel('データソースを選ぶ').selectOption('multi');
@@ -172,6 +176,40 @@ function buildManualHtml(s: Record<string, string>, version: string) {
 </section>
 
 <section class="page">
+  <h2>0. まず開いてみる（インストール不要）</h2>
+  <p>届いた ZIP には、次の3つが入っています。</p>
+  <table>
+    <tr><th>名前</th><th>内容</th></tr>
+    <tr><td><b>①ツールを開く.html</b></td><td>ダブルクリックするとブラウザでツールが開きます。インストール不要で、そのまま使えます。</td></tr>
+    <tr><td><b>②マニュアル.pdf</b></td><td>このマニュアルです。</td></tr>
+    <tr><td>③詳しい資料（公開する人向け）</td><td>インターネットに公開するとき・改造するときだけ使うフォルダです。普段は開かなくて大丈夫です。</td></tr>
+  </table>
+  <div class="note" style="margin-top:0">①ツールを開く.html はパソコンの中で使う版で、楽天・Yahoo!・eBay の実データは「見本データ」になります（メルカリ等の価格の貼り付け・比較・利益計算・CSV・履歴はすべて使えます）。
+  実データは、インターネットに公開した URL で使えます（スタンダードプラン以上は制作者から共有された URL を開くだけです。自分で公開する方法は「6. 公開のしかた」）。</div>
+  <h3>開き方</h3>
+  <div class="two">
+    <div>
+      <p><b>Windows の場合</b></p>
+      <ol>
+        <li>ZIP ファイルを右クリックして「すべて展開」を選び、「展開」を押します。</li>
+        <li>出てきたフォルダの <b>①ツールを開く.html</b> をダブルクリックします。</li>
+        <li>「どのアプリで開きますか」と聞かれたら、Microsoft Edge か Google Chrome を選びます。</li>
+      </ol>
+    </div>
+    <div>
+      <p><b>Mac の場合</b></p>
+      <ol>
+        <li>ZIP ファイルをダブルクリックすると、同じ場所にフォルダができます。</li>
+        <li>フォルダの中の <b>①ツールを開く.html</b> をダブルクリックします。</li>
+        <li>Safari や Chrome でツールが開きます。</li>
+      </ol>
+    </div>
+  </div>
+  ${s.start ? `<figure style="page-break-inside:auto;margin-top:2mm"><img src="${s.start}" style="width:78%;max-height:55mm" alt=""><figcaption>開いたところ。「PS5 で試してみる」を押すと、入力と検索を自動で行います。</figcaption></figure>` : ''}
+
+</section>
+
+<section class="page">
   <h2>1. このツールでできること</h2>
   <table>
     <tr><th>できること</th><th>内容</th></tr>
@@ -273,7 +311,7 @@ function buildManualHtml(s: Record<string, string>, version: string) {
 
 <section class="page compact">
   <h2>6. 公開のしかた（導入）</h2>
-  <p>届いた ZIP には、すぐ公開できる <code>app-static/</code> と、実データ版を公開するための <code>source/</code> が入っています。画面ごとの入力内容など詳しい手順は ZIP 内の <code>DEPLOY_GUIDE.md</code> にあります。</p>
+  <p>公開用のファイルは ZIP の <b>③詳しい資料（公開する人向け）</b> フォルダにあります。すぐ公開できる <code>app-static/</code> と、実データ版を公開するための <code>source/</code> です。画面ごとの入力内容など詳しい手順は、同じフォルダの <code>DEPLOY_GUIDE.md</code> にあります。</p>
   <h3>A. まず試す（楽天・Yahoo!・eBay の実データなし）</h3>
   <ol>
     <li><a href="https://dash.cloudflare.com/">Cloudflare</a> に無料登録し、「Workers &amp; Pages → 作成 → Pages → アセットをアップロード」を選びます。</li>
@@ -316,7 +354,7 @@ npm run deploy</pre>
     <li>画面の一番下にある「Supported by Rakuten Developers」「Webサービス by Yahoo! JAPAN」は各社の規約で必要な表記です。消さないでください。</li>
   </ul>
   <h3>サポート</h3>
-  <p>ZIP 内の <code>SUPPORT_POLICY.md</code> の範囲で、ココナラのメッセージからご連絡ください。</p>
+  <p>「③詳しい資料」フォルダの <code>SUPPORT_POLICY.md</code> の範囲で、ココナラのメッセージからご連絡ください。</p>
 </section>
 </body></html>`;
 }
