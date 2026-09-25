@@ -2,7 +2,7 @@
 
 最終更新: 2026-09-24
 
-対象: 相場カード比較ボード (`coconala-tool`) v0.9.0-rc.15
+対象: 相場カード比較ボード (`coconala-tool`) v1.0.0-beta.1
 
 自動テストの実行方法: `npm run verify:all`（単体・E2E・整合チェック・納品ZIP検証を一括実行し、`dist-delivery/VERIFICATION_REPORT.md` に結果を出力）
 
@@ -902,6 +902,66 @@
 - 再現: キー未設定・全サイト障害・静的版・1ファイル版で検索する
 - 期待結果: 固定サンプルと見本データは廃止。商品カードは出さず、理由と「検索ページを開いて貼り付け・入力する方法」を表示する。旧版で保存した「サンプルデータ」の選択は「まとめて」として読み込む
 - 自動テスト: `marketSearchService.test.ts`、`e2e/rakuten-worker.spec.ts`、`e2e/multi-market.spec.ts`、`e2e/production-failure.spec.ts`、`scripts/static-smoke/*.spec.ts`
+
+---
+
+# 9. デスクトップアプリ
+
+## DESK-01 キーの値が画面側・保存データ・ログに漏れる
+
+- 重大度: P0
+- 状態: Protected
+- 故障: 楽天等のキーが renderer（画面）や平文ファイル・CSV・履歴に出る
+- 対策: キーは main プロセスの keyStore だけが持ち、OS の暗号化保管（safeStorage）で保存。画面へは「設定済みかどうか」だけを返す。暗号化できない環境ではディスクに書かない
+- 自動テスト: `e2e-desktop/desktop.spec.ts`（キー設定: 画面・状態にキーが出ない）
+
+## DESK-02 右のタブの外部ページからアプリの機能・Node に触れる
+
+- 重大度: P0
+- 状態: Protected
+- 故障: メルカリ等のページ（第三者のスクリプト）が window.desktop・require・process を使える、アプリ画面が外部サイトへ遷移する
+- 対策: 外部ページは preload なし・sandbox・専用 session。アプリ画面は contextIsolation・sandbox・nodeIntegration 無効・CSP。外部 URL への遷移は止めて既定のブラウザで開く。IPC 引数は検査
+- 自動テスト: `e2e-desktop/desktop.spec.ts`（安全性）
+
+## DESK-03 値段の取り込みが「自動巡回・大量取得」になる
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 検索と同時に自動で読み取る、ページ送り・再試行を自動で行う、画像や説明文まで保存する
+- 対策: 取り込みは利用者のボタン操作時のみ。1検索につき各サイト1ページ・最大30件、商品リンクとその枠の文字だけ（isolated world で実行）。サイトごとにオフ可。ログイン・確認画面は突破しない
+- 自動テスト: `src/lib/pageCapture.test.ts`、`e2e-desktop/desktop.spec.ts`（取り込み・オフ設定・ログイン画面）
+
+## DESK-04 取り込んだ値段の誤読（参考価格・クーポン・別商品の値段）
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 参考価格・クーポン・送料の金額や、隣の商品の値段を拾う
+- 対策: 金額の前後の語で除外、商品リンクを含む枠を「別の商品のリンクを含まない範囲」に限定、商品URLの形で重複除去。外れ値は相場一覧から除外して注意表示
+- 自動テスト: `src/lib/pageCapture.test.ts`、`e2e-desktop/desktop.spec.ts`
+
+## DESK-05 作ったアプリが起動直後に落ちる
+
+- 重大度: P0
+- 状態: Protected
+- 故障: 実行ファイル名・CFBundleName を日本語にすると macOS で起動直後に落ちる（2026-09 に再現）。依存の同梱漏れ
+- 対策: 実行ファイル名は英数字（SobaCardBoard）、表示名だけ日本語。画面・本体は1ファイルにまとめ node_modules を同梱しない
+- 自動テスト: `scripts/desktop-package-smoke.mjs`（delivery:verify・CI の macOS / Windows で作ったアプリを起動）
+
+## DESK-06 ダイアログの上に外部ページが重なる
+
+- 重大度: P2
+- 状態: Protected
+- 故障: 外部ページ（別レイヤー）が設定・手動追加のダイアログを覆い、操作できない
+- 対策: ダイアログ表示中は外部ページを隠す（overlays カウント）
+- 自動テスト: `e2e-desktop/desktop.spec.ts`（初回起動・設定中は非表示）
+
+## DESK-07 納品ファイルがココナラで送れない大きさになる
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 1ファイルが200MBを超えてトークルームで送れない
+- 対策: Mac 版を Appleシリコン用・Intel用に分け、各ファイル200MB未満を生成時・検証時に確認
+- 自動テスト: `scripts/create-delivery-package.mjs`・`scripts/verify-delivery.mjs`
 
 ---
 

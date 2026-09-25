@@ -44,7 +44,7 @@ function CompareCardItem({ card }: { card: MarketCard }) {
       )}
       <div className="relative z-10 flex-1 min-w-0">
         <p className="line-clamp-2 break-words text-xs font-medium text-ink">{card.title}</p>
-        <p className="num text-lg font-bold text-accent">{card.priceText || '価格不明'}</p>
+        <p className="num text-lg font-bold text-accent-text">{card.priceText || '価格不明'}</p>
         <div className="mt-1">
           <CardSourceBadges card={card} compact />
         </div>

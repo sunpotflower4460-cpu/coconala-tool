@@ -27,6 +27,8 @@ const LAYOUT_SPECS = /(layout|a11y)\.spec\.ts$/;
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
+  // プレビューサーバー（Worker）は1つなので、同時に動かすテストを4つまでにして読み込みの時間切れを防ぐ
+  workers: 4,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   // リトライで通ったテストも「不安定」として失敗扱いにし、たまたま通った結果を見逃さない。

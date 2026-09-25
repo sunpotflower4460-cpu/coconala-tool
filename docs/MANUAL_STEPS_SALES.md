@@ -8,8 +8,7 @@
 ```bash
 npm ci
 npx playwright install chromium webkit   # 初回のみ
-npm run marketing:capture                 # 出品用の画面写真・操作動画の下書き
-npm run verify:all                        # すべての自動チェック＋納品ZIP生成＋ZIP検証
+npm run verify:all                        # すべての自動チェック＋マニュアル・画面写真・インストーラー＋納品ファイル生成と検証（Mac で実行）
 ```
 
 - [ ] `dist-delivery/VERIFICATION_REPORT.md` の結果がすべて PASS
@@ -23,6 +22,13 @@ npm run verify:all                        # すべての自動チェック＋納
 - [ ] `E2E_BASE_URL=<デモURL> npm run e2e:postdeploy` がすべて passed
 - [ ] デモURLでデータソース「まとめて」にして1回検索し、3サイトの件数と実際の商品が出る（[`post-deploy-qa.md`](post-deploy-qa.md)）
 - [ ] 手持ちのスマホでデモURLを開き、検索と「比較に追加」ができる
+
+## 2-2. デスクトップアプリを実機で1回確かめる
+
+- [ ] 楽天の実キーで、アプリの「設定」→ 楽天市場 →「保存してテスト」が「使えます」になる（楽天の「許可されたWebサイト」に `coconala-tool.sunpotflower4460.workers.dev` が入っていること）
+- [ ] 「まとめて探す」で、右側のタブにメルカリ・ヤフオク・ラクマ・Amazon の本物の検索ページが開き、「値段を取り込む」で件数が出る
+- [ ] Windows のパソコンで1回インストールして起動する（手元に無ければ知人に依頼。GitHub の Windows 環境では自動で起動確認済み）
+- [ ] Apple シリコンの Mac で1回起動する（GitHub の Apple シリコン環境では自動で起動確認済み）
 
 ## 3. 出品物を仕上げる
 
@@ -42,7 +48,7 @@ npm run verify:all                        # すべての自動チェック＋納
 
 - [ ] `package.json` のバージョンを `1.0.0` にし、README・CHANGELOG・販売文・リスク表の表記をそろえて `npm run verify:all`
 - [ ] `v1.0.0` タグを付ける
-- [ ] 納品時は `dist-delivery/相場カード比較ボード-v1.0.0.zip` を渡す（中身の目視確認は不要。`delivery:verify` が展開・再ビルドまで確認済み）
+- [ ] 納品時は `dist-delivery/納品ファイル-v1.0.0/` の5ファイルをトークルームで送る（1回200MBまでのため、インストーラーは1通に1つずつ）。中身の目視確認は不要（`delivery:verify` が確認済み）
 
 ---
 

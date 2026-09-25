@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { runStaticFlow } from './flow';
 
-/** ①ツールを開く.html をダブルクリックした状態（file://）で、主要な操作ができることを確認する。 */
+/** ブラウザ版（自動取得なし）.html をダブルクリックした状態（file://）で、主要な操作ができることを確認する。 */
 const LOCAL_HTML = process.env.LOCAL_HTML_PATH;
 test.skip(!LOCAL_HTML, 'LOCAL_HTML_PATH が指定されたときだけ実行');
 

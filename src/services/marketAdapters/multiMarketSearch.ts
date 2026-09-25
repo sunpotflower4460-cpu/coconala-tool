@@ -1,6 +1,6 @@
 import type { MarketCard, MarketSearchResponse, MarketSearchStatus, OfficialMarketId, SourceResult } from '../../types/market';
 import { MARKET_LABELS } from '../../types/market';
-import { IS_STATIC_BUILD } from '../../lib/deployMode';
+import { IS_DESKTOP, IS_STATIC_BUILD } from '../../lib/deployMode';
 import { checkSearchQuery } from '../../lib/searchQuery';
 import { fetchRakutenOutcome, INVALID_QUERY_WARNING, STATIC_BUILD_WARNING, type RakutenOutcome } from './rakutenAdapter';
 import { fetchOfficialMarketOutcome } from './officialMarketAdapter';
@@ -10,8 +10,8 @@ const MARKETS: OfficialMarketId[] = ['rakuten', 'yahoo_shopping', 'ebay'];
 
 /** サイトごとの失敗理由（1行・平易な言葉）。 */
 const FAILURE_REASON: Record<MockStatus, string> = {
-  mock_no_key: '連携がまだ設定されていません（設定ガイド参照）',
-  mock_setup_error: 'キーまたは許可サイトの設定を確認してください',
+  mock_no_key: IS_DESKTOP ? 'キーが未設定です（右上の「設定」から登録できます）' : '連携がまだ設定されていません（設定ガイド参照）',
+  mock_setup_error: IS_DESKTOP ? 'キーの確認が必要です（右上の「設定」で「テスト」を押してください）' : 'キーまたは許可サイトの設定を確認してください',
   mock_timeout: '応答が遅いため表示できませんでした',
   mock_network: '接続できませんでした',
   mock_rate_limited: '短時間に検索が集中しました。1分ほど待ってください',
@@ -57,7 +57,7 @@ export async function searchAllMarkets(query: string, limit = 8): Promise<Market
       status: 'mock_no_key',
       warnings: [STATIC_BUILD_WARNING, MANUAL_HINT],
       searchedAt: searchedAt(),
-      sources: MARKETS.map((market) => ({ market, outcome: 'failed', count: 0, message: STATIC_SOURCE_MESSAGE })),
+      sources: MARKETS.map((market) => ({ market, outcome: 'failed', count: 0, message: STATIC_SOURCE_MESSAGE, failure: 'mock_no_key' })),
     };
   }
 
@@ -67,7 +67,7 @@ export async function searchAllMarkets(query: string, limit = 8): Promise<Market
     if (outcome.kind === 'ok') return { market, outcome: 'ok', count: outcome.cards.length };
     if (outcome.kind === 'empty') return { market, outcome: 'empty', count: 0, message: '該当なし' };
     if (outcome.kind === 'invalid_query') return { market, outcome: 'invalid_query', count: 0, message: 'この検索語は使えません' };
-    return { market, outcome: 'failed', count: 0, message: FAILURE_REASON[outcome.status] };
+    return { market, outcome: 'failed', count: 0, message: FAILURE_REASON[outcome.status], failure: outcome.status };
   });
 
   const cards = interleave(outcomes.map((o) => (o.kind === 'ok' ? o.cards : [])));

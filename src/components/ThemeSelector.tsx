@@ -30,7 +30,7 @@ export function ThemeSelector() {
               type="button"
               className={`flex min-h-11 min-w-11 items-center justify-center gap-1.5 rounded-full border px-2 py-1 text-xs transition sm:px-3 ${
                 active
-                  ? 'border-accent/70 bg-accent/15 text-accent font-semibold ring-2 ring-accent/50'
+                  ? 'border-accent/70 bg-accent/15 text-accent-text font-semibold ring-2 ring-accent/50'
                   : 'border-white/12 bg-white/5 text-ink/60 hover:border-white/25 hover:bg-white/10'
               }`}
             >

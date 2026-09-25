@@ -30,6 +30,8 @@ export type SourceResult = {
   count: number;
   /** 利用者向けの一言（失敗理由など） */
   message?: string;
+  /** outcome=failed のときの理由（キー未設定なら mock_no_key。画面で「設定する」を出すのに使う） */
+  failure?: Extract<MarketSearchStatus, `mock_${string}`>;
 };
 
 export type MarketSearchStatus =

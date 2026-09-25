@@ -1,5 +1,7 @@
 import { useLayoutEffect } from 'react';
 import { AppShell } from './components/AppShell';
+import { DesktopShell } from './features/desktop/DesktopShell';
+import { IS_DESKTOP } from './lib/deployMode';
 import { useResearchStore } from './store/researchStore';
 
 const themeClasses: Record<string, string> = {
@@ -25,9 +27,15 @@ function App() {
         <div className="aurora-orb" />
         <div className="aurora-grain" />
       </div>
-      <main className="app-main mx-auto max-w-7xl text-theme">
-        <AppShell />
-      </main>
+      {IS_DESKTOP ? (
+        <main className="text-theme">
+          <DesktopShell />
+        </main>
+      ) : (
+        <main className="app-main mx-auto max-w-7xl text-theme">
+          <AppShell />
+        </main>
+      )}
     </>
   );
 }

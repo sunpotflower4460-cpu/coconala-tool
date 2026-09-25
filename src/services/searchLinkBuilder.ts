@@ -41,7 +41,7 @@ export function buildSearchLinks(query: string): SearchShortcut[] {
       id: 'rakuma',
       siteName: 'ラクマ',
       description: 'ラクマで売買相場を確認',
-      url: `https://fril.jp/search?query=${q}`,
+      url: `https://fril.jp/s?query=${q}`,
     },
     {
       id: 'amazon',

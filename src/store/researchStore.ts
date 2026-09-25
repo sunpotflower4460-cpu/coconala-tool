@@ -50,6 +50,8 @@ type ResearchStore = {
   /** 検索リンクで開いたサイト（メルカリ等）で見た価格を、相場一覧に1件加える。比較ボードには入れない。 */
   addObservedPrice: (entry: { market: MarketId; price: number; pageUrl: string; query: string }) => void;
   removeResultCard: (id: string) => void;
+  /** デスクトップ版: そのサイトの「画面から取り込んだ値段」カードを入れ替える（検索結果の一覧に並ぶ） */
+  setCapturedCards: (market: MarketId, cards: MarketCard[]) => void;
   /** 検索ページからコピーして貼り付けた価格（相場一覧だけに使い、検索結果の一覧には出さない）。 */
   pastedCards: MarketCard[];
   /** そのサイトの貼り付け価格を置き換える（貼り直し＝入れ替え）。 */
@@ -223,6 +225,14 @@ export const useResearchStore = create<ResearchStore>()(
       clearPastedPrices: (market) => set((state) => ({ pastedCards: state.pastedCards.filter((c) => c.market !== market) })),
 
       removeResultCard: (id) => set((state) => ({ resultCards: state.resultCards.filter((c) => c.id !== id) })),
+
+      setCapturedCards: (market, cards) =>
+        set((state) => ({
+          resultCards: [
+            ...state.resultCards.filter((c) => !(c.id.startsWith('captured-') && c.market === market)),
+            ...sanitizeCards(cards).filter((c) => c.market === market),
+          ],
+        })),
 
       setDataSourceMode: (mode) => {
         const next = sanitizeDataSourceMode(mode);
