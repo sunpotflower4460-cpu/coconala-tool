@@ -1,4 +1,12 @@
-import type { SearchShortcut } from '../types/market';
+import type { MarketId, SearchShortcut } from '../types/market';
+
+/** 自動取得できず、検索ページを開いて価格を確かめるサイト（相場一覧の「手入力」行・まとめて開くの既定）。 */
+export const MANUAL_MARKETS: Array<{ market: MarketId; shortcutId: string }> = [
+  { market: 'mercari', shortcutId: 'mercari' },
+  { market: 'yahoo_auctions', shortcutId: 'yahoo-auctions' },
+  { market: 'rakuma', shortcutId: 'rakuma' },
+  { market: 'amazon', shortcutId: 'amazon' },
+];
 
 export function buildSearchLinks(query: string): SearchShortcut[] {
   if (!query.trim()) return [];
@@ -36,8 +44,14 @@ export function buildSearchLinks(query: string): SearchShortcut[] {
       url: `https://fril.jp/search?query=${q}`,
     },
     {
+      id: 'amazon',
+      siteName: 'Amazon',
+      description: 'Amazon で新品・中古の価格を確認',
+      url: `https://www.amazon.co.jp/s?k=${q}`,
+    },
+    {
       id: 'yahoo-shopping',
-      siteName: 'Yahooショッピング',
+      siteName: 'Yahoo!ショッピング',
       description: 'Yahooショッピングで新品相場を確認',
       url: `https://shopping.yahoo.co.jp/search?p=${q}`,
     },

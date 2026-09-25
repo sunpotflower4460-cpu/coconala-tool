@@ -4,9 +4,9 @@ import { SEARCH_STATUS_LABELS, type DataSourceMode } from '../types/market';
 import { IS_STATIC_BUILD } from '../lib/deployMode';
 
 const notes = [
-  '楽天のキーはサーバー側だけで管理し、画面やブラウザには保存しません。',
-  '楽天市場に接続できないときは、理由を表示したうえで見本データに切り替えます。',
-  'メルカリ・ヤフオクなどは、検索リンクを開いて確認し、必要なら手動で追加する使い方です。',
+  '楽天・Yahoo!・eBay のキーはサーバー側だけで管理し、画面やブラウザには保存しません。',
+  '接続できないサイトがあるときは理由を表示します。どのサイトにも接続できないときだけ見本データに切り替えます。',
+  'メルカリ・ヤフオク・ラクマ・Amazon は、検索ページを開いて見た価格を相場一覧に入力する使い方です（自動取得はしません）。',
 ];
 
 const currentSourceLabel: Record<DataSourceMode, string> = {
@@ -14,6 +14,9 @@ const currentSourceLabel: Record<DataSourceMode, string> = {
   rakuten_mock: IS_STATIC_BUILD
     ? '楽天市場（この公開版では見本データのみ）'
     : '楽天市場（設定済みなら実データ、未設定・接続できない時は見本データ）',
+  multi: IS_STATIC_BUILD
+    ? '楽天・Yahoo!ショッピング・eBay（この公開版では見本データのみ）'
+    : '楽天・Yahoo!ショッピング・eBay をまとめて検索（設定済みのサイトは実データ）',
 };
 
 export function ApiStatusPanel() {

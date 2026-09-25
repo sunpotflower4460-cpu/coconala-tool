@@ -53,7 +53,10 @@ test('押せる部品（ボタン・リンク・入力）はタップしやす�
   const small = await page.evaluate(() => {
     const targets = Array.from(
       document.querySelectorAll<HTMLElement>('main button, main input, main select, main a[href]'),
-    ).filter((el) => {
+    )
+      // チェックボックスは、押せる範囲である外側のラベルの高さで判定する
+      .map((el) => (el instanceof HTMLInputElement && el.type === 'checkbox' && el.closest('label') ? (el.closest('label') as HTMLElement) : el))
+      .filter((el) => {
       const style = getComputedStyle(el);
       const rect = el.getBoundingClientRect();
       // 画面外・非表示・文中リンク（フッターのクレジット等）は対象外

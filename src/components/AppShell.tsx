@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useResearchStore } from '../store/researchStore';
 import { ProductSearchBar } from './ProductSearchBar';
@@ -15,6 +15,8 @@ import { ResearchHistoryPanel } from './ResearchHistoryPanel';
 import { AiMemoPanel } from './AiMemoPanel';
 import { ApiStatusPanel } from './ApiStatusPanel';
 import { DemoModeNotice } from './DemoModeNotice';
+import { PriceOverviewBoard } from './PriceOverviewBoard';
+import { ResultsToolbar, applyResultView, type ResultFilter, type ResultSort } from './ResultsToolbar';
 import { SOURCE_TYPE_LABELS, isDemoSearchStatus, type SourceType } from '../types/market';
 
 const sourceLegendItems: SourceType[] = ['official_api', 'search_api', 'search_link', 'manual'];
@@ -35,10 +37,12 @@ const statusBannerClassByStatus: Record<string, string> = {
 type DisplayMode = 'live' | 'demo' | 'rakuten_idle';
 
 export function AppShell() {
-  const { resultCards, searchedQuery, comparedCards, searchStatus, searchWarnings, dataSourceMode, lastSearchedAt } =
+  const { resultCards, searchedQuery, comparedCards, searchStatus, searchWarnings, dataSourceMode, lastSearchedAt, searchSources, exchangeRate } =
     useResearchStore(
       useShallow((s) => ({
         resultCards: s.resultCards,
+        searchSources: s.searchSources,
+        exchangeRate: s.profitSettings.exchangeRate,
         searchedQuery: s.searchedQuery,
         comparedCards: s.comparedCards,
         searchStatus: s.searchStatus,
@@ -49,10 +53,15 @@ export function AppShell() {
     );
   const [showManualAdd, setShowManualAdd] = useState(false);
   const [manualSuccess, setManualSuccess] = useState(false);
+  const [filter, setFilter] = useState<ResultFilter>('all');
+  const [sort, setSort] = useState<ResultSort>('default');
+  // 新しい検索をしたら絞り込みを「すべて」に戻す（前のサイト指定で結果が隠れないように）。
+  useEffect(() => setFilter('all'), [lastSearchedAt]);
 
   // 検索リンクは「実際に検索した語」で作る。入力途中の文字で結果と食い違わないようにする。
   const shortcuts = buildSearchLinks(searchedQuery);
   const hasResults = resultCards.length > 0;
+  const visibleCards = applyResultView(resultCards, filter, sort, exchangeRate);
   const hasSearched = lastSearchedAt !== null;
 
   const displayMode: DisplayMode =
@@ -75,7 +84,7 @@ export function AppShell() {
               <h1 className="font-display text-xl font-bold tracking-tight sm:text-2xl">相場カード比較ボード</h1>
               {displayMode === 'live' && (
                 <span className="rounded-full border border-emerald-300/40 bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-100">
-                  実データ表示中 — 楽天市場
+                  {dataSourceMode === 'multi' ? '実データ表示中 — 楽天・Yahoo!・eBay' : '実データ表示中 — 楽天市場'}
                 </span>
               )}
               {displayMode === 'demo' && (
@@ -101,7 +110,7 @@ export function AppShell() {
         </p>
         {displayMode === 'live' ? (
           <div className="glass border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-100">
-            楽天市場の実データを表示しています。表示価格は検索時点の参考値です。最終確認は元ページで行ってください。
+            {dataSourceMode === 'multi' ? '楽天市場・Yahoo!ショッピング・eBay の実データ' : '楽天市場の実データ'}を表示しています。表示価格は検索時点の参考値です。最終確認は元ページで行ってください。
           </div>
         ) : displayMode === 'demo' ? (
           <div className="glass border-amber-300/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-50">
@@ -139,6 +148,9 @@ export function AppShell() {
               </button>
             </div>
           )}
+
+          {/* サイト別の価格帯（一目で比較） */}
+          {(hasSearched || hasResults) && <PriceOverviewBoard />}
 
           {/* Search shortcuts */}
           {shortcuts.length > 0 && <SearchShortcutCard shortcuts={shortcuts} />}
@@ -193,12 +205,28 @@ export function AppShell() {
                   手動で追加
                 </button>
               </div>
+              {(hasResults || searchSources.length > 0) && (
+                <ResultsToolbar
+                  cards={resultCards}
+                  sources={searchSources}
+                  filter={filter}
+                  sort={sort}
+                  onFilter={setFilter}
+                  onSort={setSort}
+                />
+              )}
               {hasResults ? (
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-                  {resultCards.map((card) => (
-                    <ResultCard key={card.id} card={card} />
-                  ))}
-                </div>
+                visibleCards.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                    {visibleCards.map((card) => (
+                      <ResultCard key={card.id} card={card} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="glass border-dashed px-4 py-4 text-sm text-ink/70">
+                    このサイトの商品はありません。「すべて」で他のサイトの結果を表示できます。
+                  </div>
+                )
               ) : (
                 <div className="glass border-dashed px-4 py-4 text-sm text-ink/70">
                   該当する候補が見つかりませんでした。検索語を変えるか、「手動で追加」から元ページのURLと価格を登録できます。
@@ -227,7 +255,13 @@ export function AppShell() {
       <footer className="mt-10 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-4 text-[11px] text-ink/60">
         <span>表示価格は参考値です。購入・出品の前に必ず元ページでご確認ください。</span>
         {/* 楽天ウェブサービスの利用規約で定められたクレジット表記（HTMLは改変不可）。 */}
-        <a href="https://developers.rakuten.com/" target="_blank">Supported by Rakuten Developers</a>
+        <span className="flex flex-wrap items-center gap-3">
+          <a href="https://developers.rakuten.com/" target="_blank">Supported by Rakuten Developers</a>
+          {/* Yahoo! JAPAN Web API のクレジット表記（必須・改変不可）。 */}
+          {/* Begin Yahoo! JAPAN Web Services Attribution Snippet */}
+          <span style={{ margin: '15px 15px 15px 15px' }}><a href="https://developer.yahoo.co.jp/sitemap/">Webサービス by Yahoo! JAPAN</a></span>
+          {/* End Yahoo! JAPAN Web Services Attribution Snippet */}
+        </span>
       </footer>
 
       {/* Manual add modal */}

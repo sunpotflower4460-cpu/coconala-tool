@@ -44,6 +44,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
   const imageErrorId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
+  const priceRef = useRef<HTMLInputElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
@@ -183,6 +184,17 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
                 if (duplicateWarning) checkDuplicate(nextValue);
               }}
               onBlur={handleUrlBlur}
+              onPaste={(e) => {
+                // URLを貼ったら、サイト名を自動で入れて価格欄へ進む（貼って・価格を打つだけで追加できる）。
+                const pasted = e.clipboardData.getData('text').trim();
+                if (!toSafeHttpUrl(pasted)) return;
+                e.preventDefault();
+                const detected = detectSiteNameFromUrl(pasted);
+                setForm((f) => ({ ...f, pageUrl: pasted, siteName: f.siteName || detected }));
+                setUrlError('');
+                checkDuplicate(pasted);
+                window.setTimeout(() => priceRef.current?.focus(), 0);
+              }}
               placeholder="https://..."
               className={inputClass}
             />
@@ -224,6 +236,7 @@ export function ManualAddPanel({ onClose, onSuccess }: Props) {
             <label className="flex flex-col gap-1 text-xs text-slate-200">
               価格
               <input
+                ref={priceRef}
                 type="text"
                 maxLength={MAX_CARD_PRICE_TEXT_LENGTH}
                 value={form.priceText}

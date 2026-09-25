@@ -135,10 +135,17 @@ async function main() {
   for (const file of serverAndUi) {
     const content = await fs.readFile(file, 'utf-8');
     if (/from ['"](puppeteer|playwright|cheerio|jsdom|node-html-parser)/.test(content)) scraping.push(`${path.relative(ROOT, file)}: HTML解析/ブラウザ自動操作ライブラリ`);
-    // 通信先は画面→自サーバーの /api/rakuten と、サーバー→楽天公式API（endpoint）だけ。`async fetch(` はWorkerの入口の定義なので除く。
+    // 通信先は、画面→自サーバーの /api/*（officialFetch の `${path}`）と、サーバー→各社の公式API（endpoint・OAuth）だけ。
+    // `async fetch(` は Worker の入口の定義なので除く。
     for (const m of content.matchAll(/(?<!async\s)\bfetch\(\s*([^,]+)/g)) {
       const target = m[1].trim();
-      if (!/^`\/api\/rakuten|^endpoint\.toString\(\)/.test(target)) scraping.push(`${path.relative(ROOT, file)}: fetch(${target})`);
+      if (!/^`\/api\/rakuten|^`\$\{path\}\?q=|^endpoint\.toString\(\)|^resolveTestOverride\(env/.test(target)) {
+        scraping.push(`${path.relative(ROOT, file)}: fetch(${target})`);
+      }
+    }
+    // 画面側の /api/* の呼び先は、公式APIプロキシの3つだけ
+    for (const m of content.matchAll(/'(\/api\/[a-z]+)'/g)) {
+      if (!['/api/rakuten', '/api/yahoo', '/api/ebay'].includes(m[1])) scraping.push(`${path.relative(ROOT, file)}: 未知のAPI ${m[1]}`);
     }
   }
   record('外部サイトを直接取得・解析するコードが無い（楽天は公式APIのみ）', scraping.length === 0, scraping.join(' / '));
@@ -150,6 +157,14 @@ async function main() {
     /https:\/\/openapi\.rakuten\.co\.jp\/ichibams\/api\/IchibaItem\/Search\/\d{8}/.test(rakuten) &&
       !/app\.rakuten\.co\.jp\/services/.test(rakuten) &&
       rakuten.includes("searchParams.set('accessKey'"),
+  );
+  const yahoo = await read('functions/api/yahoo.ts');
+  const ebay = await read('functions/api/ebay.ts');
+  record(
+    'Yahoo!ショッピング・eBay は公式API（shopping.yahooapis.jp / api.ebay.com）だけを使う',
+    yahoo.includes("'https://shopping.yahooapis.jp/ShoppingWebService/V3/itemSearch'") &&
+      ebay.includes("'https://api.ebay.com/buy/browse/v1/item_summary/search'") &&
+      ebay.includes("'https://api.ebay.com/identity/v1/oauth2/token'"),
   );
   const wrangler = await read('wrangler.jsonc');
   record('Workers にレート制限（ratelimits）が設定されている', /"ratelimits"/.test(wrangler) && /RAKUTEN_RATE_LIMITER/.test(await read('worker.ts')));
@@ -163,8 +178,17 @@ async function main() {
     '楽天ウェブサービスのクレジット表記（改変なし）が画面にある',
     appShell.includes('<a href="https://developers.rakuten.com/" target="_blank">Supported by Rakuten Developers</a>'),
   );
+  record(
+    'Yahoo! JAPAN Web API のクレジット表記（改変なし）が画面にある',
+    appShell.includes('<a href="https://developer.yahoo.co.jp/sitemap/">Webサービス by Yahoo! JAPAN</a>'),
+  );
   const envExample = await read('.env.example');
-  record('.env.example に楽天の新しい設定項目があり、値は空', /^SERVER_RAKUTEN_APP_ID=$/m.test(envExample) && /^SERVER_RAKUTEN_ACCESS_KEY=$/m.test(envExample));
+  record(
+    '.env.example に楽天・Yahoo!・eBay の設定項目があり、値は空',
+    ['SERVER_RAKUTEN_APP_ID', 'SERVER_RAKUTEN_ACCESS_KEY', 'SERVER_YAHOO_CLIENT_ID', 'SERVER_EBAY_CLIENT_ID', 'SERVER_EBAY_CLIENT_SECRET'].every((name) =>
+      new RegExp(`^${name}=$`, 'm').test(envExample),
+    ),
+  );
 
   // 7. 本番故障リスク表に未対策の P0 が残っていない
   const matrix = await read('docs/PRODUCTION_FAILURE_RISK_MATRIX.md');

@@ -1,11 +1,24 @@
 import { onRequest, errorResponse } from './functions/api/rakuten';
 import type { RakutenFunctionEnv } from './functions/api/rakuten';
+import { onYahooRequest, type YahooFunctionEnv } from './functions/api/yahoo';
+import { onEbayRequest, type EbayFunctionEnv } from './functions/api/ebay';
 
 /** Workers Rate Limiting バインディング（`wrangler.jsonc` の `ratelimits`）。未設定の環境でも動くよう任意。 */
 type RateLimiter = { limit(options: { key: string }): Promise<{ success: boolean }> };
 
-export type WorkerEnv = RakutenFunctionEnv & {
-  RAKUTEN_RATE_LIMITER?: RateLimiter;
+export type WorkerEnv = RakutenFunctionEnv &
+  YahooFunctionEnv &
+  EbayFunctionEnv & {
+    RAKUTEN_RATE_LIMITER?: RateLimiter;
+  };
+
+type Handler = (context: { request: Request; env: WorkerEnv }) => Promise<Response>;
+
+/** `/api/<name>` と、末尾スラッシュ付きの `/api/<name>/` を同じハンドラへ渡す。 */
+const ROUTES: Record<string, Handler> = {
+  '/api/rakuten': onRequest,
+  '/api/yahoo': onYahooRequest,
+  '/api/ebay': onEbayRequest,
 };
 
 /** 利用者ごとのレート制限キー。Cloudflare 上では CF-Connecting-IP をクライアントが偽装できない。 */
@@ -20,18 +33,19 @@ function rateLimitKey(request: Request): string {
  */
 export default {
   async fetch(request: Request, env: WorkerEnv): Promise<Response> {
-    const pathname = new URL(request.url).pathname;
-    // リバプロや末尾スラッシュ正規化漏れで `/api/rakuten/` になっても同じハンドラへ渡す。
-    if (pathname === '/api/rakuten' || pathname === '/api/rakuten/') {
+    const pathname = new URL(request.url).pathname.replace(/\/$/, '');
+    const handler = ROUTES[pathname];
+    if (handler) {
+      // 1回の「まとめて探す」で楽天・Yahoo!・eBay の3回を呼ぶため、同じ枠（1IP 60秒30回 = 約10検索）を共有する。
       if (env.RAKUTEN_RATE_LIMITER) {
         try {
           const { success } = await env.RAKUTEN_RATE_LIMITER.limit({ key: rateLimitKey(request) });
           if (!success) return errorResponse('rate_limited', 429);
         } catch {
-          // レート制限サービス自体の障害で検索を止めない（楽天側の 429 は別途扱う）。
+          // レート制限サービス自体の障害で検索を止めない（各サイトの 429 は別途扱う）。
         }
       }
-      return onRequest({ request, env });
+      return handler({ request, env });
     }
     return new Response('Not found', {
       status: 404,

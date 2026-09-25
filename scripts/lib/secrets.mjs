@@ -31,6 +31,7 @@ function looksLikePlaceholder(raw) {
   // eslint-disable-next-line no-control-regex
   if (/[^\x00-\x7F]/.test(value)) return true; // 日本語の案内文など
   if (/^[A-Za-z_][A-Za-z0-9_.]*$/.test(value) && /[a-z]/.test(value) && value.includes(".")) return true; // 変数参照（env.X など）
+  if (/^[\d\s_*+\-/().]+$/.test(value)) return true; // 数値・計算式（5 * 60 * 1000 など）
   const lower = value.toLowerCase();
   return PLACEHOLDER_HINTS.some((hint) => lower.includes(hint));
 }

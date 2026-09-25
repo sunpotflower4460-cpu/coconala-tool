@@ -2,6 +2,8 @@ import { sampleMarketCards } from '../../data/sampleMarketCards';
 import type { DataSourceMode, MarketSearchResponse } from '../../types/market';
 import { rakutenAdapter } from './rakutenAdapter';
 import { matchesAllKeywords } from '../../lib/keywordMatch';
+import { searchAllMarkets } from './multiMarketSearch';
+import { detectMarketFromUrl } from '../../features/manualAdd/siteDetector';
 
 const SAMPLE_WARNING =
   'サンプルデータ（UI確認用の固定カード）を表示しています。リアルタイム取得ではありません。';
@@ -14,7 +16,7 @@ function searchSampleCards(query: string): MarketSearchResponse {
   const warnings = matched.length ? [SAMPLE_WARNING] : [SAMPLE_WARNING, SAMPLE_EMPTY_WARNING];
 
   return {
-    cards: matched.map((card) => ({ ...card, demoOrigin: 'sample' as const })),
+    cards: matched.map((card) => ({ ...card, demoOrigin: 'sample' as const, market: card.market ?? detectMarketFromUrl(card.pageUrl) })),
     status: 'sample',
     warnings,
     searchedAt: new Date().toISOString(),
@@ -24,7 +26,8 @@ function searchSampleCards(query: string): MarketSearchResponse {
 /**
  * 検索の単一エントリ。`dataSourceMode` に応じて使うデータ経路を切り替える。
  *  - sample      : UI確認用の固定サンプルカードを検索語で絞り込んで返す。
- *  - rakuten_mock: 楽天アダプター（キー設定時は実API、未設定/失敗時はモックへフォールバック）。
+ *  - rakuten_mock: 楽天のみ（キー設定時は実API、未設定/失敗時は見本データへ切り替え）。
+ *  - multi       : 楽天・Yahoo!ショッピング・eBay を同時に検索（`multiMarketSearch.ts`）。
  *
  * 将来 eBay / Yahoo を足す場合も、ここに分岐を追加すれば UI を変えずに載る。
  */
@@ -35,6 +38,9 @@ export async function runMarketSearch(
 ): Promise<MarketSearchResponse> {
   if (mode === 'sample') {
     return searchSampleCards(query);
+  }
+  if (mode === 'multi') {
+    return searchAllMarkets(query, limit);
   }
 
   return rakutenAdapter.search({ query, limit });

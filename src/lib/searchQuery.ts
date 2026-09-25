@@ -62,3 +62,16 @@ export function checkRakutenSearchQuery(raw: string): SearchQueryCheck {
   if (tokens.every(isTooShortToken)) return { ok: false, issue: 'too_short' };
   return { ok: true, value, keyword: joinShortTokens(tokens) };
 }
+
+/** 楽天以外（Yahoo!ショッピング・eBay）用の検索語チェック。空・長すぎる語だけを止める。 */
+export function checkSearchQuery(raw: string): { ok: true; value: string } | { ok: false; issue: 'empty' | 'too_long' } {
+  const value = stripControlChars(raw).replace(/\u3000/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!value) return { ok: false, issue: 'empty' };
+  if (value.length > MAX_SEARCH_QUERY_LENGTH) return { ok: false, issue: 'too_long' };
+  return { ok: true, value };
+}
+
+/** JAN / EAN コード（8桁・13桁の数字）か。 */
+export function isJanCode(value: string): boolean {
+  return /^(\d{8}|\d{13})$/.test(value.trim());
+}
