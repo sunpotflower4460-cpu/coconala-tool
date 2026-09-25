@@ -90,11 +90,14 @@ export function ProfitPanel() {
           {shippingCost.toLocaleString('ja-JP')} = {displayProfit.toLocaleString('ja-JP')}円
         </p>
         <p className="text-[11px] text-ink/60">販売価格 - 手数料（1円未満切り捨て） - 仕入れ価格 - 送料 = 利益</p>
-        <div className="flex justify-end mt-1">
-          <span className={`rounded-full px-3 py-0.5 text-xs font-bold ${badge.color}`}>
-            {badge.label}
-          </span>
-        </div>
+        {/* 販売価格が未入力のうちは判定バッジを出さない（未入力で「利益薄い」と決めつけない） */}
+        {sellPrice > 0 && (
+          <div className="flex justify-end mt-1">
+            <span className={`rounded-full px-3 py-0.5 text-xs font-bold ${badge.color}`}>
+              {badge.label}
+            </span>
+          </div>
+        )}
       </div>
       <p className="text-[11px] text-ink/60">
         ※ 利益見込みは推定です。最終判断は元ページの価格・送料・状態をご確認ください。

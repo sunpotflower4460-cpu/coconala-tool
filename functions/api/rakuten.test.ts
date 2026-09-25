@@ -673,7 +673,7 @@ describe('functions/api/rakuten onRequest', () => {
       const ok = captureFetch();
       const res = await onRequest(makeContext({ search: '?q=Switch%202', appId: 'key' }));
       expect(res.status).toBe(200);
-      expect(ok[0].url.searchParams.get('keyword')).toBe('Switch 2');
+      expect(ok[0].url.searchParams.get('keyword')).toBe('Switch2');
     });
 
     it('本文が上限を超える応答は読み切らずに 502 upstream_error', async () => {

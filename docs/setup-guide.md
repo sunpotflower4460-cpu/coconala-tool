@@ -19,12 +19,13 @@ npm run dev   # 表示された http://localhost:5173 をブラウザで開く
 楽天のキーは **画面側（`VITE_` で始まる変数）には絶対に置きません**。サーバー側（`/api/rakuten`）だけが読みます。
 
 1. [`deployment-guide.md` の手順3](deployment-guide.md#3-楽天のアプリidアクセスキーを取得する) で、アプリIDとアクセスキーを取得します。
-   手元で試すときは、楽天の「許可されたWebサイト」に `localhost` も登録してください。
 2. `source/` 直下に `.dev.vars` というファイルを作り、次のように書きます（このファイルは納品物・Git に含まれません）。
+   楽天の「許可されたWebサイト」には `localhost` を登録できないため、手元でも楽天に登録した公開ドメインを名乗って問い合わせます。
 
    ```
    SERVER_RAKUTEN_APP_ID=あなたのアプリID
    SERVER_RAKUTEN_ACCESS_KEY=あなたのアクセスキー
+   SERVER_RAKUTEN_ALLOWED_ORIGIN=https://楽天に登録した公開ドメイン
    ```
 
 3. `npm run dev` を起動し直し、データソースを「楽天市場」にして検索します。
