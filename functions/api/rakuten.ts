@@ -324,7 +324,7 @@ async function handleGet(context: PagesFunctionContext, requestId: string): Prom
   const endpoint = new URL(resolveRakutenEndpoint(env));
   endpoint.searchParams.set('applicationId', appId);
   endpoint.searchParams.set('accessKey', accessKey);
-  endpoint.searchParams.set('keyword', queryCheck.value);
+  endpoint.searchParams.set('keyword', queryCheck.keyword);
   endpoint.searchParams.set('hits', String(limit));
   endpoint.searchParams.set('format', 'json');
   endpoint.searchParams.set('formatVersion', '2');
