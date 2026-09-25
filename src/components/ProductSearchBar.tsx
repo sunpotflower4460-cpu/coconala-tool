@@ -5,7 +5,7 @@ import { DataSourceModeSelector } from './DataSourceModeSelector';
 import { performSearch } from '../features/search/performSearch';
 import { MAX_SEARCH_QUERY_LENGTH } from '../lib/limits';
 
-export function ProductSearchBar() {
+export function ProductSearchBar({ hideSourceSelector = false }: { hideSourceSelector?: boolean } = {}) {
   const { query, setQuery, isSearching, clearSearch } = useResearchStore(
     useShallow((s) => ({
       query: s.query,
@@ -62,7 +62,7 @@ export function ProductSearchBar() {
           {isSearching ? '検索中…' : 'まとめて探す'}
         </button>
       </div>
-      <DataSourceModeSelector />
+      {!hideSourceSelector && <DataSourceModeSelector />}
     </div>
   );
 }

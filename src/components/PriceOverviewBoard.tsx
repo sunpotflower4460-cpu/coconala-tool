@@ -131,9 +131,11 @@ type BoardProps = {
   outliers: Map<string, OutlierReason>;
   includeOutliers: boolean;
   onToggleOutliers: () => void;
+  /** デスクトップ版: 「開く」で右のタブを切り替え、サイト名でそのサイトの商品に絞り込む（貼り付けは「取り込む」ボタンに置き換え） */
+  desktop?: { onOpenSite: (market: MarketId) => void; onShowMarket: (market: MarketId) => void };
 };
 
-export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers }: BoardProps) {
+export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers, desktop }: BoardProps) {
   const [pasteFor, setPasteFor] = useState<MarketId | null>(null);
   const [blockedWindow, setBlockedWindow] = useState(false);
   const { resultCards, pastedCards, clearPastedPrices, searchSources, searchedQuery, exchangeRate, dataSourceMode, removeResultCard } = useResearchStore(
@@ -194,7 +196,9 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
             相場一覧（サイト別の価格帯）
           </h2>
           <p className="mt-0.5 text-xs text-ink/70">
-            同じ目盛りで並べています。メルカリ・ヤフオク・ラクマ・Amazon は「開く」で右側に表示し、ページをコピーして貼り付けボタンで取り込むか、見た価格を入力すると並びます（自動取得はしません）。
+            {desktop
+              ? 'サイトごとの値段の幅を同じ目盛りで並べています。サイト名を押すと、そのサイトの商品だけを下の一覧に出します。メルカリ・ヤフオク・ラクマ・Amazon は「値段を取り込む」を押すと入ります。'
+              : '同じ目盛りで並べています。メルカリ・ヤフオク・ラクマ・Amazon は「開く」で右側に表示し、ページをコピーして貼り付けボタンで取り込むか、見た価格を入力すると並びます（自動取得はしません）。'}
           </p>
         </div>
         {all.length > 0 && (
@@ -232,12 +236,28 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
           return (
             <li key={row.market} className="grid grid-cols-1 gap-2 py-2.5 sm:grid-cols-[9rem_minmax(0,1fr)_18.5rem] sm:items-center">
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-sm font-semibold text-ink">{MARKET_LABELS[row.market]}</span>
+                {desktop && row.cards.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => desktop.onShowMarket(row.market)}
+                    className="min-h-11 rounded-control text-left text-sm font-semibold text-ink underline decoration-dotted underline-offset-4 hover:text-accent"
+                  >
+                    {MARKET_LABELS[row.market]}
+                  </button>
+                ) : (
+                  <span className="text-sm font-semibold text-ink">{MARKET_LABELS[row.market]}</span>
+                )}
                 {row.market === cheapest && (
                   <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">最安</span>
                 )}
                 <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-ink/75">
-                  {row.kind === 'auto' ? '自動取得' : '手入力'}
+                  {row.kind === 'auto'
+                    ? '自動取得'
+                    : desktop
+                      ? row.cards.some((c) => c.id.startsWith('captured-'))
+                        ? '取り込み'
+                        : '未取り込み'
+                      : '手入力'}
                 </span>
               </div>
 
@@ -261,7 +281,12 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
                   </>
                 ) : (
                   <p className="text-xs text-ink/65">
-                    {row.status ?? (row.kind === 'manual' ? '「開く」で検索ページを見て、価格を入力してください' : '該当なし')}
+                    {row.status ??
+                      (row.kind === 'manual'
+                        ? desktop
+                          ? '「値段を取り込む」を押すと並びます'
+                          : '「開く」で検索ページを見て、価格を入力してください'
+                        : '該当なし')}
                   </p>
                 )}
                 {pasted.length > 0 && (
@@ -297,7 +322,20 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
                 )}
               </div>
 
-              {row.kind === 'manual' && row.searchUrl ? (
+              {row.kind === 'manual' && row.searchUrl && desktop ? (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => desktop.onOpenSite(row.market)}
+                    aria-label={`${MARKET_LABELS[row.market]}のページを右のタブで見る`}
+                    className="flex h-11 items-center gap-1 rounded-control border border-white/15 px-3 text-xs text-ink/90 hover:bg-white/10"
+                  >
+                    <ExternalLink size={13} aria-hidden="true" />
+                    右で見る
+                  </button>
+                  <ObservedPriceInput market={row.market} searchUrl={row.searchUrl} query={searchedQuery} />
+                </div>
+              ) : row.kind === 'manual' && row.searchUrl ? (
                 <div className="flex items-center gap-1.5">
                   <a
                     href={row.searchUrl}

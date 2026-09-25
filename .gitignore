@@ -20,3 +20,5 @@ dist-e2e/
 .dev.vars*
 dist-static/
 dist-local/
+dist-desktop/
+release-desktop/

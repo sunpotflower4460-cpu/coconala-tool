@@ -94,6 +94,33 @@ function handleEbaySearch(url, req, res) {
   return json(res, 200, { total: 3, itemSummaries });
 }
 
+
+/**
+ * デスクトップ版 E2E 用の架空の検索ページ（/fake-sites/<サイト>?q=...）。実サイトの画面の複製ではなく、
+ * 「商品ページへのリンク＋値段」という一般的な形だけを再現する。__login でログイン画面（商品なし）を返す。
+ */
+const esc = (v) => String(v).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+function fakeSitePage(market, q) {
+  const n = [1, 2, 3, 4];
+  const head = `<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>E2E ${esc(market)} ${esc(q)}</title></head><body>`;
+  const nav = '<nav><a href="https://example.com/help">ヘルプ</a> <p>300円OFFクーポン配布中</p></nav>';
+  if (q.startsWith('__login')) return `${head}<h1>ログインしてください</h1><form><input name="id"></form></body></html>`;
+  let body = '';
+  if (market === 'mercari') {
+    body = '<ul>' + n.map((i) => `<li><a href="https://jp.mercari.com/item/m9000000000${i}?ref=e2e"><div><img alt="【E2Eメルカリ】${esc(q)} 出品${i}" src="data:,"><span>¥</span><span>${(i * 1000 + 7000).toLocaleString('ja-JP')}</span></div></a></li>`).join('') + '</ul>';
+    // 付属品（外れ値）
+    body += '<ul><li><a href="https://jp.mercari.com/item/m90000000099"><div><img alt="【E2Eメルカリ】保護フィルム" src="data:,"><span>¥</span><span>300</span></div></a></li></ul>';
+  } else if (market === 'yahoo_auctions') {
+    body = n.map((i) => `<div class="product"><h3><a href="https://auctions.yahoo.co.jp/jp/auction/x${1000 + i}">【E2Eヤフオク】${esc(q)} 出品${i}</a></h3><div>現在 ${(i * 900 + 6000).toLocaleString('ja-JP')}円</div><div>即決 ${(i * 900 + 9000).toLocaleString('ja-JP')}円</div><div>送料無料</div></div>`).join('');
+  } else if (market === 'rakuma') {
+    body = n.map((i) => `<div><a href="https://item.fril.jp/${'e2e0'.repeat(7)}000${i}"><p>【E2Eラクマ】${esc(q)} 出品${i}</p><p>¥${(i * 1100 + 6500).toLocaleString('ja-JP')}</p></a></div>`).join('');
+  } else if (market === 'amazon') {
+    body = '<div><a href="https://www.amazon.co.jp/dp/B0E2E00000/?ref_=nav">タイムセール</a></div>';
+    body += n.map((i) => `<div class="result"><h2><a href="https://www.amazon.co.jp/E2E-Item/dp/B0E2E0000${i}/ref=sr_1_${i}">【E2EAmazon】${esc(q)} 商品${i}</a></h2><span>￥${(i * 1500 + 8000).toLocaleString('ja-JP')}</span><span>参考価格: ￥99,999</span></div>`).join('');
+  }
+  return `${head}${nav}<main>${body}</main></body></html>`;
+}
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url ?? '/', `http://127.0.0.1:${PORT}`);
 
@@ -102,6 +129,12 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/__reset') {
     requests.length = 0;
     return json(res, 200, { ok: true });
+  }
+  const fakeSite = /^\/fake-sites\/(mercari|yahoo_auctions|rakuma|amazon)$/.exec(url.pathname);
+  if (fakeSite) {
+    requests.push({ source: `site-${fakeSite[1]}`, keyword: url.searchParams.get('q') ?? '' });
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+    return res.end(fakeSitePage(fakeSite[1], url.searchParams.get('q') ?? ''));
   }
   if (url.pathname === YAHOO_PATH) return handleYahoo(url, res);
   if (url.pathname === EBAY_OAUTH_PATH) return handleEbayToken(req, res);

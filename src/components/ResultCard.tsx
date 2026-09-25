@@ -56,7 +56,9 @@ export function ResultCard({ card, outlier }: Props) {
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-1 bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900 text-slate-300">
             <span className="text-xs font-semibold tracking-widest">NO IMAGE</span>
-            <span className="text-[11px] text-slate-400">画像未設定</span>
+            <span className="text-[11px] text-slate-400">
+              {card.id.startsWith('captured-') ? `${card.siteName}の画面から取り込んだ値段（画像は取り込みません）` : '画像未設定'}
+            </span>
           </div>
         )}
         <span className="absolute left-2 top-2 rounded-full px-2 py-0.5 text-xs font-medium bg-black/60 text-white">

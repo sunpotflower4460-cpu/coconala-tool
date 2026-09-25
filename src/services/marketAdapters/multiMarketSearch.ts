@@ -57,7 +57,7 @@ export async function searchAllMarkets(query: string, limit = 8): Promise<Market
       status: 'mock_no_key',
       warnings: [STATIC_BUILD_WARNING, MANUAL_HINT],
       searchedAt: searchedAt(),
-      sources: MARKETS.map((market) => ({ market, outcome: 'failed', count: 0, message: STATIC_SOURCE_MESSAGE })),
+      sources: MARKETS.map((market) => ({ market, outcome: 'failed', count: 0, message: STATIC_SOURCE_MESSAGE, failure: 'mock_no_key' })),
     };
   }
 
@@ -67,7 +67,7 @@ export async function searchAllMarkets(query: string, limit = 8): Promise<Market
     if (outcome.kind === 'ok') return { market, outcome: 'ok', count: outcome.cards.length };
     if (outcome.kind === 'empty') return { market, outcome: 'empty', count: 0, message: '該当なし' };
     if (outcome.kind === 'invalid_query') return { market, outcome: 'invalid_query', count: 0, message: 'この検索語は使えません' };
-    return { market, outcome: 'failed', count: 0, message: FAILURE_REASON[outcome.status] };
+    return { market, outcome: 'failed', count: 0, message: FAILURE_REASON[outcome.status], failure: outcome.status };
   });
 
   const cards = interleave(outcomes.map((o) => (o.kind === 'ok' ? o.cards : [])));
