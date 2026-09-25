@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Check, CheckCircle2, Copy, ExternalLink, Loader2, X, XCircle } from 'lucide-react';
-import { getDesktop, type KeySite, type KeyStatus, type KeyTestResult } from '../../lib/desktopBridge';
+import { getDesktop, SITE_MARKETS, type CaptureSettings, type KeySite, type KeyStatus, type KeyTestResult } from '../../lib/desktopBridge';
+import { MARKET_LABELS } from '../../types/market';
 import { REGISTRATION_URLS } from '../../lib/desktopConfig';
 import { useDesktopUi, type SetupStep } from './desktopUiStore';
 
@@ -295,6 +296,41 @@ function EbayStep({ status, onSaved }: { status: KeyStatus | null; onSaved: (s: 
   );
 }
 
+/** メルカリ・ヤフオク・ラクマ・Amazon の「値段の取り込み」をサイトごとにオン・オフする。 */
+function CaptureSettingsSection() {
+  const [settings, setSettings] = useState<CaptureSettings | null>(null);
+  useEffect(() => {
+    void getDesktop()?.sites.captureSettings().then(setSettings);
+  }, []);
+  if (!settings) return null;
+  return (
+    <fieldset className="rounded-control border border-white/10 bg-black/20 p-3">
+      <legend className="px-1 text-sm font-semibold text-ink">値段の取り込み（メルカリ・ヤフオク・ラクマ・Amazon）</legend>
+      <p className="mb-2 text-xs text-ink/70">
+        オフにしたサイトは、右のタブで見るだけになり「値段を取り込む」の対象から外れます。
+        取り込みは、あなたがボタンを押したときに表示中の1ページから値段とリンクだけを読む補助機能です。各サイトの利用規約に沿ってお使いください。
+      </p>
+      <div className="flex flex-wrap gap-3">
+        {SITE_MARKETS.map((market) => (
+          <label key={market} className="flex min-h-11 items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={settings[market]}
+              onChange={(e) => {
+                const enabled = e.target.checked;
+                setSettings({ ...settings, [market]: enabled });
+                void getDesktop()?.sites.setCaptureEnabled(market, enabled).then(setSettings);
+              }}
+              className="h-5 w-5"
+            />
+            {MARKET_LABELS[market]}
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 const STEP_ORDER: SetupStep[] = ['overview', 'rakuten', 'yahoo', 'ebay'];
 const STEP_LABELS: Record<SetupStep, string> = { overview: 'はじめに', rakuten: '楽天市場', yahoo: 'Yahoo!ショッピング', ebay: 'eBay（任意）' };
 
@@ -381,6 +417,7 @@ export function SetupWizard() {
                 メルカリ・ヤフオク・ラクマ・Amazon はキーが要りません。「まとめて探す」で右側のタブに実際の検索ページが開き、
                 「値段を取り込む」で一覧に加えられます。
               </p>
+              <CaptureSettingsSection />
               {keyStatus && !keyStatus.encrypted && (
                 <p className="rounded-control border border-amber-300/40 bg-amber-500/10 p-2.5 text-xs">
                   このパソコンではキーを暗号化して保存できないため、アプリを閉じるとキーは消えます（次回また貼り付けてください）。

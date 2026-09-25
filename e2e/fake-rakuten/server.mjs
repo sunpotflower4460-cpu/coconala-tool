@@ -153,6 +153,10 @@ const server = http.createServer((req, res) => {
   });
   if (requests.length > 500) requests.shift();
 
+  // デスクトップ版のキー設定テスト用: 間違ったキー
+  if (url.searchParams.get('accessKey') === 'e2e-wrong-key') {
+    return json(res, 401, { error: 'invalid_access_key', error_description: 'accessKey is not valid' });
+  }
   if (!url.searchParams.get('applicationId') || !url.searchParams.get('accessKey')) {
     return json(res, 400, { error: 'wrong_parameter', error_description: 'specify valid applicationId and accessKey' });
   }
