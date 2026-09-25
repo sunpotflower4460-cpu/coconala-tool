@@ -14,7 +14,20 @@ npm run dev   # 表示された http://localhost:5173 をブラウザで開く
 
 楽天のキーが無くても、価格の貼り付け・手入力で比較・利益計算・CSV・履歴を使えます。
 
-## 楽天・Yahoo!・eBay の実データを手元で試す
+## デスクトップアプリを動かす・作る
+
+```bash
+npm run desktop            # ビルドしてデスクトップアプリを起動（キーはアプリの「設定」から登録）
+npm run dist:desktop:mac   # Mac 用インストーラー（release-desktop/*.dmg。Mac で実行）
+npm run dist:desktop:win   # Windows 用インストーラー（release-desktop/*.exe）
+npm run e2e:desktop        # デスクトップアプリの自動操作テスト（先に npm run build:desktop）
+```
+
+- アプリ本体は `electron/`、画面は Web 版と同じ `src/`（`src/features/desktop/` がデスクトップ版の画面）です。
+- `/api/rakuten` などは Web 版と同じ `worker.ts` をアプリ本体の中で動かし、キーはアプリの「設定」で保存したものを使います。
+- 楽天に名乗るサイト（「許可されたWebサイト」に登録するURL）は `src/lib/desktopConfig.ts` の `DESKTOP_RAKUTEN_ALLOWED_ORIGIN` です。
+
+## Web 版で楽天・Yahoo!・eBay の実データを手元で試す
 
 楽天のキーは **画面側（`VITE_` で始まる変数）には絶対に置きません**。サーバー側（`/api/rakuten`）だけが読みます。
 

@@ -131,15 +131,23 @@ async function main() {
 
   // 5. スクレイピング・直接取得をしていない
   const scraping = [];
-  const serverAndUi = [...uiFiles, ...(await sourceFiles('functions', (f) => f.endsWith('.ts') && !f.includes('.test.'))), path.join(ROOT, 'worker.ts')];
+  const desktopFiles = await sourceFiles('electron', (f) => f.endsWith('.ts'));
+  const serverAndUi = [
+    ...uiFiles,
+    ...(await sourceFiles('functions', (f) => f.endsWith('.ts') && !f.includes('.test.'))),
+    path.join(ROOT, 'worker.ts'),
+    ...desktopFiles,
+  ];
   for (const file of serverAndUi) {
     const content = await fs.readFile(file, 'utf-8');
     if (/from ['"](puppeteer|playwright|cheerio|jsdom|node-html-parser)/.test(content)) scraping.push(`${path.relative(ROOT, file)}: HTML解析/ブラウザ自動操作ライブラリ`);
     // 通信先は、画面→自サーバーの /api/*（officialFetch の `${path}`）と、サーバー→各社の公式API（endpoint・OAuth）だけ。
     // `async fetch(` は Worker の入口の定義なので除く。
-    for (const m of content.matchAll(/(?<!async\s)\bfetch\(\s*([^,]+)/g)) {
+    // `worker.fetch(` はデスクトップ版の本体が /api/* を worker.ts に渡す呼び出し（外部への通信ではない）なので除く。
+    for (const m of content.matchAll(/(?<!async\s)(?<!worker\.)\bfetch\(\s*([^,]+)/g)) {
       const target = m[1].trim();
-      if (!/^`\/api\/rakuten|^`\$\{path\}\?q=|^endpoint\.toString\(\)|^resolveTestOverride\(env/.test(target)) {
+      // デスクトップ版の本体は、同梱した画面ファイルの読み込み（pathToFileURL）だけを許す
+      if (!/^`\/api\/rakuten|^`\$\{path\}\?q=|^endpoint\.toString\(\)|^resolveTestOverride\(env|^pathToFileURL\(/.test(target)) {
         scraping.push(`${path.relative(ROOT, file)}: fetch(${target})`);
       }
     }
@@ -149,6 +157,23 @@ async function main() {
     }
   }
   record('外部サイトを直接取得・解析するコードが無い（楽天は公式APIのみ）', scraping.length === 0, scraping.join(' / '));
+
+  // デスクトップ版: 右のタブのページを読むのは capture.ts だけで、利用者のボタン（IPC sites:capture）からだけ呼ばれる
+  const captureProblems = [];
+  for (const file of desktopFiles) {
+    const content = await fs.readFile(file, 'utf-8');
+    const rel = path.relative(ROOT, file);
+    if (/executeJavaScript/.test(content) && !rel.endsWith('capture.ts')) captureProblems.push(`${rel}: ページのスクリプト実行`);
+    const calls = [...content.matchAll(/captureVisiblePages\(/g)].length;
+    if (rel.endsWith('main.ts') && (calls !== 1 || !/ipcMain\.handle\('sites:capture',[^\n]*captureVisiblePages\(/.test(content))) {
+      captureProblems.push(`${rel}: 取り込みが sites:capture 以外から呼ばれている`);
+    }
+    if (/setInterval|did-finish-load[^\n]*capture|did-stop-loading[^\n]*capture/.test(content)) captureProblems.push(`${rel}: 自動で繰り返す・読み込み完了で取り込む処理`);
+  }
+  const captureTs = await read('electron/capture.ts');
+  if (!/executeJavaScriptInIsolatedWorld/.test(captureTs)) captureProblems.push('electron/capture.ts: ページと分けた実行環境で読んでいない');
+  if (!/MAX_CAPTURED_PER_SITE/.test(captureTs)) captureProblems.push('electron/capture.ts: 件数の上限が無い');
+  record('デスクトップ版の値段の取り込みは、利用者の操作時だけ・表示中の1ページ・件数上限つき', captureProblems.length === 0, captureProblems.join(' / '));
 
   // 6. 楽天API・Workers・セキュリティ設定
   const rakuten = await read('functions/api/rakuten.ts');
