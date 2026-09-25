@@ -50,6 +50,17 @@ function runStep(label, command, args, { env = {}, capture = false } = {}) {
   return { ok, output };
 }
 
+/** このOSでは実行しない手順（結果の表には「省略」と出す）。 */
+function skipStep(label, reason) {
+  steps.push({ label: `${label}（${reason}のため省略）`, ok: true, seconds: 0, skipped: true });
+  console.log(`[verify:all] – ${label}: ${reason}のため省略`);
+  return { ok: true, output: '' };
+}
+
+// Mac のインストーラー（dmg）は Mac でしか作れない。Windows 用もここ（Mac）でまとめて作る。
+// Mac 以外（GitHub Actions の Linux など）ではインストーラーを作らず、納品ファイルも「インストーラーなし」で検証する。
+const BUILD_INSTALLERS = process.platform === 'darwin';
+
 async function readJson(file) {
   try {
     return JSON.parse(await fs.readFile(file, 'utf-8'));
@@ -98,7 +109,7 @@ function checkbox(ok) {
 async function main() {
   await fs.mkdir(OUT, { recursive: true });
   // 前回の結果を読み違えないよう、今回作り直すレポート類を先に消す。
-  for (const stale of ['QUALITY_REPORT.md', 'VERIFICATION_REPORT.md', 'release-check.json', 'delivery-verify.json', 'unit-results.json', 'e2e-results.json']) {
+  for (const stale of ['QUALITY_REPORT.md', 'VERIFICATION_REPORT.md', 'release-check.json', 'delivery-verify.json', 'unit-results.json', 'e2e-results.json', 'e2e-desktop-results.json']) {
     await fs.rm(path.join(OUT, stale), { force: true });
   }
   const pkg = JSON.parse(await fs.readFile(path.join(ROOT, 'package.json'), 'utf-8'));
@@ -111,16 +122,28 @@ async function main() {
     runStep('本番ビルド（Workers 版）', 'npm', ['run', 'build']),
     runStep('静的版ビルド', 'npm', ['run', 'build:static']),
     runStep('E2E（ブラウザ自動操作）', 'npx', ['playwright', 'test']),
+    runStep('デスクトップ版ビルド', 'npm', ['run', 'build:desktop']),
+    runStep('デスクトップ版 E2E（アプリ自動操作）', 'npx', ['playwright', 'test', '--config', 'playwright.desktop.config.ts']),
     runStep('整合チェック（verify:release）', 'node', ['scripts/verify-release.mjs']),
     runStep('画面写真入りマニュアル・出品素材の生成', 'npx', ['playwright', 'test', '--config', 'scripts/playwright.marketing.config.ts']),
+    BUILD_INSTALLERS
+      ? runStep('インストーラー作成（Mac: Appleシリコン用・Intel用）', 'npx', ['electron-builder', '--mac', '--config', 'electron-builder.yml'])
+      : skipStep('インストーラー作成（Mac）', 'Mac 以外の環境'),
+    BUILD_INSTALLERS
+      ? runStep('インストーラー作成（Windows）', 'npx', ['electron-builder', '--win', '--config', 'electron-builder.yml'])
+      : skipStep('インストーラー作成（Windows）', 'Mac 以外の環境'),
   ];
   const qualityOk = quality.every((s) => s.ok);
 
   const unit = await readJson(path.join(OUT, 'unit-results.json'));
   const e2e = await readJson(path.join(OUT, 'e2e-results.json'));
   const release = await readJson(path.join(OUT, 'release-check.json'));
-  const { byProject, failures: e2eFailures } = summarizeE2E(e2e);
+  const { byProject, failures: webFailures } = summarizeE2E(e2e);
+  const desktopE2e = summarizeE2E(await readJson(path.join(OUT, 'e2e-desktop-results.json')));
+  const e2eFailures = [...webFailures, ...desktopE2e.failures];
   const e2eTotal = [...byProject.values()].reduce((sum, p) => sum + p.passed, 0);
+  const desktopPassed = [...desktopE2e.byProject.values()].reduce((sum, p) => sum + p.passed, 0);
+  const desktopFailed = [...desktopE2e.byProject.values()].reduce((sum, p) => sum + p.failed + p.flaky, 0);
 
   const qualityReport = [
     `# 品質チェック結果（${version}）`,
@@ -139,13 +162,23 @@ async function main() {
     '## テストの件数',
     '',
     `- 単体・画面部品テスト: ${unit ? `${unit.numPassedTests} / ${unit.numTotalTests} 件 合格` : '集計なし'}`,
-    `- ブラウザ自動操作テスト（E2E）: ${e2eTotal} 件 合格`,
+    `- デスクトップアプリの自動操作テスト: ${desktopPassed} 件 合格${desktopFailed ? `・${desktopFailed} 件 不合格` : ''}`,
+    `- ブラウザ版の自動操作テスト（E2E）: ${e2eTotal} 件 合格`,
     '',
     '| 画面・端末 | 合格 | 不合格 | 対象外 |',
     '|---|---|---|---|',
     ...[...byProject.entries()].map(([name, p]) => `| ${PROJECT_LABELS[name] ?? name} | ${p.passed} | ${p.failed + p.flaky} | ${p.skipped} |`),
     '',
-    '## ブラウザ自動操作テストで確認していること',
+    '## デスクトップアプリの自動操作テストで確認していること',
+    '',
+    '- 初回起動で設定（キーの登録）が開く。コピー欄の内容、キーの保存とテスト（成功・キー違い）、キーの値が画面や保存データに出ないこと',
+    '- 「まとめて探す」1回で、楽天市場・Yahoo!ショッピングは画像つきカード、キー未設定のサイトは設定への案内、',
+    '  メルカリ・ヤフオク・ラクマ・Amazon は右のタブに検索ページが開き、選んだタブだけが正しい位置に表示されること',
+    '- 「値段を取り込む」1回で、4サイトの値段と商品ページへのリンクが一覧・相場一覧に並ぶこと（画像は取り込まない・参考価格やクーポンの金額を拾わない・付属品は外れ値として注意）',
+    '- ログイン画面などで値段が無いときの案内、取り込みをオフにしたサイトは取り込まないこと、再起動後もキー・比較・設定が残ること',
+    '- 右のタブのページからアプリの機能に触れられないこと、アプリの画面が外部サイトへ移動しないこと、アクセシビリティ（WCAG 2.1 AA）',
+    '',
+    '## ブラウザ版の自動操作テストで確認していること',
     '',
     '- 検索 → 比較に追加 → 利益計算（手数料・送料込み）→ 元ページリンク → CSV 出力（中身・文字化け対策・数式の無害化）',
     '- 手動追加（全角・「万円」表記の価格、ドル建ての円換算、不正なURLの拒否、重複の注意）',
@@ -163,27 +196,29 @@ async function main() {
     '',
     '## 自動では確認できないこと',
     '',
-    '- 購入者ご自身の楽天アプリID・アクセスキーでの実際の検索（公開後に1回ご確認ください。手順は `DEPLOY_GUIDE.md`）',
-    '- お手持ちのスマートフォン実機での見え方',
+    '- 購入者ご自身のキーでの実際の検索（アプリの「設定」→「保存してテスト」で確認できます）',
+    '- メルカリ・ヤフオク・ラクマ・Amazon の実際のページからの取り込み（各サイトの画面が変わると読み取れる件数が減ることがあります）',
+    '- Windows のパソコンでのインストールと起動（自動テストは Mac と GitHub の Windows 環境で実施）',
     '',
   ].join('\n');
 
   if (!qualityOk) {
     await fs.writeFile(path.join(OUT, 'VERIFICATION_REPORT.md'), `${qualityReport}\n## 失敗したテスト\n\n${e2eFailures.map((f) => `- ${f}`).join('\n')}\n`);
-    console.error('\n[verify:all] 品質チェックに失敗したため、納品ZIPは作りません。dist-delivery/VERIFICATION_REPORT.md を確認してください。');
+    console.error('\n[verify:all] 品質チェックに失敗したため、納品ファイルは作りません。dist-delivery/VERIFICATION_REPORT.md を確認してください。');
     process.exitCode = 1;
     return;
   }
   await fs.writeFile(path.join(OUT, 'QUALITY_REPORT.md'), qualityReport);
 
-  const packaged = runStep('納品ZIPの生成（delivery:package）', 'node', ['scripts/create-delivery-package.mjs']);
-  const verified = packaged.ok ? runStep('納品ZIPの展開・再検証（delivery:verify）', 'node', ['scripts/verify-delivery.mjs']) : { ok: false };
+  const installerFlag = BUILD_INSTALLERS ? [] : ['--allow-missing-installers'];
+  const packaged = runStep('納品ファイルの生成（delivery:package）', 'node', ['scripts/create-delivery-package.mjs', ...installerFlag]);
+  const verified = packaged.ok ? runStep('納品ファイルの再検証（delivery:verify）', 'node', ['scripts/verify-delivery.mjs', ...installerFlag]) : { ok: false };
   const delivery = await readJson(path.join(OUT, 'delivery-verify.json'));
   const allOk = qualityOk && packaged.ok && verified.ok;
 
   const marketingDir = path.join(OUT, 'marketing');
   const marketing = await fs.readdir(marketingDir).catch(() => []);
-  const zipName = `相場カード比較ボード-${version}.zip`;
+  const deliveryName = `納品ファイル-${version}`;
 
   const verification = [
     `# 総合検証レポート（${version}・販売者用）`,
@@ -196,13 +231,13 @@ async function main() {
     '|---|---|---|',
     ...steps.map((s) => `| ${s.label} | ${checkbox(s.ok)} | ${s.seconds}秒 |`),
     '',
-    '## 納品ZIPの検証（購入者と同じ立場で展開して確認）',
+    '## 納品ファイルの検証（購入者と同じ立場で確認）',
     '',
     ...(delivery?.results ?? []).map((r) => `- ${checkbox(r.ok)} ${r.name}${r.ok || !r.detail ? '' : `\n\n  \`\`\`\n  ${r.detail.split('\n').join('\n  ')}\n  \`\`\``}`),
     '',
     '## 成果物',
     '',
-    `- 納品ZIP: \`dist-delivery/${zipName}\``,
+    `- 納品ファイル（購入者に送る5つ）: \`dist-delivery/${deliveryName}/\``,
     `- 出品用素材: ${marketing.length ? `\`dist-delivery/marketing/\`（${marketing.length} ファイル）` : '未生成（`npm run marketing:capture`）'}`,
     '',
     '## 残る人手の作業',

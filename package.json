@@ -23,11 +23,13 @@
     "delivery:verify": "node scripts/verify-delivery.mjs",
     "verify:release": "node scripts/verify-release.mjs",
     "verify:all": "node scripts/verify-all.mjs",
-    "marketing:capture": "playwright test --config scripts/playwright.marketing.config.ts",
+    "marketing:capture": "npm run build:desktop && playwright test --config scripts/playwright.marketing.config.ts",
     "build:local": "npm run build:static && node scripts/build-local-html.mjs",
     "build:desktop": "node scripts/build-desktop.mjs",
     "desktop": "node scripts/build-desktop.mjs && electron dist-desktop",
-    "e2e:desktop": "playwright test --config playwright.desktop.config.ts"
+    "e2e:desktop": "playwright test --config playwright.desktop.config.ts",
+    "dist:desktop:mac": "npm run build:desktop && electron-builder --mac --config electron-builder.yml",
+    "dist:desktop:win": "npm run build:desktop && electron-builder --win --config electron-builder.yml"
   },
   "dependencies": {
     "lucide-react": "^1.14.0",

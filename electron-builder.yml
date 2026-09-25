@@ -1,0 +1,48 @@
+# デスクトップアプリのインストーラー作成（npm run dist:desktop）。
+# 署名なし配布（Mac は ad-hoc 署名のみ・Windows は未署名）。初回に出る警告の開き方はマニュアルで案内する。
+appId: jp.coconala.soba-card-board
+# 実行ファイル名は英数字にする（日本語名だと macOS で起動直後に落ちるため）。表示名は下の extendInfo・ショートカット名で日本語にする。
+productName: SobaCardBoard
+copyright: Copyright © 2026
+directories:
+  app: dist-desktop
+  output: release-desktop
+  buildResources: build-resources
+files:
+  - "**/*"
+  # 画面・本体は1ファイルにまとめてあるため、依存パッケージ（node_modules）は同梱しない
+  - "!**/node_modules/**"
+asar: true
+npmRebuild: false
+mac:
+  # ココナラのトークルームは1回200MBまでのため、Apple シリコン用と Intel 用に分けて作る（各110MB前後）
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  category: public.app-category.business
+  icon: build-resources/icon.png
+  # "-" = ad-hoc 署名（Apple Silicon で起動できるようにするため。Apple の公証は受けない）
+  identity: "-"
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  artifactName: soba-card-board-${version}-mac-${arch}.${ext}
+  extendInfo:
+    CFBundleDisplayName: 相場カード比較ボード
+dmg:
+  title: 相場カード比較ボード ${version}
+  artifactName: soba-card-board-${version}-mac-${arch}.${ext}
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build-resources/icon.png
+  artifactName: soba-card-board-${version}-windows-setup.${ext}
+nsis:
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: 相場カード比較ボード
+  uninstallDisplayName: 相場カード比較ボード
+  deleteAppDataOnUninstall: false
+publish: null

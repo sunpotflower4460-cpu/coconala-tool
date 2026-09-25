@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
- * 納品ZIPを生成する（`npm run delivery:package`）。
- * 出力: dist-delivery/相場カード比較ボード-v<version>.zip
+ * 納品物を生成する（`npm run delivery:package`）。
+ * 出力: dist-delivery/納品ファイル-v<version>/ に次の5ファイル（ココナラのトークルームで送れるよう各200MB未満）
+ *   ①アプリ（Windows用）.exe / ①アプリ（Mac・Appleシリコン用）.dmg / ①アプリ（Mac・Intel用）.dmg
+ *   ②マニュアル.pdf / ③詳しい資料（公開・改造する人向け）.zip
  *
  * 方針:
  *  - コピー対象は許可リスト（secure by default）。さらに Git 管理下（未追跡でも .gitignore 対象外）のファイルだけを使い、
@@ -13,7 +15,8 @@
  *  - 1つでも失敗したら ZIP を作らず非ゼロ終了する。
  *
  * オプション:
- *  --allow-missing-report  品質レポート（dist-delivery/QUALITY_REPORT.md）が無くても作る（試作用。販売用には使わない）
+ *  --allow-missing-report      品質レポート・マニュアル・インストーラーが無くても作る（試作用。販売用には使わない）
+ *  --allow-missing-installers  インストーラーが無くても作る（Mac 以外の CI 用。販売用には使わない）
  */
 
 import { createWriteStream } from 'node:fs';
@@ -33,14 +36,26 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const OUTPUT_DIR = path.join(REPO_ROOT, 'dist-delivery');
 const PRODUCT_NAME = '相場カード比較ボード';
 const ALLOW_MISSING_REPORT = process.argv.includes('--allow-missing-report');
+/** インストーラーを作れない環境（Mac 以外の CI など）での確認用。販売用の納品物には使わない */
+const ALLOW_MISSING_INSTALLERS = ALLOW_MISSING_REPORT || process.argv.includes('--allow-missing-installers');
 
 /**
- * ZIP を開いたとき最初に見えるのは次の3つだけにする（初心者が迷わないように）。
- *  ① ダブルクリックで開ける1ファイル版のツール ② 画面写真入りマニュアル ③ 公開する人向けの詳しい資料一式
+ * 購入者に渡すのは次の5ファイルだけ（初心者が迷わないように）。
+ *  ① アプリのインストーラー（自分のパソコンに合う1つを使う） ② 画面写真入りマニュアル ③ 公開・改造する人向けの資料一式（ZIP）
  */
-export const TOOL_FILE = '①ツールを開く.html';
+export const INSTALLERS = [
+  { key: 'win', file: '①アプリ（Windows用）.exe', built: (v) => `soba-card-board-${v}-windows-setup.exe` },
+  { key: 'mac-arm64', file: '①アプリ（Mac・Appleシリコン用）.dmg', built: (v) => `soba-card-board-${v}-mac-arm64.dmg` },
+  { key: 'mac-x64', file: '①アプリ（Mac・Intel用）.dmg', built: (v) => `soba-card-board-${v}-mac-x64.dmg` },
+];
 export const MANUAL_FILE = '②マニュアル.pdf';
-export const DETAIL_DIR = '③詳しい資料（公開する人向け）';
+export const DETAIL_DIR = '③詳しい資料（公開・改造する人向け）';
+export const DETAIL_ZIP = `${DETAIL_DIR}.zip`;
+/** ③の中の、ブラウザで開く1ファイル版（自動取得なし） */
+export const TOOL_FILE = 'ブラウザ版（自動取得なし）.html';
+/** ココナラのトークルームで1回に送れる上限（200MB）より少し小さく */
+export const MAX_DELIVERY_FILE_BYTES = 195 * 1024 * 1024;
+export const deliveryDirName = (version) => `納品ファイル-v${version}`;
 
 /** ZIP直下に置く購入者向け文書: [リポジトリ内のパス, ZIP内の名前] */
 export const ROOT_DOCS = [
@@ -59,6 +74,13 @@ export const SOURCE_ALLOWLIST = [
   'src/',
   'functions/',
   'e2e/',
+  'e2e-desktop/',
+  'electron/',
+  'build-resources/',
+  'electron-builder.yml',
+  'playwright.desktop.config.ts',
+  'tsconfig.electron.json',
+  'scripts/build-desktop.mjs',
   'public/',
   'package.json',
   'package-lock.json',
@@ -95,7 +117,14 @@ export const SOURCE_ALLOWLIST = [
 ];
 
 /** 許可リストに入っていても絶対に入れないもの（二重の安全装置）。 */
-const NEVER_INCLUDE = [/(^|\/)\.env($|\.)(?!example)/, /(^|\/)\.dev\.vars/, /(^|\/)AGENTS\.md$/, /(^|\/)COPILOT_INSTRUCTIONS\.md$/, /^scripts\//];
+const NEVER_INCLUDE = [
+  /(^|\/)\.env($|\.)(?!example)/,
+  /(^|\/)\.dev\.vars/,
+  /(^|\/)AGENTS\.md$/,
+  /(^|\/)COPILOT_INSTRUCTIONS\.md$/,
+  // 販売者用スクリプトは入れない（デスクトップ版のビルドに必要な1本だけ例外）
+  /^scripts\/(?!build-desktop\.mjs$)/,
+];
 
 function log(message) {
   console.log(`[delivery] ${message}`);
@@ -167,8 +196,10 @@ async function stageSource(stagingDir, files) {
   // 納品物に含めない販売者用スクリプト（scripts/）を参照する npm スクリプトを取り除く。
   const pkgPath = path.join(sourceDir, 'package.json');
   const pkg = JSON.parse(await fs.readFile(pkgPath, 'utf-8'));
+  const shipped = new Set(files);
   for (const [name, command] of Object.entries(pkg.scripts ?? {})) {
-    if (/scripts\/|playwright\.marketing/.test(command)) delete pkg.scripts[name];
+    const referenced = [...String(command).matchAll(/scripts\/[\w./-]+/g)].map((m) => m[0]);
+    if (referenced.some((f) => !shipped.has(f)) || /playwright\.marketing/.test(command)) delete pkg.scripts[name];
   }
   await fs.writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf-8');
   return sourceDir;
@@ -232,14 +263,32 @@ async function stageSamples(stagingDir) {
   log(`見本画像: ${copied} 枚`);
 }
 
-/** 画面写真入りの操作・導入マニュアル（npm run marketing:capture で生成）を ZIP 直下に置く。 */
-async function stageManual(stagingDir) {
+/** 画面写真入りの操作・導入マニュアル（npm run marketing:capture で生成）を置く。 */
+async function stageManual(destDir) {
   const manual = path.join(OUTPUT_DIR, 'manual', 'マニュアル.pdf');
   if (await pathExists(manual)) {
-    await fs.copyFile(manual, path.join(stagingDir, MANUAL_FILE));
-    return;
+    await fs.copyFile(manual, path.join(destDir, MANUAL_FILE));
+    return true;
   }
   if (!ALLOW_MISSING_REPORT) fail('マニュアル（dist-delivery/manual/マニュアル.pdf）がありません。npm run marketing:capture で生成してください。');
+  return false;
+}
+
+/** デスクトップ版のインストーラー（npm run dist:desktop:mac / :win で生成）を置く。 */
+async function stageInstallers(destDir, version) {
+  let copied = 0;
+  for (const installer of INSTALLERS) {
+    const built = path.join(REPO_ROOT, 'release-desktop', installer.built(version));
+    if (!(await pathExists(built))) {
+      if (!ALLOW_MISSING_INSTALLERS) fail(`インストーラー（release-desktop/${installer.built(version)}）がありません。npm run dist:desktop:mac と npm run dist:desktop:win で作ってください。`);
+      continue;
+    }
+    const { size } = await fs.stat(built);
+    if (size > MAX_DELIVERY_FILE_BYTES) fail(`${installer.file} が ${Math.round(size / 1024 / 1024)}MB あり、ココナラで送れる大きさ（200MB）を超えます。`);
+    await fs.copyFile(built, path.join(destDir, installer.file));
+    copied += 1;
+  }
+  log(`インストーラー: ${copied} 個`);
 }
 
 async function stageQualityReport(stagingDir, version) {
@@ -291,13 +340,10 @@ async function main() {
   log(`バージョン: ${version}`);
   await runPreChecks(version);
 
-  const rootFolderName = `${PRODUCT_NAME}-v${version}`;
   const stagingRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'coconala-tool-delivery-'));
-  const stagingDir = path.join(stagingRoot, rootFolderName);
-  await fs.mkdir(stagingDir, { recursive: true });
-
-  const detailDir = path.join(stagingDir, DETAIL_DIR);
+  const detailDir = path.join(stagingRoot, DETAIL_DIR);
   await fs.mkdir(detailDir, { recursive: true });
+  const deliveryDir = path.join(OUTPUT_DIR, deliveryDirName(version));
 
   try {
     const sourceFiles = selectSourceFiles(listCandidateFiles());
@@ -309,13 +355,11 @@ async function main() {
     await stageStaticApp(detailDir);
     await stageSamples(detailDir);
     await stageQualityReport(detailDir, version);
-
-    log('一番上の階層: ①ツール（1ファイル版）と②マニュアル');
-    await buildLocalHtml(path.join(stagingDir, TOOL_FILE));
-    await stageManual(stagingDir);
+    await buildLocalHtml(path.join(detailDir, TOOL_FILE));
+    await stageManual(detailDir);
 
     log('文書のリンク切れを検査中...');
-    const linkProblems = await checkMarkdownLinks(stagingDir);
+    const linkProblems = await checkMarkdownLinks(detailDir);
     if (linkProblems.length) {
       for (const p of linkProblems) console.error(`[delivery] ${p}`);
       fail(`納品物の文書にリンク切れが ${linkProblems.length} 件あります。`);
@@ -323,22 +367,32 @@ async function main() {
     log('リンク検査: OK');
 
     log('シークレットを走査中...');
-    const offenders = await scanForSecrets(stagingDir, await loadLocalSecretValues(REPO_ROOT));
+    const offenders = await scanForSecrets(detailDir, await loadLocalSecretValues(REPO_ROOT));
     if (offenders.length) {
       for (const o of offenders) console.error(`[delivery] SECRET DETECTED: ${o}`);
       fail(`シークレットらしき値が ${offenders.length} 件見つかりました。納品物には含められません。`);
     }
     log('シークレット走査: OK（検出なし）');
 
-    const topLevel = (await fs.readdir(stagingDir)).sort();
-    const expectedTop = [TOOL_FILE, MANUAL_FILE, DETAIL_DIR].filter((name) => topLevel.includes(name) || name !== MANUAL_FILE || !ALLOW_MISSING_REPORT).sort();
-    if (JSON.stringify(topLevel) !== JSON.stringify(expectedTop)) fail(`ZIP の一番上の階層が想定と違います: ${topLevel.join(', ')}`);
+    await writeChecksums(detailDir, detailDir);
 
-    await writeChecksums(stagingDir, detailDir);
-    const zipPath = path.join(OUTPUT_DIR, `${rootFolderName}.zip`);
+    // 納品フォルダ: ①インストーラー ②マニュアル ③資料ZIP
+    await fs.rm(deliveryDir, { recursive: true, force: true });
+    await fs.mkdir(deliveryDir, { recursive: true });
+    await stageInstallers(deliveryDir, version);
+    await stageManual(deliveryDir);
+    const zipPath = path.join(deliveryDir, DETAIL_ZIP);
     log(`ZIPを生成中: ${zipPath}`);
-    await zipDirectory(stagingDir, zipPath, rootFolderName);
-    log(`完了: ${path.relative(REPO_ROOT, zipPath)}`);
+    await zipDirectory(detailDir, zipPath, DETAIL_DIR);
+    const { size } = await fs.stat(zipPath);
+    if (size > MAX_DELIVERY_FILE_BYTES) fail(`${DETAIL_ZIP} が 200MB を超えています。`);
+
+    const lines = [];
+    for (const name of (await fs.readdir(deliveryDir)).sort()) {
+      lines.push(`${await sha256File(path.join(deliveryDir, name))}  ${name}`);
+    }
+    await fs.writeFile(path.join(OUTPUT_DIR, `納品ファイル-v${version}.sha256.txt`), `${lines.join('\n')}\n`, 'utf-8');
+    log(`完了: ${path.relative(REPO_ROOT, deliveryDir)}/（${lines.length} ファイル）`);
   } finally {
     await fs.rm(stagingRoot, { recursive: true, force: true });
   }

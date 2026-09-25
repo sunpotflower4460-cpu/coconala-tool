@@ -1,6 +1,6 @@
 import type { MarketCard, MarketSearchResponse, MarketSearchStatus, OfficialMarketId, SourceResult } from '../../types/market';
 import { MARKET_LABELS } from '../../types/market';
-import { IS_STATIC_BUILD } from '../../lib/deployMode';
+import { IS_DESKTOP, IS_STATIC_BUILD } from '../../lib/deployMode';
 import { checkSearchQuery } from '../../lib/searchQuery';
 import { fetchRakutenOutcome, INVALID_QUERY_WARNING, STATIC_BUILD_WARNING, type RakutenOutcome } from './rakutenAdapter';
 import { fetchOfficialMarketOutcome } from './officialMarketAdapter';
@@ -10,8 +10,8 @@ const MARKETS: OfficialMarketId[] = ['rakuten', 'yahoo_shopping', 'ebay'];
 
 /** サイトごとの失敗理由（1行・平易な言葉）。 */
 const FAILURE_REASON: Record<MockStatus, string> = {
-  mock_no_key: '連携がまだ設定されていません（設定ガイド参照）',
-  mock_setup_error: 'キーまたは許可サイトの設定を確認してください',
+  mock_no_key: IS_DESKTOP ? 'キーが未設定です（右上の「設定」から登録できます）' : '連携がまだ設定されていません（設定ガイド参照）',
+  mock_setup_error: IS_DESKTOP ? 'キーの確認が必要です（右上の「設定」で「テスト」を押してください）' : 'キーまたは許可サイトの設定を確認してください',
   mock_timeout: '応答が遅いため表示できませんでした',
   mock_network: '接続できませんでした',
   mock_rate_limited: '短時間に検索が集中しました。1分ほど待ってください',

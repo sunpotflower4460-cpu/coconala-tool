@@ -6,7 +6,7 @@
  *  - メルカリ等の実ページは siteViews（右側のタブ）で表示し、取り込みは利用者の操作時だけ（capture.ts）。
  *  - 画面側に公開するのは preload.ts の `window.desktop` だけ（Node の機能は渡さない）。
  */
-import { app, BrowserWindow, ipcMain, net, protocol, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, net, protocol, session, shell } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -25,7 +25,7 @@ const APP_ORIGIN = 'app://bundle';
 const RENDERER_DIR = path.join(__dirname, '..', 'renderer');
 const CSP =
   "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; " +
-  "img-src 'self' https: data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+  `img-src 'self' https: data:${IS_TEST && process.env.E2E_IMAGE_BASE ? ` ${process.env.E2E_IMAGE_BASE}` : ''}; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'`;
 
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: false } },
@@ -104,6 +104,16 @@ function isLayout(v: unknown): v is SiteLayout {
   const boundsOk =
     b === null || (b && ['x', 'y', 'width', 'height'].every((k) => Number.isFinite((b as Record<string, number>)[k])));
   return typeof l.visible === 'boolean' && (l.active === null || isSiteMarket(l.active)) && Boolean(boundsOk);
+}
+
+/** 自動テスト・マニュアル撮影用: 画像の読み込み先を偽サーバーへ向ける（フラグ＋ループバック限定。本番では効かない） */
+function redirectTestImages(): void {
+  const base = process.env.E2E_IMAGE_BASE;
+  if (!IS_TEST || !base || !/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/.test(base)) return;
+  session.defaultSession.webRequest.onBeforeRequest({ urls: ['https://placehold.co/*'] }, (details, callback) => {
+    const url = new URL(details.url);
+    callback({ redirectURL: `${base}/__placehold${url.pathname}${url.search}` });
+  });
 }
 
 function registerIpc(): void {
@@ -186,6 +196,7 @@ if (!app.requestSingleInstanceLock()) {
   });
   app.whenReady().then(() => {
     protocol.handle('app', handleAppProtocol);
+    redirectTestImages();
     registerIpc();
     createWindow();
     app.on('activate', () => {

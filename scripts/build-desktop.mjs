@@ -41,7 +41,7 @@ await fs.writeFile(
   JSON.stringify(
     {
       name: 'soba-card-board',
-      productName: '相場カード比較ボード',
+      productName: 'SobaCardBoard',
       version: pkg.version,
       description: '画像つき価格カードで相場を比較するリサーチ補助ツール',
       author: 'coconala-tool',
