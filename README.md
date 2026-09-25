@@ -3,7 +3,7 @@
 物販・せどり向けの相場リサーチ補助ツールです。楽天市場・Yahoo!ショッピング・eBay の公式APIで価格候補をまとめて検索し、
 メルカリ・ヤフオク等で見た価格も含めてサイト別の価格帯を一目で比較、利益見込み・履歴・CSV出力までまとめて管理できます。
 
-現在のバージョン: **v0.9.0-rc.12**（正式販売前の候補版）
+現在のバージョン: **v0.9.0-rc.13**（正式販売前の候補版）
 
 - 購入者の方は、まず [`docs/README_FIRST.md`](docs/README_FIRST.md)（納品ZIPでは `README_FIRST.md`）をお読みください。
 - 公開手順: [`docs/deployment-guide.md`](docs/deployment-guide.md) / ローカル起動: [`docs/setup-guide.md`](docs/setup-guide.md)
