@@ -113,4 +113,11 @@ describe('ProfitPanel', () => {
     render(<ProfitPanel />);
     expect(screen.getByText(/1,999 - 199 - 0 - 0 = 1,800円/)).toBeInTheDocument();
   });
+
+  it('販売価格が未入力のうちは「利益薄い」などの判定バッジを出さない', async () => {
+    render(<ProfitPanel />);
+    expect(screen.queryByText('利益薄い')).not.toBeInTheDocument();
+    await userEvent.type(screen.getByLabelText('販売価格 (円)'), '1000');
+    expect(await screen.findByText('狙い目')).toBeInTheDocument();
+  });
 });
