@@ -25,7 +25,7 @@ describe('AppShell', () => {
       isSearching: false,
       lastSearchedAt: null,
       searchedQuery: '',
-      dataSourceMode: 'sample',
+      dataSourceMode: 'rakuten_mock',
     });
   });
 
@@ -33,10 +33,17 @@ describe('AppShell', () => {
     vi.restoreAllMocks();
   });
 
-  it('shows the amber デモ表示中 badge before any search has happened', () => {
+  it('検索前は「検索すると接続します」を表示し、サンプル・見本の表示は出さない', () => {
     render(<AppShell />);
-    expect(screen.getByText('デモ表示中 — サンプル/見本データ')).toBeInTheDocument();
+    expect(screen.getByText('楽天市場 — 検索すると接続します')).toBeInTheDocument();
     expect(screen.queryByText(/実データ表示中/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/デモ表示中|サンプル|見本データ/)).not.toBeInTheDocument();
+  });
+
+  it('まとめてモードの検索前バッジ', () => {
+    useResearchStore.setState({ dataSourceMode: 'multi' });
+    render(<AppShell />);
+    expect(screen.getByText('楽天・Yahoo!・eBay — 検索すると接続します')).toBeInTheDocument();
   });
 
   it('switches to the green 公式データ取得中 badge after a search resolves with status=official_api', async () => {
@@ -62,22 +69,22 @@ describe('AppShell', () => {
     });
 
     expect(await screen.findByText('実データ表示中 — 楽天市場')).toBeInTheDocument();
-    expect(screen.queryByText('デモ表示中 — サンプル/見本データ')).not.toBeInTheDocument();
+    expect(screen.queryByText(/自動取得できませんでした/)).not.toBeInTheDocument();
   });
 
-  it('shows the fallback reason banner and keeps the demo badge when the search falls back to mock', async () => {
+  it('接続できないときは理由と貼り付けの案内を出し、偽の商品は出さない', async () => {
     render(<AppShell />);
     await runSearch('SONY', {
       cards: [],
       status: 'mock_no_key',
-      warnings: ['楽天APIキーが未設定のため、公式API想定モックを表示しています。'],
+      warnings: ['楽天市場との連携がまだ設定されていません。'],
       searchedAt: '2026-07-22T00:00:00.000Z',
     });
 
-    expect(screen.getByText('デモ表示中 — サンプル/見本データ')).toBeInTheDocument();
-    expect(
-      await screen.findByText('楽天APIキーが未設定のため、公式API想定モックを表示しています。'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('自動取得できませんでした — 貼り付け・手入力で比較')).toBeInTheDocument();
+    expect(await screen.findByText('楽天市場との連携がまだ設定されていません。')).toBeInTheDocument();
+    expect(screen.getByText(/実在しない商品を代わりに表示することはありません/)).toBeInTheDocument();
+    expect(screen.queryByText(/デモ表示中|見本データ/)).not.toBeInTheDocument();
   });
 
   it('shows a 0件 empty-state message when a search returns no cards', async () => {
@@ -141,7 +148,7 @@ describe('AppShell', () => {
       },
     });
 
-    expect(await screen.findByText('デモ表示中 — サンプル/見本データ')).toBeInTheDocument();
+    expect(await screen.findByText('楽天市場 — 検索すると接続します')).toBeInTheDocument();
     expect(screen.queryByText(/実データ表示中/)).not.toBeInTheDocument();
   });
 
@@ -157,26 +164,25 @@ describe('AppShell', () => {
     render(<AppShell />);
     await runSearch('Walkman', {
       cards: [],
-      status: 'sample',
-      warnings: ['該当するサンプルカードが見つかりませんでした。'],
+      status: 'empty',
+      warnings: ['該当する商品が見つかりませんでした。'],
       searchedAt: '2026-07-22T00:00:00.000Z',
     });
     await userEvent.click(screen.getByRole('button', { name: '手動で追加' }));
     expect(screen.getByRole('dialog', { name: '手動で追加' })).toBeInTheDocument();
   });
 
-  it('楽天モードで検索前は「楽天市場モード」、実データ0件は実データ表示のまま', async () => {
-    useResearchStore.setState({ dataSourceMode: 'rakuten_mock' });
+  it('楽天モードで実データ0件は実データ表示のまま', async () => {
     render(<AppShell />);
-    expect(screen.getByText('楽天市場モード — 検索すると接続します')).toBeInTheDocument();
+    expect(screen.getByText('楽天市場 — 検索すると接続します')).toBeInTheDocument();
     await runSearch('zzzz', { cards: [], status: 'empty', warnings: ['0件'], searchedAt: '2026-07-22T00:00:00.000Z' });
     expect(await screen.findByText('実データ表示中 — 楽天市場')).toBeInTheDocument();
-    expect(screen.queryByText(/デモ表示中/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/自動取得できませんでした/)).not.toBeInTheDocument();
   });
 
   it('検索リンクは入力途中の語ではなく、実際に検索した語で作る', async () => {
     render(<AppShell />);
-    await runSearch('PS5', { cards: [], status: 'sample', warnings: [], searchedAt: '2026-07-22T00:00:00.000Z' });
+    await runSearch('PS5', { cards: [], status: 'empty', warnings: [], searchedAt: '2026-07-22T00:00:00.000Z' });
     await userEvent.type(screen.getByLabelText('商品名・型番・JAN・URL'), ' 入力途中');
     const links = screen.getAllByRole('link').map((a) => a.getAttribute('href') ?? '');
     expect(links.some((href) => href.includes('PS5'))).toBe(true);

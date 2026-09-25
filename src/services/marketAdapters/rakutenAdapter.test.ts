@@ -77,7 +77,7 @@ describe('rakutenAdapter.search', () => {
     const result = await rakutenAdapter.search({ query: 'PS5' });
 
     expect(result.status).toBe('mock_upstream_error');
-    expect(result.cards.every((c) => c.demoOrigin === 'mock')).toBe(true);
+    expect(result.cards).toEqual([]);
   });
 
   it('Content-TypeがJSONでも本文のJSON parseが壊れている場合はmock_upstream_error', async () => {
@@ -89,15 +89,16 @@ describe('rakutenAdapter.search', () => {
     expect(result.warnings.join(' ')).toContain('想定外の応答');
   });
 
-  it('キー未設定(no_key)の場合、status=mock_no_key でモックにフォールバックする', async () => {
+  it('キー未設定(no_key)の場合、status=mock_no_key で偽の商品は出さず理由と貼り付けの案内を返す', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ error: 'no_key', items: [] }, { status: 503 }));
 
     const result = await rakutenAdapter.search({ query: 'SONY' });
 
     expect(result.status).toBe('mock_no_key');
-    expect(result.cards.length).toBeGreaterThan(0);
-    expect(result.cards.every((c) => c.demoOrigin === 'mock')).toBe(true);
-    expect(result.warnings.join(' ')).toContain('キー');
+    expect(result.cards).toEqual([]);
+    expect(result.warnings.join(' ')).toContain('設定');
+    expect(result.warnings.join(' ')).toContain('貼り付け');
+    expect(result.warnings.join(' ')).not.toMatch(/見本|サンプル/);
   });
 
   it('429(rate_limited)の場合、status=mock_rate_limited', async () => {
@@ -218,14 +219,14 @@ describe('rakutenAdapter.search', () => {
     expect(result.status).toBe('mock_upstream_error');
   });
 
-  it('モックにフォールバックしても該当がない場合、候補キーワードの案内を含む', async () => {
+  it('接続できないときは検索語に関係なく偽の商品を出さない', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse({ error: 'no_key', items: [] }, { status: 503 }));
 
     const result = await rakutenAdapter.search({ query: '存在しないキーワードzzzz' });
 
     expect(result.status).toBe('mock_no_key');
     expect(result.cards).toHaveLength(0);
-    expect(result.warnings.some((w) => w.includes('PS5'))).toBe(true);
+    expect(result.warnings.some((w) => w.includes('PS5'))).toBe(false);
   });
 
   it('不正価格の商品だけ除外し、検索全体は成功して ¥0 へ変換しない', async () => {
@@ -294,7 +295,7 @@ describe('rakutenAdapter.search', () => {
     globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse(body));
     const result = await rakutenAdapter.search({ query: 'PS5' });
     expect(result.status).toBe('mock_upstream_error');
-    expect(result.cards.every((card) => card.demoOrigin === 'mock')).toBe(true);
+    expect(result.cards).toEqual([]);
   });
 
   it('{ items: [] } は正常な empty 検索として扱う', async () => {
@@ -308,7 +309,7 @@ describe('rakutenAdapter.search', () => {
     globalThis.fetch = vi.fn().mockResolvedValue(jsonResponse('', { status: 204, contentType: '' }));
     const result = await rakutenAdapter.search({ query: 'PS5' });
     expect(result.status).toBe('mock_upstream_error');
-    expect(result.cards.every((card) => card.demoOrigin === 'mock')).toBe(true);
+    expect(result.cards).toEqual([]);
   });
 
   it('Content-Type に charset が付いていても JSON として扱う', async () => {

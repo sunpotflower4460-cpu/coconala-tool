@@ -49,7 +49,7 @@ test('DATA-03: 保存容量がいっぱいのとき履歴保存の失敗を知�
 });
 
 test('EXT-08: 商品画像が 403 / 読めない場合は NO IMAGE を表示してレイアウトを崩さない', async ({ page }) => {
-  await page.route(/placehold\.co|thumbnail\.image\.rakuten/, (route) => route.fulfill({ status: 403, body: '' }));
+  await page.route(/placehold\.co|thumbnail\.image\.rakuten|item-shopping\.c\.yimg\.jp|i\.ebayimg\.com/, (route) => route.fulfill({ status: 403, body: '' }));
   await page.goto('/');
   await search(page, 'PS5');
   await expect(resultCards(page).first().getByText('NO IMAGE')).toBeVisible();

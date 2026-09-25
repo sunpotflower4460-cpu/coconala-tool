@@ -3,7 +3,7 @@
 物販・せどり向けの相場リサーチ補助ツールです。楽天市場・Yahoo!ショッピング・eBay の公式APIで価格候補をまとめて検索し、
 メルカリ・ヤフオク等で見た価格も含めてサイト別の価格帯を一目で比較、利益見込み・履歴・CSV出力までまとめて管理できます。
 
-現在のバージョン: **v0.9.0-rc.14**（正式販売前の候補版）
+現在のバージョン: **v0.9.0-rc.15**（正式販売前の候補版）
 
 - 購入者の方は、まず [`docs/README_FIRST.md`](docs/README_FIRST.md)（納品ZIPでは `README_FIRST.md`）をお読みください。
 - 公開手順: [`docs/deployment-guide.md`](docs/deployment-guide.md) / ローカル起動: [`docs/setup-guide.md`](docs/setup-guide.md)
@@ -16,8 +16,6 @@
 | Yahoo!ショッピング 商品検索API（v3） | ✅ 公式API対応 | `SERVER_YAHOO_CLIENT_ID` |
 | eBay Browse API | ✅ 公式API対応（USD を円換算） | `SERVER_EBAY_CLIENT_ID` と `SERVER_EBAY_CLIENT_SECRET` |
 | メルカリ・ヤフオク・ラクマ・Amazon | 検索リンク＋価格の手入力 | 公式の検索APIが無い（または利用条件がある）ため自動取得しません。「まとめて開く（画面分割）」で見た価格を相場一覧に入力します |
-| サンプルデータ | デモ用 | 操作確認用の固定データ（PS5 関連） |
-| 見本データ（楽天想定） | デモ用 | 楽天の設定前・接続できない時に、理由を表示したうえで表示する実在しない商品 |
 
 「全サイト完全自動取得」「最安値保証」のような機能はありません。表示価格は元ページでの確認を前提とした参考値です。
 
@@ -26,7 +24,7 @@
 | 公開方法 | 画面 | 楽天の実データ |
 |---|---|---|
 | Cloudflare Workers（推奨・正式対応。`npm run deploy`） | ✅ | ✅（楽天・Yahoo!・eBay） |
-| 静的版 `app-static/`（Cloudflare Pages 直接アップロード・Netlify 等） | ✅ | ❌ 見本データのみ |
+| 静的版 `app-static/`（Cloudflare Pages 直接アップロード・Netlify 等） | ✅ | ❌ 自動取得なし（価格の貼り付け・入力で比較） |
 
 ## Quick Start
 
@@ -67,7 +65,7 @@ npm run marketing:capture # 出品用のスクリーンショットと操作動�
 ## Product Principle
 
 完全自動スクレイピングツールではありません。公式API・検索リンク・手動追加を組み合わせて規約リスクを抑えます。
-楽天に接続できず見本データへ切り替えた場合も、その事実と理由を画面に表示します。
+各サイトに接続できないときは、実在しない商品を代わりに出さず、理由と「貼り付け・入力で並べる方法」を画面に表示します。
 
 ## 技術構成
 

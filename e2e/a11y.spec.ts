@@ -34,6 +34,8 @@ test('axe: 手動追加ダイアログとエラー表示に重大なアクセシ
   await dialog.getByRole('textbox', { name: /^URL/ }).fill('abc');
   await dialog.getByRole('textbox', { name: /^URL/ }).blur();
   await expect(dialog.getByRole('alert')).toBeVisible();
+  // 送信ボタンは無効→有効でフェードする。途中の半透明状態を測らないよう、表示が確定してから監査する
+  await expect(dialog.getByRole('button', { name: '比較に追加' })).toHaveCSS('opacity', '1');
   expect(await auditSeriousViolations(page)).toEqual([]);
 });
 

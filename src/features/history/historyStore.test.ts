@@ -20,7 +20,7 @@ function baseSnapshot(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot
     resultCards: [],
     comparedCards: [],
     profitSettings,
-    dataSourceMode: 'sample' as const,
+    dataSourceMode: 'multi' as const,
     searchStatus: null,
     searchWarnings: [],
     lastSearchedAt: null,

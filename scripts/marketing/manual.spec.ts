@@ -43,9 +43,9 @@ test('マニュアル用の画面写真を撮り、PDF を作る', async ({ page
     });
   }, UNSTICK_HEADER);
 
-  // 0. はじめて開いたとき（サンプルデータ）
+  // 0. はじめて開いたとき
   await page.goto('/');
-  await shot('start', page.getByRole('button', { name: 'PS5 で試してみる' }).locator('xpath=ancestor::div[contains(@class, "glass")][1]'));
+  await shot('start', page.getByRole('button', { name: 'Nintendo Switch 2 で試してみる' }).locator('xpath=ancestor::div[contains(@class, "glass")][1]'));
 
   // 1. 最初の画面
   await page.goto('/');
@@ -184,7 +184,7 @@ function buildManualHtml(s: Record<string, string>, version: string) {
     <tr><td><b>②マニュアル.pdf</b></td><td>このマニュアルです。</td></tr>
     <tr><td>③詳しい資料（公開する人向け）</td><td>インターネットに公開するとき・改造するときだけ使うフォルダです。普段は開かなくて大丈夫です。</td></tr>
   </table>
-  <div class="note" style="margin-top:0">①ツールを開く.html はパソコンの中で使う版で、楽天・Yahoo!・eBay の実データは「見本データ」になります（メルカリ等の価格の貼り付け・比較・利益計算・CSV・履歴はすべて使えます）。
+  <div class="note" style="margin-top:0">①ツールを開く.html はパソコンの中で使う版で、楽天・Yahoo!・eBay の自動取得はしません（実在しない商品を代わりに出すこともありません）。各サイトの検索ページを開いて価格を貼り付け・入力すれば、比較・利益計算・CSV・履歴はすべて使えます。
   実データは、インターネットに公開した URL で使えます（スタンダードプラン以上は制作者から共有された URL を開くだけです。自分で公開する方法は「6. 公開のしかた」）。</div>
   <h3>開き方</h3>
   <div class="two">
@@ -205,7 +205,7 @@ function buildManualHtml(s: Record<string, string>, version: string) {
       </ol>
     </div>
   </div>
-  ${s.start ? `<figure style="page-break-inside:auto;margin-top:2mm"><img src="${s.start}" style="width:78%;max-height:55mm" alt=""><figcaption>開いたところ。「PS5 で試してみる」を押すと、入力と検索を自動で行います。</figcaption></figure>` : ''}
+  ${s.start ? `<figure style="page-break-inside:auto;margin-top:2mm"><img src="${s.start}" style="width:78%;max-height:55mm" alt=""><figcaption>開いたところ。「Nintendo Switch 2 で試してみる」を押すと、入力と検索を自動で行います。</figcaption></figure>` : ''}
 
 </section>
 
@@ -233,10 +233,10 @@ function buildManualHtml(s: Record<string, string>, version: string) {
   <table>
     <tr><th>表示</th><th>意味</th></tr>
     <tr><td>緑「実データ表示中」</td><td>各サイトの公式API から取得した、実際の商品を表示しています。</td></tr>
-    <tr><td>黄「デモ表示中 — サンプル/見本データ」</td><td>操作確認用のサンプル、またはどのサイトにも接続できず見本データ（実在しない商品）を表示しています。</td></tr>
-    <tr><td>青「…モード — 検索すると接続します」</td><td>データソースを選んだ直後で、まだ検索していない状態です。</td></tr>
+    <tr><td>黄「自動取得できませんでした」「この版は自動取得なし」</td><td>自動取得できなかった（または自動取得しない版の）状態です。理由を表示します。実在しない商品を代わりに出すことはありません。相場一覧から検索ページを開き、貼り付け・入力で価格を並べてください。</td></tr>
+    <tr><td>青「… — 検索すると接続します」</td><td>まだ検索していない状態です。</td></tr>
   </table>
-  <p>「データソース」は <b>まとめて（楽天・Yahoo!・eBay）</b> が基本です。楽天だけで調べたいときは「楽天市場のみ」、操作を試すだけなら「サンプルデータ」を選びます。</p>
+  <p>「データソース」は <b>まとめて（楽天・Yahoo!・eBay）</b> が基本です。楽天だけで調べたいときは「楽天市場のみ」を選びます。</p>
 </section>
 
 <section class="page">

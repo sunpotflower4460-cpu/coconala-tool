@@ -208,7 +208,7 @@ async function main() {
       const smoke = await runAsync('npx', ['playwright', 'test', '--config', 'scripts/playwright.static-smoke.config.ts', 'static.spec'], REPO_ROOT, {
         STATIC_SMOKE_URL: `http://127.0.0.1:${port}`,
       });
-      record('app-static（静的版）がブラウザで動く（検索→比較→利益→CSV・楽天は見本データ）', smoke.ok, smoke.ok ? '' : tail(smoke.output, 25));
+      record('app-static（静的版）がブラウザで動く（自動取得なしを明示・価格入力→比較→利益→CSV）', smoke.ok, smoke.ok ? '' : tail(smoke.output, 25));
       const local = await runAsync('npx', ['playwright', 'test', '--config', 'scripts/playwright.static-smoke.config.ts', 'local-file'], REPO_ROOT, {
         LOCAL_HTML_PATH: path.join(root, TOOL_FILE),
       });

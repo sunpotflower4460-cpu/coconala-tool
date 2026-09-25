@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { QUERY_LABEL, useManualFixtures } from './manual-fixtures';
 
 const OUT = path.resolve(process.cwd(), 'dist-delivery', 'marketing');
 const THEMES = [
@@ -15,7 +16,9 @@ test.beforeAll(async () => {
   await fs.mkdir(OUT, { recursive: true });
 });
 
-async function prepareBoard(page: Page, mode: 'sample' | 'rakuten_mock', query: string) {
+async function prepareBoard(page: Page, mode: 'multi' | 'rakuten_mock', query: string) {
+  // 実在しない商品データ（ブラウザ内で /api/* を差し替え）で撮る
+  await useManualFixtures(page);
   await page.goto('/');
   await page.getByLabel('データソースを選ぶ').selectOption(mode);
   await page.getByLabel('商品名・型番・JAN・URL').fill(query);
@@ -37,7 +40,7 @@ for (const [id, label] of THEMES) {
   ] as const) {
     test(`画面写真: ${label} / ${device}`, async ({ page }) => {
       await page.setViewportSize(viewport);
-      await prepareBoard(page, 'sample', 'PS5');
+      await prepareBoard(page, 'multi', QUERY_LABEL);
       await page.getByRole('button', { name: `テーマ: ${label}` }).click();
       await page.emulateMedia({ reducedMotion: 'reduce' });
       if (device === 'pc') {
@@ -51,9 +54,9 @@ for (const [id, label] of THEMES) {
   }
 }
 
-test('画面写真: 楽天の実データ表示（偽楽天APIの商品で撮影。出品画像では商品名をぼかすこと）', async ({ page }) => {
+test('画面写真: 楽天市場のみの表示（実在しない商品データで撮影）', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await prepareBoard(page, 'rakuten_mock', 'ワイヤレスイヤホン');
+  await prepareBoard(page, 'rakuten_mock', QUERY_LABEL);
   await page.getByRole('heading', { name: /^検索結果/ }).evaluate((el) =>
     window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 110),
   );

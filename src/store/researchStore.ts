@@ -106,7 +106,7 @@ export const useResearchStore = create<ResearchStore>()(
       searchedQuery: '',
       resultCards: [],
       comparedCards: [],
-      dataSourceMode: 'sample',
+      dataSourceMode: 'multi',
       theme: 'simple-pro',
       profitSettings: defaultProfitSettings,
       buyPriceSource: null,

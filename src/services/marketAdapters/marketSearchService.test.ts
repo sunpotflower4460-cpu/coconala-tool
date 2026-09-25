@@ -1,81 +1,64 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import { runMarketSearch } from './marketSearchService';
 
-describe('runMarketSearch (sample mode)', () => {
-  it('タイトルの部分一致でカードを絞り込み、PS5 と PlayStation 5 を同じ語として扱う', async () => {
-    const result = await runMarketSearch('PS5', 'sample', 8);
-    expect(result.status).toBe('sample');
-    expect(result.cards.length).toBeGreaterThan(0);
-    for (const card of result.cards) {
-      expect(/PS5|PlayStation 5/.test(card.title)).toBe(true);
-    }
-    const long = await runMarketSearch('PlayStation 5', 'sample', 8);
-    expect(long.cards.map((c) => c.id)).toEqual(result.cards.map((c) => c.id));
-  });
+function stubFetch(handler: (url: string) => Response) {
+  vi.stubGlobal('fetch', (async (input: RequestInfo | URL) => handler(String(input))) as typeof fetch);
+}
 
-  it('空白区切りの語はすべて含むカードだけに絞り込む（全角英数も同一視）', async () => {
-    const result = await runMarketSearch('ＰＳ５ Digital', 'sample', 8);
-    expect(result.cards.length).toBeGreaterThan(0);
-    for (const card of result.cards) expect(card.title).toMatch(/Digital|デジタル/i);
-  });
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
-  it('楽天モードの見本データは PS5 / ウォークマン / Walkman でもヒットする', async () => {
-    const originalFetch = globalThis.fetch;
-    globalThis.fetch = (async () =>
-      new Response(JSON.stringify({ items: [], error: 'no_key' }), {
-        status: 503,
-        headers: { 'content-type': 'application/json' },
-      })) as typeof fetch;
-    try {
-      for (const q of ['PS5', 'ウォークマン', 'walkman', 'SONY NW-A55', '3DS']) {
-        const result = await runMarketSearch(q, 'rakuten_mock', 8);
-        expect([q, result.status, result.cards.length > 0]).toEqual([q, 'mock_no_key', true]);
-      }
-    } finally {
-      globalThis.fetch = originalFetch;
+describe('runMarketSearch', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('楽天モードで接続できないときは偽の商品を出さず、理由と貼り付けの案内だけを返す', async () => {
+    stubFetch(() => json({ items: [], error: 'no_key' }, 503));
+    for (const q of ['PS5', 'ウォークマン', 'Nintendo Switch 2']) {
+      const result = await runMarketSearch(q, 'rakuten_mock', 8);
+      expect(result.status).toBe('mock_no_key');
+      expect(result.cards).toEqual([]);
+      expect(result.warnings.join('\n')).toMatch(/貼り付け/);
+      expect(result.warnings.join('\n')).not.toMatch(/見本|サンプル/);
     }
   });
 
-  it('大文字小文字を区別しない', async () => {
-    const lower = await runMarketSearch('ebay', 'sample', 8);
-    const upper = await runMarketSearch('EBAY', 'sample', 8);
-    expect(lower.cards.map((c) => c.id)).toEqual(upper.cards.map((c) => c.id));
-    expect(lower.cards.length).toBeGreaterThan(0);
+  it('まとめてモードで全サイトが失敗しても偽の商品を出さない', async () => {
+    stubFetch(() => json({ items: [], error: 'no_key' }, 503));
+    const result = await runMarketSearch('PS5', 'multi', 8);
+    expect(result.cards).toEqual([]);
+    expect(result.status).toBe('mock_no_key');
+    expect(result.sources?.every((s) => s.outcome === 'failed')).toBe(true);
+    expect(result.warnings.join('\n')).toMatch(/貼り付け/);
+    expect(result.warnings.join('\n')).not.toMatch(/見本|サンプル/);
   });
 
-  it('前後の空白を無視する', async () => {
-    const trimmed = await runMarketSearch('PS5', 'sample', 8);
-    const padded = await runMarketSearch('  PS5  ', 'sample', 8);
-    expect(padded.cards.map((c) => c.id)).toEqual(trimmed.cards.map((c) => c.id));
-  });
-
-  it('サイト名でも絞り込める', async () => {
-    const result = await runMarketSearch('メルカリ', 'sample', 8);
-    expect(result.cards.length).toBeGreaterThan(0);
-    expect(result.cards.every((c) => c.siteName === 'メルカリ')).toBe(true);
-  });
-
-  it('該当なしの場合は空配列と警告を返す', async () => {
-    const result = await runMarketSearch('存在しない商品名zzzzz', 'sample', 8);
-    expect(result.status).toBe('sample');
-    expect(result.cards).toHaveLength(0);
-    expect(result.warnings.length).toBeGreaterThan(0);
-  });
-
-  it('サンプルカードには demoOrigin=sample が付与される', async () => {
-    const result = await runMarketSearch('PS5', 'sample', 8);
-    expect(result.cards.every((c) => c.demoOrigin === 'sample')).toBe(true);
+  it('まとめてモードで一部のサイトだけ成功したら、その実データだけを並べる', async () => {
+    stubFetch((url) =>
+      url.startsWith('/api/rakuten')
+        ? json({
+            items: [
+              {
+                itemCode: 'shop:1',
+                itemName: 'PS5 本体',
+                shopName: 'ショップ',
+                itemPrice: 79800,
+                mediumImageUrls: [],
+                itemUrl: 'https://item.rakuten.co.jp/shop/1/',
+                postageFlag: 0,
+              },
+            ],
+          })
+        : json({ items: [], error: 'no_key' }, 503),
+    );
+    const result = await runMarketSearch('PS5', 'multi', 8);
+    expect(result.status).toBe('official_api');
+    expect(result.cards).toHaveLength(1);
+    expect(result.cards[0].demoOrigin).toBeUndefined();
   });
 
   it('searchedAt を含む', async () => {
-    const result = await runMarketSearch('PS5', 'sample', 8);
-    expect(typeof result.searchedAt).toBe('string');
+    stubFetch(() => json({ items: [] }));
+    const result = await runMarketSearch('PS5', 'multi', 8);
     expect(Number.isNaN(Date.parse(result.searchedAt))).toBe(false);
-  });
-
-  it('URL を検索語にしても例外にせず 0件扱いにできる', async () => {
-    const result = await runMarketSearch('https://jp.mercari.com/search?keyword=PS5', 'sample', 8);
-    expect(result.status).toBe('sample');
-    expect(Array.isArray(result.cards)).toBe(true);
   });
 });

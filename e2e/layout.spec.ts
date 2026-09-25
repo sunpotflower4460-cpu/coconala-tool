@@ -69,11 +69,11 @@ test('押せる部品（ボタン・リンク・入力）はタップしやす�
   expect(small, 'タップしにくい小さな部品').toEqual([]);
 });
 
-test('スクロールしてもヘッダーの表示状態（デモ/実データ）が読める', async ({ page }) => {
+test('スクロールしてもヘッダーの表示状態（実データ/取得できず）が読める', async ({ page }) => {
   await page.goto('/');
   await search(page, 'PS5');
   await page.evaluate(() => window.scrollBy(0, 1500));
-  const badge = page.locator('header').getByText('デモ表示中 — サンプル/見本データ');
+  const badge = page.locator('header').getByText(/実データ表示中|自動取得できませんでした/);
   await expect(badge).toBeInViewport();
   const bg = await page.locator('header .glass-header').evaluate((el) => getComputedStyle(el).backgroundColor);
   expect(bg).not.toBe('rgba(0, 0, 0, 0)');

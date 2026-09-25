@@ -225,7 +225,7 @@ async function stageSamples(stagingDir) {
   await fs.writeFile(
     path.join(sampleDir, 'README.md'),
     copied
-      ? '# 画面の見本\n\nサンプルデータで表示した画面の見本です（テーマ別・PC幅とスマホ幅）。\n'
+      ? '# 画面の見本\n\n実在しない商品データで撮影した画面の見本です（テーマ別・PC幅とスマホ幅）。\n'
       : '# 画面の見本\n\n画面の見本画像はこのバージョンには含まれていません。`app-static/` を公開すると実際の画面を確認できます。\n',
     'utf-8',
   );

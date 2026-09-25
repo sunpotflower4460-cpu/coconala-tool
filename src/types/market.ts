@@ -2,8 +2,9 @@ export type SourceType = 'official_api' | 'search_api' | 'search_link' | 'manual
 /**
  * データソース。値 `rakuten_mock` は保存データとの互換のため名前を変えずに「楽天市場のみ」を表す。
  * `multi` は楽天・Yahoo!ショッピング・eBay の公式APIを同時に検索する。
+ * （以前あった `sample`＝固定のサンプルカードは廃止。保存データの `sample` は `multi` として読み込む）
  */
-export type DataSourceMode = 'sample' | 'rakuten_mock' | 'multi';
+export type DataSourceMode = 'rakuten_mock' | 'multi';
 
 /** カードがどの販売サイトのものか（相場一覧の行・絞り込みに使う）。 */
 export type MarketId = 'rakuten' | 'yahoo_shopping' | 'ebay' | 'mercari' | 'yahoo_auctions' | 'rakuma' | 'amazon' | 'other';
@@ -60,27 +61,30 @@ export const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
 };
 
 export const DATA_SOURCE_MODE_LABELS: Record<DataSourceMode, string> = {
-  sample: 'サンプル',
   rakuten_mock: '楽天市場のみ',
   multi: 'まとめて（楽天・Yahoo!・eBay）',
 };
 
+/**
+ * 検索状態の表示名。`mock_*` は「接続できなかった理由」を表す（名前は保存データとの互換のため変えない）。
+ * 接続できないときも偽の商品は表示しない。`sample` は廃止した固定サンプル（古い履歴の表示用）。
+ */
 export const SEARCH_STATUS_LABELS: Record<MarketSearchStatus, string> = {
   official_api: '実データ（公式API）',
   empty: '実データ（0件）',
-  sample: 'サンプルデータ',
-  mock_no_key: '見本データ（連携の設定前）',
-  mock_setup_error: '見本データ（連携の設定を確認）',
-  mock_timeout: '見本データ（応答待ちが長すぎた）',
-  mock_network: '見本データ（通信できなかった）',
-  mock_rate_limited: '見本データ（アクセス集中）',
-  mock_upstream_error: '見本データ（接続先の一時的な不具合）',
+  sample: 'サンプル（旧版の履歴）',
+  mock_no_key: '取得できず（連携の設定前）',
+  mock_setup_error: '取得できず（連携の設定を確認）',
+  mock_timeout: '取得できず（応答待ちが長すぎた）',
+  mock_network: '取得できず（通信できなかった）',
+  mock_rate_limited: '取得できず（アクセス集中）',
+  mock_upstream_error: '取得できず（接続先の一時的な不具合）',
   invalid_query: '検索語を確認してください',
 };
 
-/** 実データではない（サンプル・見本データ）検索状態。デモ表示の判定に使う。 */
-export function isDemoSearchStatus(status: MarketSearchStatus | null): boolean {
-  return status === 'sample' || (status !== null && status.startsWith('mock_'));
+/** 自動取得できなかった検索状態（ヘッダーの表示に使う）。 */
+export function isUnavailableSearchStatus(status: MarketSearchStatus | null): boolean {
+  return status !== null && status.startsWith('mock_');
 }
 
 export type MarketCard = {
@@ -99,8 +103,8 @@ export type MarketCard = {
   note?: string;
   createdAt: string;
   /**
-   * デモ由来カードの明示用。実データ（公式API）には付与しない。
-   * 'sample' = UI確認用の固定サンプル、'mock' = 楽天API想定の擬似データ。
+   * 旧版で作られたデモ用カードの目印（'sample' 固定サンプル / 'mock' 見本データ）。
+   * 現在は偽の商品を作らないが、古い履歴に残っている場合に区別して表示するため読み込みは続ける。
    */
   demoOrigin?: 'sample' | 'mock';
   /** 販売サイト。無い古いデータは URL から判定する（`marketOf`）。 */
