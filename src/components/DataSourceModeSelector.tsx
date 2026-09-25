@@ -5,22 +5,19 @@ import { IS_STATIC_BUILD } from '../lib/deployMode';
 const modeOptions = [
   { value: 'multi', label: 'まとめて（楽天・Yahoo!・eBay）' },
   { value: 'rakuten_mock', label: '楽天市場のみ' },
-  { value: 'sample', label: 'サンプルデータ' },
 ] as const;
 
 const currentModeLabels: Record<DataSourceMode, string> = {
-  sample: 'サンプル',
   rakuten_mock: '楽天市場',
   multi: '楽天・Yahoo!・eBay',
 };
 
 const modeNotices: Record<DataSourceMode, string> = {
-  sample: 'サンプルデータは画面や操作の確認用の固定カードです（PS5関連）。検索語で絞り込めます。リアルタイム取得ではありません。',
   rakuten_mock: IS_STATIC_BUILD
-    ? 'この版は楽天市場と連携していないため、見本データを表示します。実データを使うには Workers 版で公開してください。'
-    : '楽天市場の商品を検索します。楽天の設定がまだ・接続できない時は、理由を表示して見本データに切り替えます。',
+    ? 'この版は楽天市場の自動取得をしません。相場一覧から検索ページを開き、貼り付け・手入力で価格を並べてください。自動取得を使うには Workers 版で公開してください。'
+    : '楽天市場の商品を検索します。楽天の設定がまだ・接続できない時は、理由と代わりの方法（貼り付け・手入力）を表示します。',
   multi: IS_STATIC_BUILD
-    ? 'この版は楽天市場・Yahoo!ショッピング・eBay と連携していないため、見本データを表示します。実データを使うには Workers 版で公開してください。'
+    ? 'この版は楽天市場・Yahoo!ショッピング・eBay の自動取得をしません。相場一覧から検索ページを開き、貼り付け・手入力で価格を並べてください。自動取得を使うには Workers 版で公開してください。'
     : '楽天市場・Yahoo!ショッピング・eBay を同時に検索して1つの一覧に並べます。設定していないサイトは理由を表示し、他のサイトの結果だけを表示します。',
 };
 

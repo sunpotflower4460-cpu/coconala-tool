@@ -32,7 +32,7 @@ describe('ProductSearchBar', () => {
       searchStatus: null,
       searchWarnings: [],
       lastSearchedAt: null,
-      dataSourceMode: 'sample',
+      dataSourceMode: 'multi',
       profitSettings: {
         buyPrice: 0,
         sellPrice: 0,

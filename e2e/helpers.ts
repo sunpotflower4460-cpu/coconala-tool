@@ -10,7 +10,7 @@ export async function search(page: Page, query: string) {
   await expect(page.getByRole('heading', { name: /^検索結果 \(\d+件\)$/ })).toBeVisible();
 }
 
-export async function selectDataSource(page: Page, mode: 'sample' | 'rakuten_mock' | 'multi') {
+export async function selectDataSource(page: Page, mode: 'rakuten_mock' | 'multi') {
   await page.getByLabel('データソースを選ぶ').selectOption(mode);
 }
 

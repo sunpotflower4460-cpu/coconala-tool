@@ -19,7 +19,8 @@ import { ApiStatusPanel } from './ApiStatusPanel';
 import { DemoModeNotice } from './DemoModeNotice';
 import { PriceOverviewBoard } from './PriceOverviewBoard';
 import { ResultsToolbar, applyResultView, type ResultFilter, type ResultSort } from './ResultsToolbar';
-import { SOURCE_TYPE_LABELS, isDemoSearchStatus, type SourceType } from '../types/market';
+import { SOURCE_TYPE_LABELS, isUnavailableSearchStatus, type SourceType } from '../types/market';
+import { IS_STATIC_BUILD } from '../lib/deployMode';
 
 const sourceLegendItems: SourceType[] = ['official_api', 'search_api', 'search_link', 'manual'];
 
@@ -36,7 +37,7 @@ const statusBannerClassByStatus: Record<string, string> = {
   mock_upstream_error: 'border-amber-300/30 bg-amber-500/10 text-amber-50',
 };
 
-type DisplayMode = 'live' | 'demo' | 'rakuten_idle';
+type DisplayMode = 'live' | 'unavailable' | 'idle';
 
 export function AppShell() {
   const { resultCards, pastedCards, searchedQuery, comparedCards, searchStatus, searchWarnings, dataSourceMode, lastSearchedAt, searchSources, exchangeRate } =
@@ -75,9 +76,9 @@ export function AppShell() {
   const displayMode: DisplayMode =
     searchStatus === 'official_api' || searchStatus === 'empty'
       ? 'live'
-      : dataSourceMode === 'sample' || isDemoSearchStatus(searchStatus)
-        ? 'demo'
-        : 'rakuten_idle';
+      : IS_STATIC_BUILD || isUnavailableSearchStatus(searchStatus)
+        ? 'unavailable'
+        : 'idle';
 
   return (
     <div className="min-h-screen px-3 py-4 sm:px-4 sm:py-6 md:px-8">
@@ -95,14 +96,14 @@ export function AppShell() {
                   {dataSourceMode === 'multi' ? '実データ表示中 — 楽天・Yahoo!・eBay' : '実データ表示中 — 楽天市場'}
                 </span>
               )}
-              {displayMode === 'demo' && (
+              {displayMode === 'unavailable' && (
                 <span className="rounded-full border border-amber-300/40 bg-amber-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-amber-100">
-                  デモ表示中 — サンプル/見本データ
+                  {IS_STATIC_BUILD ? 'この版は自動取得なし — 貼り付け・手入力で比較' : '自動取得できませんでした — 貼り付け・手入力で比較'}
                 </span>
               )}
-              {displayMode === 'rakuten_idle' && (
+              {displayMode === 'idle' && (
                 <span className="rounded-full border border-sky-300/40 bg-sky-500/15 px-2.5 py-0.5 text-[11px] font-semibold text-sky-100">
-                  楽天市場モード — 検索すると接続します
+                  {dataSourceMode === 'multi' ? '楽天・Yahoo!・eBay — 検索すると接続します' : '楽天市場 — 検索すると接続します'}
                 </span>
               )}
             </div>
@@ -120,9 +121,12 @@ export function AppShell() {
           <div className="glass border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-100">
             {dataSourceMode === 'multi' ? '楽天市場・Yahoo!ショッピング・eBay の実データ' : '楽天市場の実データ'}を表示しています。表示価格は検索時点の参考値です。最終確認は元ページで行ってください。
           </div>
-        ) : displayMode === 'demo' ? (
+        ) : displayMode === 'unavailable' ? (
           <div className="glass border-amber-300/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-50">
-            デモ表示中 — サンプル/見本データです。検索・比較・利益計算・CSV出力の流れを確認できます。楽天市場の実データは、楽天のキーを設定した公開版でデータソース「楽天市場」を選ぶと表示されます。
+            {IS_STATIC_BUILD
+              ? 'この版は楽天市場・Yahoo!ショッピング・eBay の自動取得をしません。'
+              : `${dataSourceMode === 'multi' ? '楽天市場・Yahoo!ショッピング・eBay' : '楽天市場'} から自動取得できませんでした（理由は下に表示）。`}
+            実在しない商品を代わりに表示することはありません。相場一覧から各サイトの検索ページを開き、ページをコピーして貼り付けると価格を並べられます。
           </div>
         ) : null}
         <ProductSearchBar />
@@ -150,13 +154,13 @@ export function AppShell() {
                 <button
                   type="button"
                   onClick={() => {
-                    const example = dataSourceMode === 'sample' ? 'PS5' : 'Nintendo Switch 2';
+                    const example = 'Nintendo Switch 2';
                     useResearchStore.getState().setQuery(example);
                     void performSearch();
                   }}
                   className="flex min-h-11 items-center gap-1.5 rounded-full bg-accent-strong px-5 text-sm font-semibold text-on-accent hover:brightness-110"
                 >
-                  {dataSourceMode === 'sample' ? 'PS5 で試してみる' : 'Nintendo Switch 2 で試してみる'}
+                  Nintendo Switch 2 で試してみる
                 </button>
                 <button
                   type="button"
@@ -256,7 +260,9 @@ export function AppShell() {
                 )
               ) : (
                 <div className="glass border-dashed px-4 py-4 text-sm text-ink/70">
-                  該当する候補が見つかりませんでした。検索語を変えるか、「手動で追加」から元ページのURLと価格を登録できます。
+                  {displayMode === 'unavailable'
+                    ? '自動取得できなかったため、商品カードはありません。上の相場一覧で各サイトの検索ページを開いて価格を貼り付け・入力するか、「手動で追加」から元ページのURLと価格を登録できます。'
+                    : '該当する候補が見つかりませんでした。検索語を変えるか、「手動で追加」から元ページのURLと価格を登録できます。'}
                 </div>
               )}
             </div>

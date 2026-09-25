@@ -48,6 +48,7 @@ test('SEC-04: 履歴の HTML タイトルはテキスト表示され alert さ�
               },
               createdAt: '2026-01-01T00:00:00.000Z',
               updatedAt: '2026-01-01T00:00:00.000Z',
+              // 旧版の「サンプルデータ」選択が残っていても読み込める（まとめて に置き換わる）
               dataSourceMode: 'sample',
               searchStatus: 'official_api',
               searchWarnings: [],
@@ -67,7 +68,7 @@ test('SEC-04: 履歴の HTML タイトルはテキスト表示され alert さ�
   await page.getByRole('button', { name: '履歴「XSS履歴」を再開' }).click();
 
   await expect(page.getByText('<img src=x onerror=alert(1)>').first()).toBeVisible();
-  await expect(page.getByText('デモ表示中 — サンプル/見本データ', { exact: true })).toBeVisible();
+  await expect(page.getByText('楽天・Yahoo!・eBay — 検索すると接続します', { exact: true })).toBeVisible();
   await expect(page.getByText(/実データ表示中/)).toHaveCount(0);
   expect(alerts).toEqual([]);
 });
@@ -90,7 +91,7 @@ test('CONC-05: 他タブの履歴保存が storage 経由で反映される', as
   await expect(pageB.getByText('タブAの履歴')).toBeVisible({ timeout: 5_000 });
 });
 
-test('USER-07: URL を検索語にしてもアプリは落ちずサンプル検索できる', async ({ page }) => {
+test('USER-07: URL を検索語にしてもアプリは落ちずに検索できる', async ({ page }) => {
   await page.goto('/');
   await page.getByLabel('商品名・型番・JAN・URL').fill('https://jp.mercari.com/search?keyword=PS5');
   await page.getByRole('button', { name: 'まとめて探す' }).click();

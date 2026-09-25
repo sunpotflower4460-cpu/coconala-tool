@@ -32,8 +32,8 @@ export default defineConfig({
   // リトライで通ったテストも「不安定」として失敗扱いにし、たまたま通った結果を見逃さない。
   failOnFlakyTests: !!process.env.CI,
   reporter: process.env.CI
-    ? [['github'], ['html', { open: 'never' }], ['json', { outputFile: 'test-results/e2e-results.json' }]]
-    : [['list'], ['json', { outputFile: 'test-results/e2e-results.json' }]],
+    ? [['github'], ['html', { open: 'never' }], ['json', { outputFile: 'dist-delivery/e2e-results.json' }]]
+    : [['list'], ['json', { outputFile: 'dist-delivery/e2e-results.json' }]],
   use: {
     baseURL,
     trace: 'retain-on-failure',

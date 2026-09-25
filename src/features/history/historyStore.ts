@@ -74,7 +74,7 @@ export const useHistoryStore = create<HistoryStore>()(
           resultCards: sanitizeCards(snapshot.resultCards),
           comparedCards: sanitizeCards(snapshot.comparedCards),
           profitSettings: sanitizeProfitSettings(snapshot.profitSettings),
-          dataSourceMode: sanitizeDataSourceMode(snapshot.dataSourceMode) ?? 'sample',
+          dataSourceMode: sanitizeDataSourceMode(snapshot.dataSourceMode) ?? 'multi',
           searchStatus: sanitizeSearchStatus(snapshot.searchStatus),
           searchWarnings: sanitizeSearchWarnings(snapshot.searchWarnings),
           lastSearchedAt: sanitizeLastSearchedAt(snapshot.lastSearchedAt),

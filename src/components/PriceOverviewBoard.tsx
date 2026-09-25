@@ -18,7 +18,6 @@ type Row = {
   kind: 'auto' | 'manual';
   prices: number[];
   cards: MarketCard[];
-  hasDemo: boolean;
   status?: string;
   searchUrl?: string;
 };
@@ -170,7 +169,6 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
       kind,
       prices,
       cards,
-      hasDemo: cards.some((c) => c.demoOrigin),
       status: source && source.outcome !== 'ok' ? source.message : undefined,
       searchUrl: links.find((l) => l.id === shortcutId)?.url,
     };
@@ -239,7 +237,7 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
                   <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[11px] font-semibold text-emerald-100">最安</span>
                 )}
                 <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-ink/75">
-                  {row.kind === 'auto' ? (row.hasDemo ? '見本データ' : '自動取得') : '手入力'}
+                  {row.kind === 'auto' ? '自動取得' : '手入力'}
                 </span>
               </div>
 

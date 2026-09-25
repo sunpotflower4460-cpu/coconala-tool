@@ -157,11 +157,15 @@ test('一部のサイトが失敗しても他のサイトの実データを表�
   await expect(resultCards(page)).toHaveCount(6);
 });
 
-test('3サイトとも接続できないときは理由を表示して見本データ扱いにする', async ({ page }) => {
+test('3サイトとも接続できないときは理由と貼り付けの案内だけを表示し、偽の商品は出さない', async ({ page }) => {
   await multiSearch(page, '__allfail PS5');
-  await expect(page.getByText(/どれにも接続できなかったため、見本データ/)).toBeVisible();
-  await expect(page.getByText('デモ表示中 — サンプル/見本データ').first()).toBeVisible();
+  await expect(page.getByText(/どれにも接続できなかったため、商品を表示できませんでした/)).toBeVisible();
+  await expect(page.getByText('自動取得できませんでした — 貼り付け・手入力で比較')).toBeVisible();
   await expect(page.getByText(/実データ表示中/)).toHaveCount(0);
+  await expect(resultCards(page)).toHaveCount(0);
+  await expect(page.getByText(/見本データ|サンプルデータ/)).toHaveCount(0);
+  // 相場一覧から開く・貼り付ける導線は残る
+  await expect(overviewRow(page, 'メルカリ').getByRole('link', { name: '開く' })).toBeVisible();
 });
 
 test('まとめて開く: チェックしたサイトを別ウィンドウで格子状に開く', async ({ page, context }) => {

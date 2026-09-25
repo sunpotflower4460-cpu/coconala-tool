@@ -121,7 +121,7 @@ describe('buildResearchCsv', () => {
   it('includes search metadata (data source / status / warnings / searched-at) when provided', () => {
     const csv = buildResearchCsv([makeCard({})], profitSettings, '2026-06-24T00:00:00.000Z', searchMeta);
     expect(csv).toContain('データソース,楽天市場');
-    expect(csv).toContain('見本データ（連携の設定前）');
+    expect(csv).toContain('取得できず（連携の設定前）');
     expect(csv).toContain('検索日時（日本時間）,2026/07/22 09:00:00');
     expect(csv).toContain('楽天APIキーが未設定のため');
   });

@@ -28,10 +28,6 @@
 `src/store/researchStore.ts` の `theme: 'simple-pro'` を `'soft-market'` / `'dark-trader'` / `'natural-board'` に変えます。
 `public/theme-init.js` の `var theme = 'simple-pro';` も同じ値にすると、初回表示のちらつきがありません。
 
-### サンプルデータを変える
-
-`src/data/sampleMarketCards.ts` を編集します。検索は空白区切りのすべての語を含むカードに絞り込みます。
-
 ### 楽天のレート制限を変える
 
 `wrangler.jsonc` の `ratelimits` の `"limit"`（回数）と `"period"`（10 または 60 秒）を変えて `npm run deploy` します。

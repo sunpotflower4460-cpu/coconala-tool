@@ -3,10 +3,12 @@ import { comparedCards, downloadCsv, parseCsv, resultCards, search, SEARCH_INPUT
 
 // Playwright はテストごとに新しいブラウザコンテキストを使うため、localStorage は毎回空から始まる。
 
-test('@postdeploy 初期表示: 見出し・デモ表示・サイドバー・楽天クレジットが出る', async ({ page }) => {
+test('@postdeploy 初期表示: 見出し・接続前の表示・サイドバー・楽天クレジットが出る（サンプル表示は無い）', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: '相場カード比較ボード' })).toBeVisible();
-  await expect(page.getByText('デモ表示中 — サンプル/見本データ').first()).toBeVisible();
+  await expect(page.getByText('楽天・Yahoo!・eBay — 検索すると接続します')).toBeVisible();
+  await expect(page.getByText(/デモ表示中|サンプルデータ|見本データ/)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Nintendo Switch 2 で試してみる' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'リサーチ履歴' })).toBeVisible();
   await expect(page.getByRole('heading', { name: /^比較ボード \(0件\)$/ })).toBeVisible();
   await expect(page.getByText('比較に追加すると、ここで並べて見比べられます')).toBeVisible();
@@ -16,7 +18,7 @@ test('@postdeploy 初期表示: 見出し・デモ表示・サイドバー・楽
   );
 });
 
-test('@postdeploy サンプル検索: PS5 で PS5/PlayStation 5 のカードだけが並び、出所ラベルが付く', async ({ page }) => {
+test('@postdeploy 検索: 実データのカードが並び、出所ラベルが付く（見本データは出ない）', async ({ page }) => {
   await page.goto('/');
   await search(page, 'PS5');
   const cards = resultCards(page);
@@ -24,15 +26,15 @@ test('@postdeploy サンプル検索: PS5 で PS5/PlayStation 5 のカードだ�
   expect(count).toBeGreaterThan(0);
   for (let i = 0; i < count; i += 1) {
     const card = cards.nth(i);
-    await expect(card.getByRole('heading', { level: 3 })).toHaveText(/PS5|PlayStation 5/);
-    await expect(card.getByText('サンプルデータ')).toBeVisible();
+    await expect(card.getByText('公式API取得')).toBeVisible();
+    await expect(card.getByText(/サンプルデータ|見本データ/)).toHaveCount(0);
     await expect(card.getByRole('link', { name: '元ページを見る' })).toHaveAttribute('rel', /noopener/);
   }
 });
 
-test('サンプル検索: 該当なしでも案内と「手動で追加」が出る', async ({ page }) => {
+test('検索: 該当なしでも案内と「手動で追加」が出る', async ({ page }) => {
   await page.goto('/');
-  await search(page, '存在しない商品名zzzzz');
+  await search(page, '__empty 該当なし');
   await expect(page.getByText('該当する候補が見つかりませんでした')).toBeVisible();
   await expect(resultCards(page)).toHaveCount(0);
   await page.getByRole('button', { name: '手動で追加' }).click();
@@ -49,8 +51,8 @@ test('比較追加と削除: 追加→比較中表示→×で外すと空に戻�
   await expect(page.getByRole('heading', { name: '比較ボード (1件)' })).toBeVisible();
   await expect(firstCard.getByRole('button', { name: '比較中' })).toHaveAttribute('aria-pressed', 'true');
   await expect(comparedCards(page).first()).toContainText(title);
-  // 比較ボードでも出所（サンプル / ソース区分）が見える
-  await expect(comparedCards(page).first().getByText('サンプルデータ')).toBeVisible();
+  // 比較ボードでも出所（ソース区分）が見える
+  await expect(comparedCards(page).first().getByText('公式API取得')).toBeVisible();
 
   await comparedCards(page).first().getByRole('button', { name: '比較から削除' }).click();
   await expect(page.getByRole('heading', { name: '比較ボード (0件)' })).toBeVisible();

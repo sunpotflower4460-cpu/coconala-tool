@@ -29,7 +29,7 @@ export const RESEARCH_PERSIST_VERSION = 2;
 export const HISTORY_PERSIST_VERSION = 1;
 
 const THEME_IDS: ThemeId[] = ['simple-pro', 'soft-market', 'dark-trader', 'natural-board'];
-const DATA_SOURCE_MODES: DataSourceMode[] = ['sample', 'rakuten_mock', 'multi'];
+const DATA_SOURCE_MODES: DataSourceMode[] = ['rakuten_mock', 'multi'];
 const MARKET_IDS: MarketId[] = ['rakuten', 'yahoo_shopping', 'ebay', 'mercari', 'yahoo_auctions', 'rakuma', 'amazon', 'other'];
 const SOURCE_TYPES: SourceType[] = ['official_api', 'search_api', 'search_link', 'manual'];
 const MARKET_SEARCH_STATUSES: MarketSearchStatus[] = [
@@ -71,6 +71,8 @@ function clampText(value: unknown, maxLength: number): string {
 }
 
 export function sanitizeDataSourceMode(value: unknown): DataSourceMode | undefined {
+  // 廃止した「サンプルデータ」を選んでいた人は「まとめて」に切り替える
+  if (value === 'sample') return 'multi';
   return DATA_SOURCE_MODES.includes(value as DataSourceMode) ? (value as DataSourceMode) : undefined;
 }
 
@@ -173,7 +175,7 @@ export function sanitizeSavedSession(value: unknown): SavedResearchSession | und
     profitSettings: sanitizeProfitSettings(record.profitSettings),
     createdAt: typeof record.createdAt === 'string' ? record.createdAt : new Date(0).toISOString(),
     updatedAt: typeof record.updatedAt === 'string' ? record.updatedAt : new Date(0).toISOString(),
-    dataSourceMode: sanitizeDataSourceMode(record.dataSourceMode) ?? 'sample',
+    dataSourceMode: sanitizeDataSourceMode(record.dataSourceMode) ?? 'multi',
     searchStatus: sanitizeSearchStatus(record.searchStatus),
     searchWarnings: sanitizeSearchWarnings(record.searchWarnings),
     lastSearchedAt: sanitizeLastSearchedAt(record.lastSearchedAt),

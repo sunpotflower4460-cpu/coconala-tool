@@ -2,7 +2,7 @@
 
 最終更新: 2026-09-24
 
-対象: 相場カード比較ボード (`coconala-tool`) v0.9.0-rc.14
+対象: 相場カード比較ボード (`coconala-tool`) v0.9.0-rc.15
 
 自動テストの実行方法: `npm run verify:all`（単体・E2E・整合チェック・納品ZIP検証を一括実行し、`dist-delivery/VERIFICATION_REPORT.md` に結果を出力）
 
@@ -100,7 +100,7 @@
 - 状態: Protected（rc.11 で本文サイズ上限 2MB を追加）
 - 故障: JSON parse時のメモリ/CPU増大
 - 再現: 2MB を超える応答、Content-Length が上限超過の応答
-- 期待結果: 読み切らずに 502 `upstream_error` → 見本データへ。秘密情報を返さない。80件程度の肥大 Items は正規化して返す
+- 期待結果: 読み切らずに 502 `upstream_error` → 理由を表示（商品カードは出さない）。秘密情報を返さない。80件程度の肥大 Items は正規化して返す
 - 自動テスト: `functions/api/rakuten.test.ts`、`e2e/rakuten-worker.spec.ts`（`__big`、実Worker経由）
 
 ## API-08 HEAD / OPTIONS / PUT / DELETE / PATCH
@@ -488,7 +488,7 @@
 - 状態: Protected
 - 故障: 保存時点の公式取得を、再開後もライブ接続と誤認する
 - 再現: `searchStatus=official_api` の履歴を再開
-- 期待結果: ヘッダーはデモ表示。カードのソースラベル（当時の種別）は残る。ライブバッジは出ない
+- 期待結果: ヘッダーは「検索すると接続します」表示。カードのソースラベル（当時の種別）は残る。ライブバッジは出ない
 - 自動テスト: `AppShell.test.tsx`, `e2e/production-failure.spec.ts`
 
 ## DATA-10 為替レート 0 で USD が ¥0 になる
@@ -825,7 +825,7 @@
 
 - 重大度: P0
 - 状態: Protected（rc.11 で新API `openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701` に移行）
-- 故障: 旧APIは 2026-05-14 に終了。旧実装のままだと実キーを設定しても常に見本データになり、販売文の主要機能が成立しない
+- 故障: 旧APIは 2026-05-14 に終了。旧実装のままだと実キーを設定しても常に取得できず、販売文の主要機能が成立しない
 - 再現: 旧エンドポイントへアプリIDだけで問い合わせる
 - 期待結果: アプリID＋アクセスキーの両方を送り、楽天の「許可されたWebサイト」と照合される Origin / Referer を付ける。どちらかのキーが無ければ 503 `no_key`
 - 自動テスト: `functions/api/rakuten.test.ts`（新ホスト・accessKey・Origin）、`e2e/rakuten-worker.spec.ts`（偽楽天APIで上流に届いた値を検証）、`npm run verify:release`（旧ドメインが残っていないこと）
@@ -835,9 +835,9 @@
 
 - 重大度: P1
 - 状態: Protected
-- 故障: 0件を通信失敗として見本データ表示する、キーの誤りを「一時的な不具合」と案内する、見本データを実データのように見せる
+- 故障: 0件を通信失敗として扱う、キーの誤りを「一時的な不具合」と案内する、実在しない商品を実データのように見せる
 - 再現: 上流 404 / 401 / 403 / 400（applicationId・accessKey）/ 400（keyword）
-- 期待結果: 404 → 実データの0件。401・403・キー起因400 → 「設定を確認」。検索語起因400 → 見本データを出さず検索語の直し方を案内
+- 期待結果: 404 → 実データの0件。401・403・キー起因400 → 「設定を確認」。検索語起因400 → 検索語の直し方を案内
 - 自動テスト: `functions/api/rakuten.test.ts`、`e2e/rakuten-worker.spec.ts`
 
 ## USER-11 日本語入力の変換確定 Enter で検索が走る
@@ -862,9 +862,9 @@
 
 - 重大度: P1
 - 状態: Protected
-- 故障: 1サイトの障害・キー未設定で検索全体が見本データになる、または失敗したサイトの見本データが実データに混ざる
+- 故障: 1サイトの障害・キー未設定で検索全体が失敗する、または失敗したサイトの偽の商品が実データに混ざる
 - 再現: Yahoo!だけ 500 / eBay だけ 401 / 3サイトとも 500（`__yahoofail` / `__ebayauth` / `__allfail`）
-- 期待結果: 成功したサイトの実データは表示し、失敗したサイトは理由だけ（見本データを混ぜない）。全失敗時のみ見本データ
+- 期待結果: 成功したサイトの実データは表示し、失敗したサイトは理由だけ（偽の商品を混ぜない）。全失敗時も偽の商品は出さず、理由と貼り付けの案内のみ
 - 自動テスト: `e2e/multi-market.spec.ts`、`functions/api/yahoo.test.ts`、`functions/api/ebay.test.ts`
 
 ## API-15 eBay のアプリ用トークン失効・キー誤り
@@ -894,17 +894,28 @@
 
 ---
 
+## USER-16 実在しない商品（見本・サンプル）を実データと取り違える
+
+- 重大度: P1
+- 状態: Protected
+- 故障: 接続できないとき・静的版で実在しない商品カードが表示され、利用者が実データと取り違える
+- 再現: キー未設定・全サイト障害・静的版・1ファイル版で検索する
+- 期待結果: 固定サンプルと見本データは廃止。商品カードは出さず、理由と「検索ページを開いて貼り付け・入力する方法」を表示する。旧版で保存した「サンプルデータ」の選択は「まとめて」として読み込む
+- 自動テスト: `marketSearchService.test.ts`、`e2e/rakuten-worker.spec.ts`、`e2e/multi-market.spec.ts`、`e2e/production-failure.spec.ts`、`scripts/static-smoke/*.spec.ts`
+
+---
+
 # 故障注入セット（すべて自動化済み）
 
 以下は `npm run verify:all`（ローカル・CI）で毎回自動実行される。人が手で実施する必要はない。
 
 | # | 故障 | 期待結果 | 自動テスト |
 |---|---|---|---|
-| 1 | キー未設定 | 見本データ＋「設定前」の案内 | `e2e/rakuten-worker.spec.ts` |
+| 1 | キー未設定 | 商品カードなし＋「設定前」の理由と貼り付けの案内 | `e2e/rakuten-worker.spec.ts` |
 | 2 | 無効キー・許可サイト不一致（401/403/400） | 実データ表示にならず「設定を確認」 | `e2e/rakuten-worker.spec.ts` |
 | 3 | 上流 429 | 「アクセス集中」 | `e2e/rakuten-worker.spec.ts` |
 | 4 | 上流 500 / 503 | 「楽天側の一時的な不具合」 | `e2e/rakuten-worker.spec.ts` |
-| 5 | 8秒以上応答なし | タイムアウトとして見本データ | `e2e/rakuten-worker.spec.ts` |
+| 5 | 8秒以上応答なし | タイムアウトとして理由を表示 | `e2e/rakuten-worker.spec.ts` |
 | 6 | HTML・壊れたJSON・巨大応答・契約違反 | 画面クラッシュなし・実データと誤認させない | `e2e/rakuten-worker.spec.ts` |
 | 7 | 検索中に検索語・データソース変更、クリア後の再検索 | 旧結果が混ざらない | `ProductSearchBar.test.tsx` |
 | 8 | localStorage 容量超過 / 使用不可 / 破損 | 保存失敗を表示・白画面にならない | `e2e/resilience.spec.ts`、`e2e/core-flows.spec.ts` |
@@ -923,7 +934,7 @@
 
 # 現時点の残リスク（コードでは完全に防げないもの）
 
-1. **楽天側の仕様変更・障害**: 理由を表示して見本データへ切り替えるが、恒久対応には改修が必要。実キーでの確認は公開後に1回行う（`docs/post-deploy-qa.md`）。
+1. **楽天側の仕様変更・障害**: 理由を表示して貼り付け・入力の方法を案内するが、恒久対応には改修が必要。実キーでの確認は公開後に1回行う（`docs/post-deploy-qa.md`）。
 2. **レート制限の精度**: Workers Rate Limiting は拠点ごとの結果整合。大規模な濫用には Cloudflare WAF の併用を推奨。
 3. **複数タブの同時書き込みマージ**: 他タブの更新は `storage` イベントで再読込するが、同時保存の3-way mergeはしない。
 4. **https の外部画像URL**: ユーザーが貼った https 画像は読み込む（参照元URLは送らない）。javascript/http は拒否済み。

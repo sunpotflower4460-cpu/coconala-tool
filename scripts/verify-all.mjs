@@ -98,7 +98,7 @@ function checkbox(ok) {
 async function main() {
   await fs.mkdir(OUT, { recursive: true });
   // 前回の結果を読み違えないよう、今回作り直すレポート類を先に消す。
-  for (const stale of ['QUALITY_REPORT.md', 'VERIFICATION_REPORT.md', 'release-check.json', 'delivery-verify.json', 'unit-results.json']) {
+  for (const stale of ['QUALITY_REPORT.md', 'VERIFICATION_REPORT.md', 'release-check.json', 'delivery-verify.json', 'unit-results.json', 'e2e-results.json']) {
     await fs.rm(path.join(OUT, stale), { force: true });
   }
   const pkg = JSON.parse(await fs.readFile(path.join(ROOT, 'package.json'), 'utf-8'));
@@ -117,7 +117,7 @@ async function main() {
   const qualityOk = quality.every((s) => s.ok);
 
   const unit = await readJson(path.join(OUT, 'unit-results.json'));
-  const e2e = await readJson(path.join(ROOT, 'test-results', 'e2e-results.json'));
+  const e2e = await readJson(path.join(OUT, 'e2e-results.json'));
   const release = await readJson(path.join(OUT, 'release-check.json'));
   const { byProject, failures: e2eFailures } = summarizeE2E(e2e);
   const e2eTotal = [...byProject.values()].reduce((sum, p) => sum + p.passed, 0);
