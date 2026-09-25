@@ -32,6 +32,25 @@ describe('findItemTitle', () => {
   it('画像の代替テキストがあれば優先する', () => {
     expect(findItemTitle({ url: 'x', text: '¥\n9,000', label: 'Switch 2 本体 美品' })).toBe('Switch 2 本体 美品');
   });
+  it('読み上げ用ラベルの「…の画像 3,200円」から値段と「の画像」を取り除く', () => {
+    expect(findItemTitle({ url: 'x', text: '', label: 'Switch Joy-Con ネオンブルーの画像 3,200円' })).toBe('Switch Joy-Con ネオンブルー');
+    expect(findItemTitle({ url: 'x', text: '', label: 'Nintendo Switch 2 ストラップのサムネイル' })).toBe('Nintendo Switch 2 ストラップ');
+    expect(findItemPrice('\nSwitch Joy-Con ネオンブルーの画像 3,200円')).toBe(3200);
+  });
+  it('ラクマのリンク説明（カテゴリ・「商品詳細ページへのリンク」）を除く', () => {
+    expect(
+      findItemTitle({ url: 'x', text: '', label: 'ポケモン レジェンズ ZA Nintendo Switch2 ポケモン(ポケモン)のエンタメ/ホビーのゲームソフト/ゲーム機本体(家庭用ゲームソフト)の商品詳細ページへのリンク' }),
+    ).toBe('ポケモン レジェンズ ZA Nintendo Switch2');
+    expect(
+      findItemTitle({ url: 'x', text: '', label: 'Nintendo Switch 純正 Joy-Conグリップ 2個セット ニンテンドースイッチ(Nintendo Switch)のエンタメ/ホビーのゲームソフト/ゲーム機本体(その他)の商品詳細ページへのリンク' }),
+    ).toBe('Nintendo Switch 純正 Joy-Conグリップ 2個セット');
+    expect(
+      findItemTitle({ url: 'x', text: '', label: 'Pokemon LEGENDS Z-A Nintendo Switch 2 Edition -Switch2 エンタメ/ホビーのゲームソフト/ゲーム機本体(その他)の商品詳細ページへのリンク' }),
+    ).toBe('Pokemon LEGENDS Z-A Nintendo Switch 2 Edition -Switch2');
+  });
+  it('「最安値を見る」などの決まり文句は商品名にしない', () => {
+    expect(findItemTitle({ url: 'x', text: '最安値を見る\n【Switch2】牧場物語 新品\n現在 5,000円', label: '最安値を見る' })).toBe('【Switch2】牧場物語 新品');
+  });
   it('無ければ値段を含まない一番長い行', () => {
     expect(findItemTitle({ url: 'x', text: 'PR\nNintendo Switch 2 本体 新品未開封\n¥49,980\n送料無料', label: '' })).toBe(
       'Nintendo Switch 2 本体 新品未開封',

@@ -89,7 +89,8 @@ export class SiteViews {
     const existing = this.views.get(market);
     if (existing) return existing;
     const view = new WebContentsView({
-      webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, nodeIntegration: false, javascript: true },
+      // 裏のタブでも検索結果が描かれるよう、描画の間引きを止める（取り込みは表示中の内容を読むため）
+      webPreferences: { session: this.ses, sandbox: true, contextIsolation: true, nodeIntegration: false, javascript: true, backgroundThrottling: false },
     });
     view.setBackgroundColor('#ffffff');
     const wc = view.webContents;
@@ -113,6 +114,7 @@ export class SiteViews {
       if (isMainFrame && code !== -3) this.update(market, { status: 'failed', url: wc.getURL() });
     });
     view.setVisible(false);
+    view.setBounds(this.lastBounds);
     this.win.contentView.addChildView(view);
     this.views.set(market, view);
     return view;
@@ -148,11 +150,15 @@ export class SiteViews {
     this.applyLayout();
   }
 
+  private lastBounds: SiteBounds = { x: 0, y: 0, width: 800, height: 700 };
+
   private applyLayout(): void {
     const { visible, active, bounds } = this.layout;
+    if (bounds && bounds.width > 40 && bounds.height > 40) this.lastBounds = roundBounds(bounds);
     for (const [market, view] of this.views) {
       const show = visible && market === active && bounds !== null && bounds.width > 40 && bounds.height > 40;
-      if (show) view.setBounds(roundBounds(bounds as SiteBounds));
+      // 隠しているタブも同じ大きさにしておく（大きさ0だとサイトが検索結果を描かず、取り込めない）
+      view.setBounds(this.lastBounds);
       view.setVisible(show);
     }
   }

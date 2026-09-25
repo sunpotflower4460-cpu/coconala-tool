@@ -86,7 +86,7 @@ export function AppShell() {
       <header className="sticky top-0 z-30 mb-6 md:mb-8">
         <div className="glass-header flex flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent/80">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent-text">
               Market Card Research
             </p>
             <div className="mt-0.5 flex flex-wrap items-center gap-2">

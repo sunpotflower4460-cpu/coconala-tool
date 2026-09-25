@@ -58,15 +58,36 @@ export function findItemPrice(text: string): number | undefined {
   return undefined;
 }
 
+/** 画像の代替テキスト・読み上げ用ラベルから、「…の画像」「…のサムネイル」や値段を取り除いて商品名にする。 */
+function cleanLabel(value: string): string {
+  let text = value.normalize('NFKC');
+  // ラクマ等の「<商品名> <ブランド>のエンタメ/ホビーの…の商品詳細ページへのリンク」から、説明部分を除く
+  if (/の?商品詳細ページへ(のリンク)?\s*$/.test(text)) {
+    text = text
+      .replace(/の?商品詳細ページへ(のリンク)?\s*$/, '')
+      .replace(/\s\S+(?:\([^)]*\))?の[^\s/]+\/.*$/, '')
+      .replace(/\s[^\s/]+\/[^\s]*$/, '');
+  }
+  return text
+    .replace(/\s+/g, ' ')
+    .replace(/[¥￥]\s*[0-9][0-9,]*|[0-9][0-9,]*\s*円/g, ' ')
+    .replace(/(の)?(画像|サムネイル|写真)(\s|$)/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// 商品名に使わない決まり文句（「最安値を見る」などのボタン・リンクの文字）
+const GENERIC_LABEL = /^(最安値を見る|詳細を見る|もっと見る|ウォッチ|入札する|今すぐ落札|カートに入れる|いいね.*|PR|広告)$/;
+
 /** 商品名: 画像の代替テキスト等があればそれ、無ければ値段を含まない一番長い行。 */
 export function findItemTitle(entry: CapturedEntry): string {
-  const label = entry.label.normalize('NFKC').replace(/\s+/g, ' ').trim();
-  if (label.length >= 4 && !PRICE.test(label)) return label.slice(0, 120);
+  const label = cleanLabel(entry.label);
+  if (label.length >= 4 && !GENERIC_LABEL.test(label)) return label.slice(0, 120);
   const lines = entry.text
     .normalize('NFKC')
     .split(/\r?\n/)
     .map((l) => l.replace(/\s+/g, ' ').trim())
-    .filter((l) => l.length >= 4 && !PRICE.test(l) && !NOT_TITLE.test(l));
+    .filter((l) => l.length >= 4 && !PRICE.test(l) && !NOT_TITLE.test(l) && !GENERIC_LABEL.test(l));
   const best = lines.sort((a, b) => b.length - a.length)[0];
   return (best ?? '').slice(0, 120);
 }

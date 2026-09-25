@@ -88,7 +88,7 @@ export function ResultCard({ card, outlier }: Props) {
         </div>
 
         <div className="mt-auto pt-2">
-          <p className="num text-2xl font-bold tracking-tight text-accent">{card.priceText || '価格不明'}</p>
+          <p className="num text-2xl font-bold tracking-tight text-accent-text">{card.priceText || '価格不明'}</p>
           {card.shippingText && (
             <p className="text-xs text-ink/65">{card.shippingText}</p>
           )}

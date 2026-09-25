@@ -21,6 +21,8 @@ export default {
           DEFAULT: 'rgb(var(--color-accent) / <alpha-value>)',
           hover: 'rgb(var(--color-accent-hover) / <alpha-value>)',
           strong: 'rgb(var(--color-accent-strong) / <alpha-value>)',
+          // 小さな文字用（どのテーマ・設定でも読みやすい明るさ）
+          text: 'rgb(var(--color-accent-text) / <alpha-value>)',
         },
         'on-accent': 'var(--color-on-accent)',
       },

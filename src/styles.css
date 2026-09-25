@@ -41,6 +41,8 @@ body.theme-simple-pro {
   /* ボタン背景とその上の文字色。WCAG AA（4.5:1 以上）を満たす組み合わせ。 */
   --color-accent-strong: 79 70 229;
   --color-on-accent: #ffffff;
+  /* 小さな文字に使う差し色。不透明な暗い背景（透明度を下げる設定）でも 4.5:1 以上。 */
+  --color-accent-text: 165 180 252;
 }
 
 /* Soft Market (warm violet) */
@@ -54,6 +56,8 @@ body.theme-soft-market {
   /* ボタン背景とその上の文字色。WCAG AA（4.5:1 以上）を満たす組み合わせ。 */
   --color-accent-strong: 244 114 182;
   --color-on-accent: #2a0a1c;
+  /* 小さな文字に使う差し色。不透明な暗い背景（透明度を下げる設定）でも 4.5:1 以上。 */
+  --color-accent-text: 249 168 212;
 }
 
 /* Dark Trader (pitch dark) */
@@ -67,6 +71,8 @@ body.theme-dark-trader {
   /* ボタン背景とその上の文字色。WCAG AA（4.5:1 以上）を満たす組み合わせ。 */
   --color-accent-strong: 34 211 238;
   --color-on-accent: #042f37;
+  /* 小さな文字に使う差し色。不透明な暗い背景（透明度を下げる設定）でも 4.5:1 以上。 */
+  --color-accent-text: 103 232 249;
 }
 
 /* Natural Board (deep forest green) */
@@ -80,6 +86,8 @@ body.theme-natural-board {
   /* ボタン背景とその上の文字色。WCAG AA（4.5:1 以上）を満たす組み合わせ。 */
   --color-accent-strong: 101 163 13;
   --color-on-accent: #0f1a05;
+  /* 小さな文字に使う差し色。不透明な暗い背景（透明度を下げる設定）でも 4.5:1 以上。 */
+  --color-accent-text: 190 242 100;
 }
 
 /* Fallback if no class applied */
@@ -93,6 +101,7 @@ body:not([class*="theme-"]) {
   /* ボタン背景とその上の文字色。WCAG AA（4.5:1 以上）を満たす組み合わせ。 */
   --color-accent-strong: 79 70 229;
   --color-on-accent: #ffffff;
+  --color-accent-text: 165 180 252;
 }
 
 body {

@@ -240,7 +240,7 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
                   <button
                     type="button"
                     onClick={() => desktop.onShowMarket(row.market)}
-                    className="min-h-11 rounded-control text-left text-sm font-semibold text-ink underline decoration-dotted underline-offset-4 hover:text-accent"
+                    className="min-h-11 rounded-control text-left text-sm font-semibold text-ink underline decoration-dotted underline-offset-4 hover:text-accent-text"
                   >
                     {MARKET_LABELS[row.market]}
                   </button>

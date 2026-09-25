@@ -27,6 +27,25 @@ for (const theme of THEMES) {
   });
 }
 
+for (const theme of THEMES) {
+  test(`axe: OS の「透明度を下げる」設定でも、テーマ「${theme}」に重大な違反がない`, async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', '設定の再現に Chromium の開発者用の機能を使う');
+    // Mac・Windows の「透明度を下げる」設定の利用者は、半透明のパネルが不透明な暗い色になる（styles.css）
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setEmulatedMedia', {
+      features: [
+        { name: 'prefers-reduced-transparency', value: 'reduce' },
+        { name: 'prefers-reduced-motion', value: 'reduce' },
+      ],
+    });
+    await page.goto('/');
+    await page.getByRole('button', { name: `テーマ: ${theme}` }).click();
+    await search(page, 'PS5');
+    await resultCards(page).first().getByRole('button', { name: '比較に追加' }).click();
+    expect(await auditSeriousViolations(page)).toEqual([]);
+  });
+}
+
 test('axe: 手動追加ダイアログとエラー表示に重大なアクセシビリティ違反がない', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'URLから手動で追加' }).click();

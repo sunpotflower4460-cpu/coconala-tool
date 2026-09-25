@@ -2,6 +2,8 @@
  * 「表示中の値段を取り込む」: 利用者がボタンを押したときだけ、各タブに表示中の検索ページ1枚から、
  * 商品ページへのリンクと、そのリンクを含む枠の文字だけを読む（画像・説明文・出品者情報は読まない）。
  * ページのスクリプトから触られないよう、ページとは別の実行環境（isolated world）で読む。
+ * ただし広告などの読み込みが終わらないページでは、その方法だと読み込み完了まで待たされるため、
+ * 表示中の内容をそのまま読む（mainFrame）。どちらも読み取った値は下の sanitizeEntries で検査してから使う。
  * 値段・商品名の判定は画面側の `src/lib/pageCapture.ts`。
  */
 import type { CaptureResult, CaptureSettings, CapturedEntry, SiteMarket } from '../src/lib/desktopBridge';
@@ -11,6 +13,24 @@ import type { SiteViews } from './siteViews';
 
 const ISOLATED_WORLD_ID = 1717;
 const MAX_TEXT = 600;
+/** 広告の読み込みが終わらないページでも待ち続けないよう、1サイトあたりの上限時間 */
+const CAPTURE_TIMEOUT_MS = 8_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('timeout')), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
 
 function captureScript(pattern: string, limit: number): string {
   return `(() => {
@@ -29,9 +49,19 @@ function captureScript(pattern: string, limit: number): string {
         if (hasOther) break;
         box = parent;
       }
-      const img = a.querySelector('img[alt]');
-      const label = (img && img.getAttribute('alt')) || a.getAttribute('title') || a.getAttribute('aria-label') || '';
-      found.set(key, { url: key, text: String(box.innerText || '').slice(0, ${MAX_TEXT}), label: String(label).slice(0, 200) });
+      // 商品名の候補: 画像の代替テキスト・読み上げ用ラベル（メルカリ等は商品名と値段をここに持つ）・リンクの文字
+      const sameItem = Array.from(box.querySelectorAll('a[href]')).filter((x) => keyOf(x.href) === key);
+      const labels = [];
+      for (const link of sameItem) {
+        for (const el of [link, ...Array.from(link.querySelectorAll('img[alt], [aria-label], [title]'))]) {
+          for (const v of [el.getAttribute('alt'), el.getAttribute('aria-label'), el.getAttribute('title')]) if (v) labels.push(v.trim());
+        }
+        const t = String(link.innerText || '').trim();
+        if (t) labels.push(t.split('\\n')[0]);
+      }
+      const label = labels.filter((v) => v.length >= 4).sort((x, y) => y.length - x.length)[0] || '';
+      const ariaText = Array.from(box.querySelectorAll('[aria-label]')).map((el) => el.getAttribute('aria-label')).join('\\n');
+      found.set(key, { url: key, text: (String(box.innerText || '') + '\\n' + ariaText).slice(0, ${MAX_TEXT}), label: String(label).slice(0, 200) });
       if (found.size >= ${limit}) break;
     }
     return Array.from(found.values());
@@ -54,9 +84,12 @@ export async function captureVisiblePages(views: SiteViews, settings: CaptureSet
       const state = views.state(market);
       if (!view || state.status === 'idle') return { market, ok: false, entries: [], reason: 'not_loaded' };
       try {
-        const raw = await view.webContents.executeJavaScriptInIsolatedWorld(ISOLATED_WORLD_ID, [
-          { code: captureScript(ITEM_URL_PATTERNS[market], MAX_CAPTURED_PER_SITE + 10) },
-        ]);
+        const code = captureScript(ITEM_URL_PATTERNS[market], MAX_CAPTURED_PER_SITE + 10);
+        const wc = view.webContents;
+        const raw = await withTimeout(
+          wc.isLoadingMainFrame() ? wc.mainFrame.executeJavaScript(code) : wc.executeJavaScriptInIsolatedWorld(ISOLATED_WORLD_ID, [{ code }]),
+          CAPTURE_TIMEOUT_MS,
+        );
         return { market, ok: true, entries: sanitizeEntries(raw) };
       } catch {
         return { market, ok: false, entries: [], reason: 'error' };
