@@ -112,6 +112,7 @@ async function main() {
     runStep('静的版ビルド', 'npm', ['run', 'build:static']),
     runStep('E2E（ブラウザ自動操作）', 'npx', ['playwright', 'test']),
     runStep('整合チェック（verify:release）', 'node', ['scripts/verify-release.mjs']),
+    runStep('画面写真入りマニュアル・出品素材の生成', 'npx', ['playwright', 'test', '--config', 'scripts/playwright.marketing.config.ts']),
   ];
   const qualityOk = quality.every((s) => s.ok);
 

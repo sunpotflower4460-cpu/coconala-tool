@@ -33,6 +33,10 @@ jobs:
       - name: Install Playwright browsers (Chromium / WebKit)
         run: npx playwright install --with-deps chromium webkit
 
+      # マニュアル PDF・画面写真の日本語が文字化けしないよう、日本語フォントを入れる
+      - name: Install Japanese fonts
+        run: sudo apt-get update && sudo apt-get install -y fonts-noto-cjk
+
       # 型・単体・ビルド・E2E（偽楽天API＋実Worker、PC/タブレット/スマホ/iPhone、a11y、故障注入）・
       # 整合チェック・納品ZIP生成・ZIP展開後の再ビルドと静的版の動作確認を一括で実行する。
       - name: Verify all (quality gate + delivery package)

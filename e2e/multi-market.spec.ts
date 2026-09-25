@@ -87,6 +87,18 @@ test('相場一覧: 自動取得3サイトの価格帯と最安を表示し、�
   await expect(overviewRow(page, 'Yahoo!ショッピング').getByText('最安')).toBeVisible();
 });
 
+test('相場から大きく外れた価格（付属品等）は価格帯から除き、カードに注意を出す。切り替えで含められる', async ({ page }) => {
+  await multiSearch(page, '__outlier Switch');
+  const yahooRow = overviewRow(page, 'Yahoo!ショッピング');
+  await expect(page.getByText(/相場から大きく外れた 1 件.*を価格帯から除いています/)).toBeVisible();
+  await expect(yahooRow).toContainText('¥11,000 〜 ¥13,000');
+  await expect(page.getByRole('article').filter({ hasText: '¥900' }).getByText('相場より大幅に安い（付属品等の可能性）')).toBeVisible();
+
+  await page.getByRole('button', { name: '含めて表示する' }).click();
+  await expect(yahooRow).toContainText('¥900 〜 ¥13,000');
+  await expect(yahooRow.getByText('最安')).toBeVisible();
+});
+
 test('一部のサイトが失敗しても他のサイトの実データを表示し、失敗したサイトは理由だけ出す（見本データを混ぜない）', async ({ page }) => {
   await multiSearch(page, '__yahoofail PS5');
   await expect(page.getByRole('status').filter({ hasText: 'Yahoo!ショッピング: 想定外の応答がありました' })).toBeVisible();

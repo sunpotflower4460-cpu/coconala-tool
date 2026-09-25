@@ -223,6 +223,16 @@ async function stageSamples(stagingDir) {
   log(`見本画像: ${copied} 枚`);
 }
 
+/** 画面写真入りの操作・導入マニュアル（npm run marketing:capture で生成）を ZIP 直下に置く。 */
+async function stageManual(stagingDir) {
+  const manual = path.join(OUTPUT_DIR, 'manual', 'マニュアル.pdf');
+  if (await pathExists(manual)) {
+    await fs.copyFile(manual, path.join(stagingDir, 'マニュアル.pdf'));
+    return;
+  }
+  if (!ALLOW_MISSING_REPORT) fail('マニュアル（dist-delivery/manual/マニュアル.pdf）がありません。npm run marketing:capture で生成してください。');
+}
+
 async function stageQualityReport(stagingDir, version) {
   const reportPath = path.join(OUTPUT_DIR, 'QUALITY_REPORT.md');
   if (await pathExists(reportPath)) {
@@ -285,6 +295,7 @@ async function main() {
     await stageRootDocs(stagingDir, sourceFiles);
     await stageStaticApp(stagingDir);
     await stageSamples(stagingDir);
+    await stageManual(stagingDir);
     await stageQualityReport(stagingDir, version);
 
     log('文書のリンク切れを検査中...');

@@ -202,7 +202,9 @@ body {
 
   .glass-modal {
     /* tier3: モーダル / ポップオーバー */
-    @apply rounded-panel border border-white/20 bg-white/[0.10] shadow-glass-3;
+    @apply rounded-panel border border-white/20 shadow-glass-3;
+    /* 入力フォームは背景が透けると読みにくいため、ほぼ不透明にする（ぼかしは残す）。 */
+    background-color: color-mix(in srgb, var(--color-bg-card-solid) 96%, transparent);
     backdrop-filter: blur(32px) saturate(160%);
     -webkit-backdrop-filter: blur(32px) saturate(160%);
   }

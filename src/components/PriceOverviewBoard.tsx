@@ -7,6 +7,7 @@ import { toJpyPrice } from '../features/profit/profitCalculator';
 import { buildSearchLinks, MANUAL_MARKETS } from '../services/searchLinkBuilder';
 import { marketOf } from '../lib/marketOf';
 import { parseNumberInput } from '../lib/numberInput';
+import type { OutlierReason } from '../lib/priceOutliers';
 
 const AUTO_MARKETS: MarketId[] = ['rakuten', 'yahoo_shopping', 'ebay'];
 
@@ -77,7 +78,13 @@ function ObservedPriceInput({ market, searchUrl, query }: { market: MarketId; se
  *  - 楽天・Yahoo!ショッピング・eBay は検索結果から自動で集計（eBay はドル円レートで円換算）
  *  - メルカリ・ヤフオク・ラクマ・Amazon は自動取得しない。検索ページを開いて見た価格を入力すると同じ棒に並ぶ
  */
-export function PriceOverviewBoard() {
+type BoardProps = {
+  outliers: Map<string, OutlierReason>;
+  includeOutliers: boolean;
+  onToggleOutliers: () => void;
+};
+
+export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers }: BoardProps) {
   const { resultCards, searchSources, searchedQuery, exchangeRate, dataSourceMode, removeResultCard } = useResearchStore(
     useShallow((s) => ({
       resultCards: s.resultCards,
@@ -98,7 +105,10 @@ export function PriceOverviewBoard() {
   }
   const toRow = (market: MarketId, kind: Row['kind']): Row => {
     const cards = byMarket.get(market) ?? [];
-    const prices = cards.map((c) => toJpyPrice(c, exchangeRate)).filter((p): p is number => typeof p === 'number' && p > 0);
+    const prices = cards
+      .filter((c) => includeOutliers || !outliers.has(c.id))
+      .map((c) => toJpyPrice(c, exchangeRate))
+      .filter((p): p is number => typeof p === 'number' && p > 0);
     const source = searchSources.find((s) => s.market === market);
     const shortcutId = MANUAL_MARKETS.find((m) => m.market === market)?.shortcutId;
     return {
@@ -141,6 +151,23 @@ export function PriceOverviewBoard() {
           </p>
         )}
       </div>
+      {outliers.size > 0 && (
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-control border border-amber-300/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-50">
+          <span>
+            {includeOutliers
+              ? `相場から大きく外れた ${outliers.size} 件（付属品・まとめ売り等の可能性）も含めています。`
+              : `相場から大きく外れた ${outliers.size} 件（付属品・まとめ売り等の可能性）を価格帯から除いています。`}
+          </span>
+          <button
+            type="button"
+            onClick={onToggleOutliers}
+            aria-pressed={includeOutliers}
+            className="min-h-11 rounded-control border border-amber-200/40 px-3 font-semibold hover:bg-amber-500/20"
+          >
+            {includeOutliers ? '除いて表示する' : '含めて表示する'}
+          </button>
+        </div>
+      )}
 
       <ul aria-label="サイト別の価格帯" className="flex flex-col divide-y divide-white/10">
         {rows.map((row) => {
