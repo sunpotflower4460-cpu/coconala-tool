@@ -23,7 +23,7 @@ export const WARNING_BY_STATUS: Record<MockStatus, string> = {
 };
 
 export const STATIC_BUILD_WARNING =
-  'この公開版は楽天市場との連携なしで動作しています。見本データを表示しています。実データを使うには Cloudflare Workers 版で公開してください（設定ガイド参照）。';
+  'この版は楽天市場との連携なしで動作しています。見本データを表示しています。実データを使うには Cloudflare Workers 版で公開してください（設定ガイド参照）。';
 
 export const REAL_WARNING = '楽天市場の実データです。価格・在庫は変動します。最終確認は元ページで行ってください。';
 const EMPTY_WARNING = '楽天市場で該当する商品が見つかりませんでした。商品名・型番を短くするなど、検索語を変えてお試しください。';

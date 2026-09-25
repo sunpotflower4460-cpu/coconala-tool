@@ -2,7 +2,7 @@
 
 最終更新: 2026-09-24
 
-対象: 相場カード比較ボード (`coconala-tool`) v0.9.0-rc.13
+対象: 相場カード比較ボード (`coconala-tool`) v0.9.0-rc.14
 
 自動テストの実行方法: `npm run verify:all`（単体・E2E・整合チェック・納品ZIP検証を一括実行し、`dist-delivery/VERIFICATION_REPORT.md` に結果を出力）
 

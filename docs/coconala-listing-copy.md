@@ -1,6 +1,6 @@
 # ココナラ掲載文
 
-対象バージョン: v0.9.0-rc.13（出品ページへ転記する前に、最新の `package.json` のバージョンと一致しているか `npm run verify:release` で確認されます）
+対象バージョン: v0.9.0-rc.14（出品ページへ転記する前に、最新の `package.json` のバージョンと一致しているか `npm run verify:release` で確認されます）
 
 ## サービスタイトル
 
@@ -116,7 +116,9 @@ APIキー不要で、サンプルデータ・見本データで主要な流れ�
 ## 納品物
 
 - ZIPファイル1つ（構成は `docs/DELIVERY_CONTENTS.md`）
-  - `マニュアル.pdf`（画面写真入りの操作・導入マニュアル）
+  - `①ツールを開く.html`（ダブルクリックでそのまま使える。インストール不要）
+  - `②マニュアル.pdf`（画面写真入りの操作・導入マニュアル）
+  - `③詳しい資料（公開する人向け）` フォルダ:
   - `README_FIRST.md`（最初に読む案内）/ `QUICK_START.md` / `USER_GUIDE.md` / `DEPLOY_GUIDE.md` / `SUPPORT_POLICY.md` / `PRIVACY_AND_DATA.md` / `TERMS.md` / `CHANGELOG.md`
   - `QUALITY_REPORT.md`（納品前に自動実行した品質チェックの結果）
   - `app-static/`（ビルド済みの静的版）/ `source/`（ソースコード一式）/ `sample/`（画面の見本）

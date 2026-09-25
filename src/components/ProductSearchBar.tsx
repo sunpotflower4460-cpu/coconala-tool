@@ -2,42 +2,20 @@ import { Search, X } from 'lucide-react';
 import { useShallow } from 'zustand/react/shallow';
 import { useResearchStore } from '../store/researchStore';
 import { DataSourceModeSelector } from './DataSourceModeSelector';
-import { runMarketSearch } from '../services/marketAdapters/marketSearchService';
+import { performSearch } from '../features/search/performSearch';
 import { MAX_SEARCH_QUERY_LENGTH } from '../lib/limits';
 
 export function ProductSearchBar() {
-  const { query, setQuery, setSearchResult, isSearching, dataSourceMode, clearSearch } = useResearchStore(
+  const { query, setQuery, isSearching, clearSearch } = useResearchStore(
     useShallow((s) => ({
       query: s.query,
       setQuery: s.setQuery,
-      setSearchResult: s.setSearchResult,
       isSearching: s.isSearching,
-      dataSourceMode: s.dataSourceMode,
       clearSearch: s.clearSearch,
     })),
   );
 
-  async function handleSearch() {
-    const requestedQuery = query.trim();
-    const requestedMode = dataSourceMode;
-    if (!requestedQuery) return;
-
-    const requestId = useResearchStore.getState().beginSearch();
-    if (requestId === null) return;
-
-    try {
-      const response = await runMarketSearch(requestedQuery, requestedMode, 8);
-      const current = useResearchStore.getState();
-
-      // 同一クエリでも、クリア後の再検索や連打で生まれた古い世代は捨てる。
-      if (!current.isCurrentSearchRequest(requestId)) return;
-      if (current.query.trim() !== requestedQuery || current.dataSourceMode !== requestedMode) return;
-
-      setSearchResult(response, requestedQuery);
-    } finally {
-      useResearchStore.getState().finishSearchIfCurrent(requestId);
-    }
-  }
+  const handleSearch = performSearch;
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     // 日本語入力の変換確定の Enter では検索しない（入力途中の語で検索が走るのを防ぐ）。
