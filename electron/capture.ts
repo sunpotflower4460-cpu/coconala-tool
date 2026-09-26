@@ -9,7 +9,7 @@
 import type { CaptureResult, CaptureSettings, CapturedEntry, SiteMarket } from '../src/lib/desktopBridge';
 import { SITE_MARKETS } from '../src/lib/desktopBridge';
 import { ITEM_URL_PATTERNS, MAX_CAPTURED_PER_SITE } from '../src/lib/pageCapture';
-import type { SiteViews } from './siteViews';
+import { isSearchPage, type SiteViews } from './siteViews';
 
 const ISOLATED_WORLD_ID = 1717;
 const MAX_TEXT = 600;
@@ -83,6 +83,11 @@ export async function captureVisiblePages(views: SiteViews, settings: CaptureSet
       const view = views.view(market);
       const state = views.state(market);
       if (!view || state.status === 'idle') return { market, ok: false, entries: [], reason: 'not_loaded' };
+      if (!views.hasCommitted(market)) return { market, ok: false, entries: [], reason: 'loading' };
+      // 商品ページ等に移動しているときは読まない（ボタンの説明どおり「検索結果の1ページ」だけを読む）
+      if (!isSearchPage(market, view.webContents.getURL())) {
+        return { market, ok: false, entries: [], reason: view.webContents.isLoadingMainFrame() ? 'loading' : 'not_search_page' };
+      }
       try {
         const code = captureScript(ITEM_URL_PATTERNS[market], MAX_CAPTURED_PER_SITE + 10);
         const wc = view.webContents;

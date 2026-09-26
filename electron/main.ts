@@ -6,7 +6,7 @@
  *  - メルカリ等の実ページは siteViews（右側のタブ）で表示し、取り込みは利用者の操作時だけ（capture.ts）。
  *  - 画面側に公開するのは preload.ts の `window.desktop` だけ（Node の機能は渡さない）。
  */
-import { app, BrowserWindow, ipcMain, net, protocol, session, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu, net, protocol, session, shell, type MenuItemConstructorOptions } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -146,6 +146,16 @@ function registerIpc(): void {
   ipcMain.handle('app:info', () => ({ version: app.getVersion(), platform: process.platform }));
 }
 
+/** 最小限のメニュー（コピー・貼り付けなどの編集とウィンドウ操作だけ。再読み込み・拡大・開発者ツールは出さない） */
+function setAppMenu(): void {
+  const template: MenuItemConstructorOptions[] = [
+    ...(process.platform === 'darwin' ? [{ role: 'appMenu' as const, label: '相場カード比較ボード' }] : []),
+    { role: 'editMenu', label: '編集' },
+    { role: 'windowMenu', label: 'ウィンドウ' },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 1480,
@@ -178,9 +188,16 @@ function createWindow(): void {
     if (!wc.isDestroyed()) wc.send('sites:state', states);
   });
   mainWindow.once('ready-to-show', () => mainWindow?.show());
+  mainWindow.on('close', () => siteViews?.destroy());
   mainWindow.on('closed', () => {
     mainWindow = null;
     siteViews = null;
+  });
+  // 画面の拡大縮小はしない（右のタブの実ページの位置がずれるため）。画面を読み込み直したら、タブの状態を送り直す
+  wc.setVisualZoomLevelLimits(1, 1).catch(() => undefined);
+  wc.on('did-finish-load', () => {
+    wc.setZoomFactor(1);
+    siteViews?.resendStates();
   });
   void mainWindow.loadURL(`${APP_ORIGIN}/index.html`);
 }
@@ -198,6 +215,7 @@ if (!app.requestSingleInstanceLock()) {
     protocol.handle('app', handleAppProtocol);
     redirectTestImages();
     registerIpc();
+    setAppMenu();
     createWindow();
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createWindow();

@@ -43,6 +43,27 @@ export function siteSearchUrl(market: SiteMarket, query: string): string {
   return link.url;
 }
 
+/** いま表示しているのが、そのサイトの検索結果のページか（最後に「まとめて探す」で開いた形のページか） */
+export function isSearchPage(market: SiteMarket, url: string): boolean {
+  try {
+    const current = new URL(url);
+    const expected = new URL(siteSearchUrl(market, 'q'));
+    return current.origin === expected.origin && current.pathname === expected.pathname;
+  } catch {
+    return false;
+  }
+}
+
+/** 外部ページの広告等が既定のブラウザを勝手に何度も開かないよう、https だけ・1秒に1回までにする */
+const lastExternalOpen = new Map<SiteMarket, number>();
+function openExternalFromSite(market: SiteMarket, url: string): void {
+  if (!/^https:\/\//.test(url)) return;
+  const now = Date.now();
+  if (now - (lastExternalOpen.get(market) ?? 0) < 1000) return;
+  lastExternalOpen.set(market, now);
+  void shell.openExternal(url);
+}
+
 function isAllowed(market: SiteMarket, url: string): boolean {
   try {
     const parsed = new URL(url);
@@ -64,6 +85,8 @@ export function sitesSession(): Session {
 
 export class SiteViews {
   private views = new Map<SiteMarket, WebContentsView>();
+  /** 最後の「まとめて探す」で開いた検索ページが、表示に切り替わったか（切り替わる前は前の検索のページのまま） */
+  private committed = new Map<SiteMarket, boolean>();
   private states = new Map<SiteMarket, SiteState>();
   private layout: SiteLayout = { visible: false, active: null, bounds: null };
   private readonly ses: Session;
@@ -74,6 +97,10 @@ export class SiteViews {
   ) {
     this.ses = sitesSession();
     for (const market of SITE_MARKETS) this.states.set(market, { market, status: 'idle' });
+  }
+
+  resendStates(): void {
+    this.emit();
   }
 
   private emit(): void {
@@ -97,16 +124,21 @@ export class SiteViews {
     wc.setWindowOpenHandler(({ url }) => {
       // 新しいウィンドウで開こうとしたリンク: 同じサイトならこのタブで、それ以外は既定のブラウザで開く
       if (isAllowed(market, url)) void wc.loadURL(url);
-      else if (/^https?:\/\//.test(url)) void shell.openExternal(url);
+      else openExternalFromSite(market, url);
       return { action: 'deny' };
     });
     wc.on('will-navigate', (event, url) => {
       if (!isAllowed(market, url)) {
         event.preventDefault();
-        if (/^https?:\/\//.test(url)) void shell.openExternal(url);
+        openExternalFromSite(market, url);
       }
     });
+    // サーバー側の転送で、許可していないサイトへ移らないようにする
+    wc.on('will-redirect', (event, url) => {
+      if (!isAllowed(market, url)) event.preventDefault();
+    });
     wc.on('did-start-loading', () => this.update(market, { status: 'loading' }));
+    wc.on('did-navigate', () => this.committed.set(market, true));
     wc.on('did-stop-loading', () =>
       this.update(market, { status: 'ready', url: wc.getURL(), title: wc.getTitle(), canGoBack: wc.navigationHistory.canGoBack() }),
     );
@@ -124,6 +156,11 @@ export class SiteViews {
     return this.views.get(market);
   }
 
+  /** 最後の検索のページが表示に切り替わったか */
+  hasCommitted(market: SiteMarket): boolean {
+    return this.committed.get(market) === true;
+  }
+
   state(market: SiteMarket): SiteState {
     return this.states.get(market) as SiteState;
   }
@@ -131,9 +168,13 @@ export class SiteViews {
   async search(query: string): Promise<void> {
     const q = query.trim().slice(0, 100);
     if (!q) return;
+    for (const market of SITE_MARKETS) this.ensureView(market);
+    // 読み込みの完了を待たずに、表示中のタブを枠に出す（広告の多いページは完了が遅い）
+    this.applyLayout();
     await Promise.all(
       SITE_MARKETS.map(async (market) => {
         const view = this.ensureView(market);
+        this.committed.set(market, false);
         this.update(market, { status: 'loading', url: undefined, title: undefined });
         try {
           await view.webContents.loadURL(siteSearchUrl(market, q));
@@ -161,6 +202,19 @@ export class SiteViews {
       view.setBounds(this.lastBounds);
       view.setVisible(show);
     }
+  }
+
+  /** ウィンドウを閉じたとき: 実ページを閉じて、裏で動き続けないようにする */
+  destroy(): void {
+    for (const view of this.views.values()) {
+      try {
+        if (!this.win.isDestroyed()) this.win.contentView.removeChildView(view);
+      } catch {
+        // すでに外れている
+      }
+      if (!view.webContents.isDestroyed()) view.webContents.close();
+    }
+    this.views.clear();
   }
 
   async goBack(market: SiteMarket): Promise<void> {

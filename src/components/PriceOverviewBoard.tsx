@@ -256,7 +256,9 @@ export function PriceOverviewBoard({ outliers, includeOutliers, onToggleOutliers
                     : desktop
                       ? row.cards.some((c) => c.id.startsWith('captured-'))
                         ? '取り込み'
-                        : '未取り込み'
+                        : row.cards.length > 0
+                          ? '手入力'
+                          : '未取り込み'
                       : '手入力'}
                 </span>
               </div>

@@ -48,8 +48,11 @@ export type CaptureResult = {
   market: SiteMarket;
   ok: boolean;
   entries: CapturedEntry[];
-  /** ok=false の理由: not_loaded（まだ開いていない）/ disabled（設定で取り込みオフ）/ error */
-  reason?: 'not_loaded' | 'disabled' | 'error';
+  /**
+   * ok=false の理由: not_loaded（まだ開いていない）/ loading（読み込み中）/ not_search_page（商品ページ等を表示中）/
+   * disabled（設定で取り込みオフ）/ error
+   */
+  reason?: 'not_loaded' | 'loading' | 'not_search_page' | 'disabled' | 'error';
 };
 
 export type CaptureSettings = Record<SiteMarket, boolean>;
