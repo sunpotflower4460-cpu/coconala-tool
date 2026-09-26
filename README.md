@@ -4,7 +4,7 @@
 公式APIで画像つきに並べ、メルカリ・ヤフオク・ラクマ・Amazon の検索結果も同じ画面の右側のタブに開きます。
 「値段を取り込む」1回で、それらの値段も同じ一覧に並べ、利益見込み・履歴・CSV出力までまとめて管理できます。Web 版（Cloudflare Workers）もあります。
 
-現在のバージョン: **v1.0.0-beta.1**（正式販売前の候補版）
+現在のバージョン: **v1.0.0-beta.2**（正式販売前の候補版）
 
 - 購入者の方は、まず [`docs/README_FIRST.md`](docs/README_FIRST.md)（納品ZIPでは `README_FIRST.md`）をお読みください。
 - 公開手順: [`docs/deployment-guide.md`](docs/deployment-guide.md) / ローカル起動: [`docs/setup-guide.md`](docs/setup-guide.md)

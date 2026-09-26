@@ -99,7 +99,11 @@ export function DesktopShell() {
     return desktop.sites.onState(setSiteStates);
   }, [setKeyStatus, openSetup, setSiteStates]);
 
-  useEffect(() => setFilter('all'), [lastSearchedAt]);
+  // 新しく検索したら、絞り込みと前回の取り込みのお知らせを戻す
+  useEffect(() => {
+    setFilter('all');
+    useDesktopUi.getState().setCaptureNotice(null);
+  }, [lastSearchedAt]);
 
   useEffect(() => {
     if (!showManualAdd) return;
@@ -193,7 +197,9 @@ export function DesktopShell() {
                     role="status"
                     className={`glass px-4 py-2.5 text-sm ${captureNotice.kind === 'ok' ? 'border-emerald-300/40 bg-emerald-500/10' : 'border-amber-300/40 bg-amber-500/10'}`}
                   >
-                    <p className="font-semibold">値段を取り込みました</p>
+                    <p className="font-semibold">
+                      {captureNotice.kind === 'ok' ? '値段を取り込みました' : '値段の取り込み結果（一部のサイトは読み取れませんでした）'}
+                    </p>
                     <ul className="mt-1 list-disc pl-5 text-xs">
                       {captureNotice.lines.map((line) => (
                         <li key={line}>{line}</li>

@@ -9,6 +9,10 @@ const APP_NAME = '相場カード比較ボード';
 const APP_DESCRIPTION =
   '物販リサーチ用の相場比較ツール。利用者が入力した商品名・型番・JANコードで商品を検索し、商品名・価格・画像・商品ページへのリンクを表示します。取得したデータは保存・再配布しません。';
 
+/** 楽天の登録フォーム「データ使用目的」に写す文 */
+const RAKUTEN_DATA_PURPOSE =
+  '物販リサーチ用の相場比較アプリで、利用者が入力した商品名・型番・JANコードで楽天市場の商品を検索し、商品名・価格・画像・商品ページへのリンクを一覧表示して他サイトの価格と比較するために使用します。取得したデータは利用者のパソコン内でのみ表示し、保存・再配布しません。';
+
 const SITE_TITLES: Record<KeySite, string> = { rakuten: '楽天市場', yahoo: 'Yahoo!ショッピング', ebay: 'eBay' };
 
 /** キーのテスト結果を、次にすることが分かる一文にする。 */
@@ -21,6 +25,8 @@ export function describeTest(site: KeySite, result: KeyTestResult, allowedHost: 
       return site === 'rakuten'
         ? `キーが違うか、楽天の「許可されたWebサイト」に ${allowedHost} が入っていないようです。楽天のアプリ一覧で確認し、キーをコピーし直してください。`
         : 'キーが違うようです。登録ページでキーをコピーし直して、もう一度貼り付けてください。';
+    case 'save_failed':
+      return 'キーを保存できませんでした。パソコンの「キーチェーン」（Mac）や保存先への書き込みが許可されているか確認して、もう一度お試しください。';
     case 'rate_limited':
       return '短時間に問い合わせが集中しました。1分ほど待ってから、もう一度「テスト」を押してください。';
     case 'timeout':
@@ -105,9 +111,13 @@ function SaveAndTest({ site, canSave, onSave, status }: { site: KeySite; canSave
     const desktop = getDesktop();
     if (!desktop) return;
     setTest({ running: true, result: null });
-    if (save) await onSave();
-    const result = await desktop.keys.test(site);
-    setTest({ running: false, result });
+    try {
+      if (save) await onSave();
+      const result = await desktop.keys.test(site);
+      setTest({ running: false, result });
+    } catch {
+      setTest({ running: false, result: { ok: false, code: 'save_failed' } });
+    }
   };
   const configured = status ? status[site].configured : false;
   return (
@@ -177,6 +187,18 @@ function RakutenStep({ status, onSaved }: { status: KeyStatus | null; onSaved: (
             </p>
             <CopyRow label="許可されたWebサイト" value={host} note="例として薄く出ている文字は消してから貼り付けます。https:// は付けません。" />
             <CopyRow label="アプリケーションの説明" value={APP_DESCRIPTION} />
+            <p className="pt-1 text-xs font-semibold text-ink/80">「利用情報」の欄</p>
+            <CopyRow label="データ使用目的（必須）" value={RAKUTEN_DATA_PURPOSE} />
+            <CopyRow
+              label="必要とされるQPS（1秒あたりの必要量）"
+              value="1"
+              note="「まとめて探す」1回につき楽天へは1回だけ問い合わせるため、1で足ります。"
+            />
+            <p className="rounded-control border border-white/10 bg-black/20 p-2.5 text-sm">
+              <span className="text-xs font-semibold text-ink/80">APIアクセススコープ</span>
+              <br />
+              「<b>楽天市場API</b>（製品検索と情報へのアクセス）」<b>だけ</b>にチェックを入れます。ほか（トラベル・ブックス・kobo・GORA・レシピ）は使わないので、チェックしません。
+            </p>
           </div>
         </li>
         <li>
@@ -345,6 +367,23 @@ export function SetupWizard() {
     dialogRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeSetup();
+      // Tab でダイアログの外（後ろの画面）へ移らないようにする
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusables = Array.from(
+          dialogRef.current.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'),
+        );
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement;
+        if (e.shiftKey && (active === first || active === dialogRef.current)) {
+          e.preventDefault();
+          last.focus();
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -430,7 +469,11 @@ export function SetupWizard() {
           {setupStep === 'ebay' && <EbayStep status={keyStatus} onSaved={setKeyStatus} />}
         </div>
         <div className="flex shrink-0 items-center justify-between gap-2 border-t border-white/10 px-5 py-3">
-          <p className="text-xs text-ink/65">キーはこのパソコンの中だけに、暗号化して保存します。</p>
+          <p className="text-xs text-ink/65">
+            {keyStatus && !keyStatus.encrypted
+              ? 'このパソコンでは暗号化して保存できないため、キーはアプリを閉じるまでだけ使います。'
+              : 'キーはこのパソコンの中だけに、暗号化して保存します。'}
+          </p>
           <div className="flex gap-2">
             <button type="button" onClick={closeSetup} className="min-h-11 rounded-control border border-white/20 px-4 text-sm font-semibold hover:bg-white/10">
               {setupStep === 'overview' ? 'あとで設定する' : '閉じる'}

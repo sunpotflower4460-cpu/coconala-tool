@@ -16,8 +16,8 @@ const chip = 'flex min-h-11 items-center gap-1.5 rounded-control border px-3 tex
  * 押すと、そのサイトの結果に絞り込む・右のタブを開く・キーの設定を開く。
  */
 export function SiteStatusStrip({ onShowMarket }: { onShowMarket: (market: MarketId) => void }) {
-  const { sources, resultCards, lastSearchedAt } = useResearchStore(
-    useShallow((s) => ({ sources: s.searchSources, resultCards: s.resultCards, lastSearchedAt: s.lastSearchedAt })),
+  const { sources, resultCards, lastSearchedAt, isSearching } = useResearchStore(
+    useShallow((s) => ({ sources: s.searchSources, resultCards: s.resultCards, lastSearchedAt: s.lastSearchedAt, isSearching: s.isSearching })),
   );
   const { siteStates, setRightTab, openSetup, capturing } = useDesktopUi(
     useShallow((s) => ({ siteStates: s.siteStates, setRightTab: s.setRightTab, openSetup: s.openSetup, capturing: s.capturing })),
@@ -100,7 +100,7 @@ export function SiteStatusStrip({ onShowMarket }: { onShowMarket: (market: Marke
         <button
           type="button"
           onClick={() => void captureVisiblePrices()}
-          disabled={!anySiteReady || capturing}
+          disabled={!anySiteReady || capturing || isSearching}
           className="flex min-h-12 items-center gap-2 rounded-card bg-accent-strong px-5 text-sm font-bold text-on-accent shadow-glass-2 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {capturing ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Download size={16} aria-hidden="true" />}

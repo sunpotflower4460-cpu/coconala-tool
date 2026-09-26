@@ -140,7 +140,7 @@ test('ログイン画面などで値段が無いサイトは「読み取れま�
   await closeSetupIfOpen(page);
   await search(page, '__login テスト');
   await page.getByRole('button', { name: /値段を取り込む/ }).click();
-  const notice = page.getByRole('status').filter({ hasText: '値段を取り込みました' });
+  const notice = page.getByRole('status').filter({ hasText: '一部のサイトは読み取れませんでした' });
   await expect(notice).toContainText('メルカリ: 値段を読み取れませんでした（ログインや確認画面が出ていないか、右のタブで確認してください）');
   // キー未設定でもメルカリ等のタブと取り込みは使える
   await expect(page.getByTestId('result-summary')).toContainText('画像つきで表示できる商品はまだありません');
@@ -156,6 +156,30 @@ test('設定で取り込みをオフにしたサイトは取り込まない（�
   const notice = page.getByRole('status').filter({ hasText: '値段を取り込みました' });
   await expect(notice).toContainText('Amazon: 取り込みをオフにしています');
   await expect(page.getByRole('article').filter({ hasText: '【E2EAmazon】' })).toHaveCount(0);
+});
+
+test('右のタブで商品ページ等に移っているサイトは取り込まず、検索結果に戻すよう案内する。新しく検索したら前のお知らせは消える', async ({ launch }) => {
+  const { page, app } = await launch();
+  await closeSetupIfOpen(page);
+  await search(page, 'Switch 2');
+  await expect.poll(async () => (await siteViews(app)).length).toBe(4);
+  await expect(page.getByRole('button', { name: /値段を取り込む/ })).toBeEnabled();
+  // メルカリのタブだけ、検索結果ではないページへ移動させる
+  await app.evaluate(async ({ BrowserWindow }, url) => {
+    const views = BrowserWindow.getAllWindows()[0].contentView.children.filter((v) => 'webContents' in v) as unknown as Array<{
+      webContents: { getURL(): string; loadURL(u: string): Promise<void> };
+    }>;
+    const mercari = views.find((v) => v.webContents.getURL().includes('/fake-sites/mercari'));
+    await mercari?.webContents.loadURL(url);
+  }, `${FAKE}/__health`);
+  await page.getByRole('button', { name: /値段を取り込む/ }).click();
+  const notice = page.getByRole('status').filter({ hasText: '一部のサイトは読み取れませんでした' });
+  await expect(notice).toContainText('メルカリ: 検索結果以外のページを表示中です');
+  await expect(notice).toContainText('ヤフオク: 4件');
+  await expect(page.getByRole('article').filter({ hasText: '【E2Eメルカリ】' })).toHaveCount(0);
+
+  await search(page, 'Switch 3');
+  await expect(page.getByRole('status').filter({ hasText: '値段の取り込み結果' })).toHaveCount(0);
 });
 
 test('比較・キー・取り込みの設定は再起動後も残る', async ({ launch }) => {

@@ -1,6 +1,6 @@
 # ココナラ掲載文
 
-対象バージョン: v1.0.0-beta.1（出品ページへ転記する前に、最新の `package.json` のバージョンと一致しているか `npm run verify:release` で確認されます）
+対象バージョン: v1.0.0-beta.2（出品ページへ転記する前に、最新の `package.json` のバージョンと一致しているか `npm run verify:release` で確認されます）
 
 ## サービスタイトル
 

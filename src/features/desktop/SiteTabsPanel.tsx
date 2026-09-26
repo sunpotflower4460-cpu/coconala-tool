@@ -4,6 +4,8 @@ import { getDesktop, SITE_MARKETS, type SiteMarket } from '../../lib/desktopBrid
 import { MARKET_LABELS } from '../../types/market';
 import { useDesktopUi, type RightTab } from './desktopUiStore';
 
+const PANEL_ID = 'right-tab-panel';
+
 const OTHER_TABS: Array<{ id: RightTab; label: string }> = [
   { id: 'compare', label: '比較・利益' },
   { id: 'history', label: '保存・CSV' },
@@ -52,7 +54,18 @@ export function SiteTabsPanel({ compare, history }: { compare: ReactNode; histor
 
   return (
     <section aria-label="サイトのページと比較" className="glass flex h-full min-h-0 flex-col overflow-hidden">
-      <div role="tablist" aria-label="右側の表示" className="flex shrink-0 flex-wrap gap-1 border-b border-white/10 p-1.5">
+      <div
+        role="tablist"
+        aria-label="右側の表示"
+        onKeyDown={(e) => {
+          // ← → でタブを切り替える（一般的なタブの操作）
+          if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+          const order: RightTab[] = [...SITE_MARKETS, ...OTHER_TABS.map((t) => t.id)];
+          const next = order[(order.indexOf(rightTab) + (e.key === 'ArrowRight' ? 1 : order.length - 1)) % order.length];
+          setRightTab(next);
+          e.currentTarget.querySelector<HTMLElement>(`[data-tab="${next}"]`)?.focus();
+        }}
+        className="flex shrink-0 flex-wrap gap-1 border-b border-white/10 p-1.5">
         {SITE_MARKETS.map((market) => {
           const s = siteStates.find((x) => x.market === market);
           return (
@@ -60,6 +73,9 @@ export function SiteTabsPanel({ compare, history }: { compare: ReactNode; histor
               key={market}
               role="tab"
               type="button"
+              data-tab={market}
+              aria-controls={PANEL_ID}
+              tabIndex={rightTab === market ? 0 : -1}
               aria-selected={rightTab === market}
               onClick={() => setRightTab(market)}
               className={`flex min-h-11 items-center gap-1.5 rounded-control px-3 text-sm font-semibold transition ${
@@ -77,6 +93,9 @@ export function SiteTabsPanel({ compare, history }: { compare: ReactNode; histor
             key={tab.id}
             role="tab"
             type="button"
+            data-tab={tab.id}
+            aria-controls={PANEL_ID}
+            tabIndex={rightTab === tab.id ? 0 : -1}
             aria-selected={rightTab === tab.id}
             onClick={() => setRightTab(tab.id)}
             className={`min-h-11 rounded-control px-3 text-sm font-semibold transition ${
@@ -88,6 +107,7 @@ export function SiteTabsPanel({ compare, history }: { compare: ReactNode; histor
         ))}
       </div>
 
+      <div id={PANEL_ID} role="tabpanel" className="flex min-h-0 flex-1 flex-col">
       {activeSite ? (
         <>
           <div className="flex shrink-0 items-center gap-1 border-b border-white/10 px-2 py-1 text-xs text-ink/75">
@@ -136,6 +156,7 @@ export function SiteTabsPanel({ compare, history }: { compare: ReactNode; histor
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto p-3">{rightTab === 'compare' ? compare : history}</div>
       )}
+      </div>
     </section>
   );
 }
